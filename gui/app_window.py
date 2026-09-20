@@ -48,6 +48,13 @@ class AppHidrometrosWindow:
 
     def _set_window_icon(self):
         try:
+            if sys.platform == "win32":
+                try:
+                    import ctypes
+                    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("smarthydro.hidrometros.relatorio.1.0")
+                except Exception:
+                    pass
+
             ico_candidates = [
                 os.path.join(get_base_dir(), "app_icon.ico"),
                 os.path.join(get_base_dir(), "icon.ico"),
@@ -55,22 +62,29 @@ class AppHidrometrosWindow:
             for p in ico_candidates:
                 if os.path.exists(p):
                     try:
-                        self.root.iconbitmap(p)
+                        self.root.iconbitmap(default=p)
                     except Exception:
-                        pass
+                        try:
+                            self.root.iconbitmap(p)
+                        except Exception:
+                            pass
                     break
 
             img_candidates = [
+                os.path.join(get_base_dir(), "app_icon.ico"),
                 os.path.join(get_base_dir(), "header_logo.png"),
                 os.path.join(get_base_dir(), "logo.jpeg"),
                 os.path.join(get_base_dir(), "gui_logo.png"),
             ]
             for p in img_candidates:
                 if os.path.exists(p):
-                    img = Image.open(p)
-                    self._icon_photo = ImageTk.PhotoImage(img)
-                    self.root.iconphoto(False, self._icon_photo)
-                    break
+                    try:
+                        img = Image.open(p)
+                        self._icon_photo = ImageTk.PhotoImage(img)
+                        self.root.iconphoto(True, self._icon_photo)
+                        break
+                    except Exception:
+                        pass
         except Exception:
             pass
 

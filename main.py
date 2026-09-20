@@ -18,6 +18,14 @@ base_dir = os.path.dirname(os.path.abspath(__file__))
 if base_dir not in sys.path:
     sys.path.insert(0, base_dir)
 
+# No Windows, define um AppUserModelID próprio para exibir o ícone customizado na barra de tarefas
+if sys.platform == "win32":
+    try:
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("smarthydro.hidrometros.relatorio.1.0")
+    except Exception:
+        pass
+
 def main():
     # Se houver argumentos de linha de comando (além do nome do script), roda CLI
     if len(sys.argv) > 1:
