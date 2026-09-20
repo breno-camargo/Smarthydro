@@ -1,0 +1,14 @@
+{
+  "server": "SEU_SERVIDOR\\SQLEXPRESS",
+  "database": "StruxureWareReportsDB",
+  "trusted_connection": true,
+  "db_user": "",
+  "db_password": "",
+  "default_m3_price": 63.68,
+  "output_directory": "C:\\Relatorios_Hidrometros",
+  "billing_cycle_type": "ciclo_29_28",
+  "open_excel_after_generation": true,
+  "sort_by_consumption": true,
+  "odbc_driver": "ODBC Driver 17 for SQL Server",
+  "recent_reports": []
+}

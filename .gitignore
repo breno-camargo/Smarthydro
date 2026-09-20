@@ -1,0 +1,44 @@
+# Configuração real local (contém credenciais, hostnames e histórico pessoal)
+config.json
+
+# Diretórios e binários de compilação PyInstaller
+build/
+dist/
+*.spec.bak
+*.exe
+*.dll
+
+# Atalhos do Windows
+*.lnk
+
+# Python cache & bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Ambientes virtuais
+venv/
+env/
+ENV/
+.venv/
+
+# Logs e arquivos de depuração
+*.log
+execucao.log
+
+# Planilhas temporárias e relatórios gerados
+test_*.xlsx
+*.tmp
+
+# IDEs e editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Arquivos de sistema operacional
+Thumbs.db
+Desktop.ini
+.DS_Store
