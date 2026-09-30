@@ -55,34 +55,44 @@ class AppHidrometrosWindow:
                 except Exception:
                     pass
 
+            # Candidatos para o arquivo .ico nativo do Windows
             ico_candidates = [
                 os.path.join(get_base_dir(), "app_icon.ico"),
                 os.path.join(get_base_dir(), "icon.ico"),
             ]
+            if hasattr(sys, '_MEIPASS'):
+                ico_candidates.insert(0, os.path.join(sys._MEIPASS, "app_icon.ico"))
+                ico_candidates.insert(1, os.path.join(sys._MEIPASS, "icon.ico"))
+
             for p in ico_candidates:
                 if os.path.exists(p):
                     try:
                         self.root.iconbitmap(default=p)
+                        return
                     except Exception:
                         try:
                             self.root.iconbitmap(p)
+                            return
                         except Exception:
                             pass
-                    break
 
+            # Fallback com imagem PNG apenas se iconbitmap falhar
             img_candidates = [
-                os.path.join(get_base_dir(), "app_icon.ico"),
                 os.path.join(get_base_dir(), "header_logo.png"),
-                os.path.join(get_base_dir(), "logo.jpeg"),
+                os.path.join(get_base_dir(), "logo_final.png"),
                 os.path.join(get_base_dir(), "gui_logo.png"),
             ]
+            if hasattr(sys, '_MEIPASS'):
+                img_candidates.insert(0, os.path.join(sys._MEIPASS, "header_logo.png"))
+                img_candidates.insert(1, os.path.join(sys._MEIPASS, "logo_final.png"))
+
             for p in img_candidates:
                 if os.path.exists(p):
                     try:
-                        img = Image.open(p)
+                        img = Image.open(p).resize((32, 32), Image.Resampling.LANCZOS)
                         self._icon_photo = ImageTk.PhotoImage(img)
-                        self.root.iconphoto(True, self._icon_photo)
-                        break
+                        self.root.iconphoto(False, self._icon_photo)
+                        return
                     except Exception:
                         pass
         except Exception:
