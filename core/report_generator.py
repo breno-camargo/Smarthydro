@@ -797,7 +797,7 @@ def _generate_excel_full_code(df, dt_inicio_str, dt_fim_str, valor_m3, output_pa
             if cell.fill == PatternFill():
                 cell.fill = fill_meta_bg
 
-    # Inserir Logo
+    # Inserir Logo centralizada no bloco de 4 células F4:G5
     logo_path = _get_logo_path()
     if logo_path:
         try:
@@ -805,6 +805,11 @@ def _generate_excel_full_code(df, dt_inicio_str, dt_fim_str, valor_m3, output_pa
             img.width = 156
             img.height = 44
             ws.add_image(img, "F4")
+            if hasattr(img, 'anchor') and hasattr(img.anchor, '_from'):
+                img.anchor._from.col = 5   # Coluna F
+                img.anchor._from.row = 3   # Linha 4
+                img.anchor._from.colOff = int(53 * 9525)   # Centraliza entre colunas F e G
+                img.anchor._from.rowOff = int(7.33 * 9525) # Centraliza entre linhas 4 e 5
         except Exception:
             pass
 
