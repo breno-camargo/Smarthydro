@@ -462,30 +462,46 @@ def generate_excel_from_template(template_path, df, dt_inicio_str, dt_fim_str, v
     ws["E5"].value = f"{len(df)} salas/medidores"
 
     n_records = len(df)
-    ROW_SAMPLE = 8
-    amount_inserted = n_records - 1
+    ROW_START = 8
 
-    # Deslocar mesclagens que estejam abaixo da área de inserção (ex: A15:G15)
-    # pois o openpyxl não atualiza merged_cells automaticamente no insert_rows
-    if amount_inserted > 0:
+    # Localizar dinamicamente a linha do TOTAL GERAL no modelo existente
+    total_row_in_template = None
+    for r in range(ROW_START, ws.max_row + 1):
+        v = str(ws.cell(r, 1).value or "").strip().upper()
+        if "TOTAL GERAL" in v or v == "TOTAL":
+            total_row_in_template = r
+            break
+
+    if total_row_in_template is None:
+        total_row_in_template = ROW_START + n_records
+
+    existing_records = total_row_in_template - ROW_START
+    diff_records = n_records - existing_records
+
+    # Se a quantidade de salas for diferente do modelo, ajusta as linhas mantendo a estrutura
+    if diff_records > 0:
         new_merged_ranges = []
         for rng in list(ws.merged_cells.ranges):
             min_col, min_row, max_col, max_row = rng.bounds
-            if min_row > ROW_SAMPLE:
-                new_min_row = min_row + amount_inserted
-                new_max_row = max_row + amount_inserted
+            if min_row >= total_row_in_template:
+                new_min_row = min_row + diff_records
+                new_max_row = max_row + diff_records
                 c1 = get_column_letter(min_col)
                 c2 = get_column_letter(max_col)
                 new_coord = f"{c1}{new_min_row}:{c2}{new_max_row}"
                 ws.merged_cells.remove(rng)
                 new_merged_ranges.append(new_coord)
-        
-        ws.insert_rows(ROW_SAMPLE + 1, amount=amount_inserted)
-        
+
+        ws.insert_rows(total_row_in_template, amount=diff_records)
+
         for coord in new_merged_ranges:
             ws.merge_cells(coord)
+    elif diff_records < 0:
+        amount_to_delete = abs(diff_records)
+        del_start = ROW_START + n_records
+        ws.delete_rows(del_start, amount=amount_to_delete)
 
-    total_row = ROW_SAMPLE + n_records
+    total_row = ROW_START + n_records
 
     # Estilização no Padrão Executivo / Diretoria
     font_tbl_hdr= Font(name="Segoe UI", size=9, bold=True, color=CLR_TEXT_WHITE)
@@ -516,7 +532,7 @@ def generate_excel_from_template(template_path, df, dt_inicio_str, dt_fim_str, v
 
     # Inserir cada linha de medição com respiração e sem grades verticais
     for i, (_, r) in enumerate(df.iterrows()):
-        curr_r = ROW_SAMPLE + i
+        curr_r = ROW_START + i
         ws.row_dimensions[curr_r].height = 21
 
         consumo = _safe_float(r.get("Consumo_m3"))
@@ -552,7 +568,7 @@ def generate_excel_from_template(template_path, df, dt_inicio_str, dt_fim_str, v
         cell = ws.cell(row=total_row, column=c_idx)
         if c_idx > 1:
             col_l = get_column_letter(c_idx)
-            cell.value = f"=SUM({col_l}{ROW_SAMPLE}:{col_l}{last_data_row})"
+            cell.value = f"=SUM({col_l}{ROW_START}:{col_l}{last_data_row})"
             cell.number_format = '#,##0.00' if c_idx in (2, 4, 6) else 'R$ #,##0.00'
         al = al_left if c_idx == 1 else al_right
         _apply_cell(cell, font=font_total, fill=fill_total, alignment=al, border=border_total)
@@ -630,18 +646,35 @@ def generate_excel_report(df, dt_inicio_str, dt_fim_str, valor_m3, output_path, 
 
 
 def create_default_template_file(template_path):
-    """Cria um arquivo modelo_relatorio.xlsx limpo e pronto para ser editado no Excel."""
-    import pandas as pd
-    df_sample = pd.DataFrame([{
-        "Usuario": "Exemplo Sala 101",
-        "Consumo_m3": 10.5,
-        "Valor_RS": 668.64,
-        "Consumo_Total_11m": 115.5,
-        "Valor_Total_11m": 7355.04,
-        "Consumo_Medio_11m": 10.5,
-        "Valor_Medio_11m": 668.64
-    }])
-    _generate_excel_full_code(df_sample, "2026-07-29", "2026-08-28", 63.68, template_path, include_chart=False, sort_by_consumption=False)
+    """Cria um arquivo modelo_relatorio.xlsx oficial baseado no mês de setembro com todos os dados reais."""
+    candidates = [
+        os.path.join(os.path.expanduser("~"), "Desktop", "Rateio de água - Setembro.xlsx"),
+        os.path.join(os.path.expanduser("~"), "Desktop", "Relatorios", "Rateio de água - Setembro.xlsx"),
+        os.path.join(os.path.expanduser("~"), "Desktop", "Rateio_Agua_2026_09.xlsx"),
+        os.path.join(os.path.expanduser("~"), "Desktop", "Relatorios", "Rateio_Agua_2026_09.xlsx"),
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            shutil.copy2(c, template_path)
+            return template_path
+
+    # Se não houver arquivo pronto, busca no banco o ciclo de setembro e renderiza completo
+    try:
+        from core.database import fetch_hidrometros_data
+        df_full = fetch_hidrometros_data("2026-08-29 00:00:00", "2026-09-28 23:59:59", 63.68)
+        _generate_excel_full_code(df_full, "2026-08-29 00:00:00", "2026-09-28 23:59:59", 63.68, template_path, include_chart=True, sort_by_consumption=True)
+    except Exception:
+        import pandas as pd
+        df_sample = pd.DataFrame([{
+            "Usuario": "Exemplo Sala 101",
+            "Consumo_m3": 10.5,
+            "Valor_RS": 668.64,
+            "Consumo_Total_11m": 115.5,
+            "Valor_Total_11m": 7355.04,
+            "Consumo_Medio_11m": 10.5,
+            "Valor_Medio_11m": 668.64
+        }])
+        _generate_excel_full_code(df_sample, "2026-08-29", "2026-09-28", 63.68, template_path, include_chart=True, sort_by_consumption=False)
     return template_path
 
 
