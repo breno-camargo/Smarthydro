@@ -485,6 +485,42 @@ def generate_excel_from_template(template_path, df, dt_inicio_str, dt_fim_str, v
     ws["B5"].number_format = 'R$ #,##0.00'
     ws["E5"].value = f"{len(df)} salas/medidores"
 
+    # Limpar qualquer resquício de erro (#VALUE!) nas células F4:G5
+    # (ocorre se o usuário selecionar 'Colocar na Célula' no Excel 365, que não é suportado pelo openpyxl)
+    for r in (4, 5):
+        for c in (6, 7):
+            val_str = str(ws.cell(r, c).value or "").strip()
+            if val_str.startswith("#"):
+                ws.cell(r, c).value = None
+
+    # Garantir que a logo esteja presente e perfeitamente centralizada nas 4 células F4:G5
+    if len(ws._images) == 0:
+        logo_path = _get_logo_path()
+        if logo_path:
+            try:
+                img = XlImage(logo_path)
+                img.width = 156
+                img.height = 44
+                ws.add_image(img, "F4")
+                if hasattr(img, 'anchor') and hasattr(img.anchor, '_from'):
+                    img.anchor._from.col = 5   # Coluna F
+                    img.anchor._from.row = 3   # Linha 4
+                    img.anchor._from.colOff = int(53 * 9525)   # Centraliza entre F e G
+                    img.anchor._from.rowOff = int(7.33 * 9525) # Centraliza entre linhas 4 e 5
+            except Exception as e:
+                logging.warning(f"Erro ao reinserir logo no template: {e}")
+    else:
+        # Se já existe imagem no template, assegurar o posicionamento centralizado
+        try:
+            img = ws._images[0]
+            if hasattr(img, 'anchor') and hasattr(img.anchor, '_from'):
+                img.anchor._from.col = 5
+                img.anchor._from.row = 3
+                img.anchor._from.colOff = int(53 * 9525)
+                img.anchor._from.rowOff = int(7.33 * 9525)
+        except Exception:
+            pass
+
     n_records = len(df)
     ROW_START = 8
 
