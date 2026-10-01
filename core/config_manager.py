@@ -142,16 +142,12 @@ def get_recent_reports():
 
     result = []
 
-    # Escaneia a pasta de saída para pegar TODOS os arquivos .xlsx de rateio
+    # Escaneia a pasta de saída para pegar TODOS os arquivos .xlsx
     if out_dir and os.path.exists(out_dir):
         try:
             files = [
                 os.path.join(out_dir, f) for f in os.listdir(out_dir)
-                if f.lower().endswith(".xlsx") and (
-                    f.startswith("Rateio de água -") or
-                    f.startswith("Rateio de agua -") or
-                    f.startswith("Rateio_Agua_")
-                )
+                if f.lower().endswith(".xlsx")
             ]
             # Ordenar pelos mais recentes (data de modificação)
             files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
