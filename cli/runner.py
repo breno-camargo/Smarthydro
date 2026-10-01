@@ -5,7 +5,7 @@ import logging
 from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
 
-from core.config_manager import load_config, get_base_dir, format_report_filename
+from core.config_manager import load_config, get_base_dir, format_report_filename, get_report_output_folder
 from core.database import fetch_hidrometros_data, test_db_connection
 from core.report_generator import generate_excel_report
 
@@ -76,11 +76,11 @@ def execute_extraction(dt_inicio, dt_fim, valor_m3=None, output_path=None, confi
     logging.info(f"Dados obtidos com sucesso do SQL Server: {len(df)} registros encontrados.")
 
     if output_path is None:
-        out_dir = config.get("output_directory", os.path.join(get_base_dir(), "relatorios"))
-        os.makedirs(out_dir, exist_ok=True)
+        base_out = config.get("output_directory", os.path.join(get_base_dir(), "relatorios"))
+        target_dir = get_report_output_folder(base_out, dt_fim)
         # Identificador padronizado: "Rateio de água - Junho.xlsx"
         filename = format_report_filename(dt_fim)
-        output_path = os.path.join(out_dir, filename)
+        output_path = os.path.join(target_dir, filename)
 
     if progress_callback:
         progress_callback(55, "3/4: Formatando planilha e gráficos de consumo...")

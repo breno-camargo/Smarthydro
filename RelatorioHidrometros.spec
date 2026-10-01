@@ -14,7 +14,7 @@ a = Analysis(
         ('gui_logo.png', '.'),
         ('modelo_relatorio.xlsx', '.')
     ],
-    hiddenimports=['babel.numbers'],
+    hiddenimports=['babel.numbers', 'win32com', 'win32com.client', 'pythoncom', 'pywintypes'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

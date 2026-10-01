@@ -55,6 +55,87 @@ def format_report_filename(reference_date):
     return f"Rateio de água - {mes_nome}.xlsx"
 
 
+def get_report_year_month(reference_date):
+    """
+    Retorna uma tupla (ano_str, mes_nome) com base na data de referência.
+    Ex: ('2026', 'Setembro')
+    """
+    try:
+        if isinstance(reference_date, str):
+            clean = reference_date.strip().split(" ")[0]
+            parts = clean.split("-")
+            year = int(parts[0])
+            month = int(parts[1])
+        else:
+            year = reference_date.year
+            month = reference_date.month
+        mes_nome = MESES_PT[month - 1]
+        return str(year), mes_nome
+    except Exception:
+        return str(datetime.now().year), "Medicao"
+
+
+def get_report_output_folder(base_out_dir, reference_date):
+    """
+    Retorna o caminho da subpasta organizada por Ano/Mês dentro da pasta de relatórios.
+    Cria a pasta automaticamente se não existir.
+    Ex: C:\...\Relatorios\2026\Setembro
+    """
+    year, mes_nome = get_report_year_month(reference_date)
+    target_dir = os.path.join(base_out_dir, year, mes_nome)
+    os.makedirs(target_dir, exist_ok=True)
+    return target_dir
+
+
+def organize_loose_reports(base_out_dir):
+    """
+    Organiza arquivos soltos na raiz da pasta Relatorios, movendo-os
+    para suas respectivas subpastas Ano/Mês.
+    """
+    import shutil
+    import re
+    if not base_out_dir or not os.path.exists(base_out_dir):
+        return
+
+    try:
+        for item in os.listdir(base_out_dir):
+            item_path = os.path.join(base_out_dir, item)
+            # Apenas arquivos na raiz da pasta que não sejam temporários do Excel (~$)
+            if os.path.isfile(item_path) and not item.startswith("~$"):
+                item_lower = item.lower()
+                if item_lower.endswith(".xlsx") or item_lower.endswith(".pdf"):
+                    # Descobrir o mês pelo nome do arquivo
+                    found_month = None
+                    for m in MESES_PT:
+                        if m.lower() in item_lower:
+                            found_month = m
+                            break
+
+                    # Descobrir o ano pelo nome ou pela data de modificação
+                    year_match = re.search(r'\b(202\d)\b', item)
+                    if year_match:
+                        found_year = year_match.group(1)
+                    else:
+                        mtime = os.path.getmtime(item_path)
+                        found_year = str(datetime.fromtimestamp(mtime).year)
+
+                    if found_month:
+                        target_folder = os.path.join(base_out_dir, found_year, found_month)
+                        os.makedirs(target_folder, exist_ok=True)
+                        dest_path = os.path.join(target_folder, item)
+                        if os.path.abspath(item_path) != os.path.abspath(dest_path):
+                            if not os.path.exists(dest_path):
+                                shutil.move(item_path, dest_path)
+                            else:
+                                try:
+                                    os.remove(item_path)
+                                except Exception:
+                                    pass
+    except Exception as e:
+        logging.warning(f"Erro ao organizar relatórios soltos em {base_out_dir}: {e}")
+
+
+
 def _encode_password(plain_text):
     """Ofusca a senha em base64 para não ficar visível em texto puro no config.json."""
     if not plain_text:
@@ -124,13 +205,17 @@ def save_config(new_config):
 
 def get_recent_reports():
     """
-    Retorna a lista dos relatórios presentes na pasta de saída,
+    Retorna a lista dos relatórios presentes na pasta de saída (inclusive em subpastas Ano/Mês),
     enriquecidos com metadados do histórico quando disponíveis.
-    Sempre escaneia a pasta para refletir mudanças (renomear, deletar, adicionar).
+    Organiza arquivos soltos e reflete mudanças (renomear, deletar, adicionar) em tempo real.
     """
     cfg = load_config()
     history = cfg.get("recent_reports", [])
     out_dir = cfg.get("output_directory", "")
+
+    # Organizar relatórios soltos na raiz da pasta em subpastas Ano/Mês
+    if out_dir and os.path.exists(out_dir):
+        organize_loose_reports(out_dir)
 
     # Índice do histórico por caminho absoluto para consulta rápida de metadados
     hist_by_path = {}
@@ -142,13 +227,15 @@ def get_recent_reports():
 
     result = []
 
-    # Escaneia a pasta de saída para pegar TODOS os arquivos .xlsx
+    # Escaneia a pasta de saída recursivamente (suporta subpastas Ano/Mês)
     if out_dir and os.path.exists(out_dir):
         try:
-            files = [
-                os.path.join(out_dir, f) for f in os.listdir(out_dir)
-                if f.lower().endswith(".xlsx")
-            ]
+            files = []
+            for root, _, filenames in os.walk(out_dir):
+                for f in filenames:
+                    if f.lower().endswith(".xlsx") and not f.startswith("~$"):
+                        files.append(os.path.join(root, f))
+
             # Ordenar pelos mais recentes (data de modificação)
             files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
 
@@ -158,12 +245,17 @@ def get_recent_reports():
                 mtime = os.path.getmtime(f_path)
                 dt_str = datetime.fromtimestamp(mtime).strftime("%d/%m/%Y %H:%M")
 
+                # Checar se existe arquivo PDF correspondente na mesma pasta
+                pdf_candidate = os.path.splitext(abs_path)[0] + ".pdf"
+                has_pdf = os.path.exists(pdf_candidate)
+
                 # Se tiver metadados do histórico, usa; senão cria entrada básica
                 if key in hist_by_path:
                     entry = hist_by_path[key].copy()
-                    # Atualiza nome caso o arquivo tenha sido renomeado
                     entry["filename"] = os.path.basename(f_path)
                     entry["path"] = abs_path
+                    entry["has_pdf"] = has_pdf
+                    entry["pdf_path"] = pdf_candidate if has_pdf else ""
                 else:
                     entry = {
                         "filename": os.path.basename(f_path),
@@ -171,7 +263,9 @@ def get_recent_reports():
                         "periodo": "",
                         "gerado_em": dt_str,
                         "total_m3": None,
-                        "total_rs": None
+                        "total_rs": None,
+                        "has_pdf": has_pdf,
+                        "pdf_path": pdf_candidate if has_pdf else ""
                     }
                 result.append(entry)
         except Exception:
@@ -183,6 +277,9 @@ def get_recent_reports():
             if isinstance(item, dict):
                 p = item.get("path", "")
                 if p and os.path.exists(p):
+                    pdf_candidate = os.path.splitext(p)[0] + ".pdf"
+                    item["has_pdf"] = os.path.exists(pdf_candidate)
+                    item["pdf_path"] = pdf_candidate if item["has_pdf"] else ""
                     result.append(item)
 
     return result[:5]

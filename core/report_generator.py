@@ -695,25 +695,79 @@ def generate_excel_from_template(template_path, df, dt_inicio_str, dt_fim_str, v
     return output_path, warnings
 
 
+def export_to_pdf(excel_path, pdf_path=None):
+    """
+    Converte uma planilha Excel (.xlsx) para PDF com fidelidade total usando o Microsoft Excel via COM.
+    Retorna o caminho do PDF gerado ou None se o Excel não estiver disponível ou ocorrer erro.
+    """
+    if not excel_path or not os.path.exists(excel_path):
+        return None
+
+    if not pdf_path:
+        pdf_path = os.path.splitext(excel_path)[0] + ".pdf"
+
+    abs_excel = os.path.abspath(excel_path)
+    abs_pdf = os.path.abspath(pdf_path)
+
+    try:
+        import win32com.client
+        import pythoncom
+
+        pythoncom.CoInitialize()
+        excel = win32com.client.DispatchEx("Excel.Application")
+        excel.Visible = False
+        excel.DisplayAlerts = False
+        try:
+            wb = excel.Workbooks.Open(abs_excel)
+            # 0 = xlTypePDF
+            wb.ExportAsFixedFormat(0, abs_pdf)
+            wb.Close(False)
+            logging.info(f"PDF gerado com sucesso em: {abs_pdf}")
+            return abs_pdf
+        finally:
+            excel.Quit()
+            pythoncom.CoUninitialize()
+    except Exception as e:
+        logging.warning(f"Não foi possível gerar versão em PDF via Excel: {e}")
+        return None
+
+
 def generate_excel_report(df, dt_inicio_str, dt_fim_str, valor_m3, output_path, sort_by_consumption=True, progress_callback=None):
     """
     Função principal: se existir o modelo_relatorio.xlsx personalizado, usa ele.
     Caso contrário, gera o relatório completo do zero com o design padrão CompaSSS.
+    Gera automaticamente a versão em Excel (.xlsx) e uma cópia executiva em PDF (.pdf).
     Retorna (output_path, warnings).
     """
     if sort_by_consumption:
         df = sort_dataframe_by_consumption(df)
 
     tmpl = get_template_path()
+    res_path = None
+    warnings = []
+
     if tmpl and os.path.exists(tmpl):
         try:
-            return generate_excel_from_template(tmpl, df, dt_inicio_str, dt_fim_str, valor_m3, output_path, sort_by_consumption=False, progress_callback=progress_callback)
+            res_path, warnings = generate_excel_from_template(tmpl, df, dt_inicio_str, dt_fim_str, valor_m3, output_path, sort_by_consumption=False, progress_callback=progress_callback)
         except PermissionError:
             raise
         except Exception as e:
             logging.warning(f"Não foi possível aplicar o modelo {tmpl}: {e}. Gerando com renderizador padrão.")
 
-    return _generate_excel_full_code(df, dt_inicio_str, dt_fim_str, valor_m3, output_path, sort_by_consumption=False, progress_callback=progress_callback)
+    if res_path is None:
+        res_path, warnings = _generate_excel_full_code(df, dt_inicio_str, dt_fim_str, valor_m3, output_path, sort_by_consumption=False, progress_callback=progress_callback)
+
+    # Gerar cópia executiva em PDF automaticamente na mesma pasta
+    try:
+        if progress_callback:
+            progress_callback(95, "5/5: Gerando cópia executiva em PDF...")
+        pdf_res = export_to_pdf(res_path)
+        if not pdf_res:
+            warnings.append("Aviso: A versão em PDF não pôde ser gerada automaticamente (Excel indisponível).")
+    except Exception as e:
+        logging.warning(f"Erro ao gerar cópia em PDF: {e}")
+
+    return res_path, warnings
 
 
 def create_default_template_file(template_path):

@@ -7,7 +7,7 @@ from tkinter import ttk, messagebox, filedialog
 from tkcalendar import DateEntry
 from PIL import Image, ImageTk
 
-from core.config_manager import load_config, save_config, get_base_dir, get_recent_reports, format_report_filename
+from core.config_manager import load_config, save_config, get_base_dir, get_recent_reports, format_report_filename, get_report_output_folder
 from core.database import test_db_connection
 from core.report_generator import open_template_in_excel
 from cli.runner import execute_extraction
@@ -375,13 +375,22 @@ class AppHidrometrosWindow:
             row_frame = tk.Frame(self.frame_history_list, bg=COLOR_BG_LIGHT)
             row_frame.pack(fill=tk.X, pady=3, padx=2)
 
-            # Empacotar botão Abrir PRIMEIRO à direita para garantir tamanho completo e idêntico
+            # Empacotar botões de ação à direita (Excel e PDF)
             btn_open = ttk.Button(
-                row_frame, text="Abrir", width=7,
+                row_frame, text="Excel", width=6,
                 command=lambda p=f_path: self._open_specific_file(p),
                 style="History.TButton"
             )
-            btn_open.pack(side=tk.RIGHT, padx=(8, 0))
+            btn_open.pack(side=tk.RIGHT, padx=(4, 0))
+
+            if item.get("has_pdf") and os.path.exists(item.get("pdf_path", "")):
+                pdf_p = item["pdf_path"]
+                btn_pdf = ttk.Button(
+                    row_frame, text="PDF", width=5,
+                    command=lambda p=pdf_p: self._open_specific_file(p),
+                    style="History.TButton"
+                )
+                btn_pdf.pack(side=tk.RIGHT, padx=(4, 0))
 
             # Lado esquerdo: Nome em negrito com largura fixa para alinhamento em coluna
             lbl_left = tk.Frame(row_frame, bg=COLOR_BG_LIGHT)
@@ -390,7 +399,7 @@ class AppHidrometrosWindow:
             lbl_f = tk.Label(
                 lbl_left, text=f"•  {disp_name}", font=("Segoe UI", 9, "bold"),
                 fg=COLOR_TEXT_MAIN, bg=COLOR_BG_LIGHT,
-                width=30, anchor="w"
+                width=24, anchor="w"
             )
             lbl_f.pack(side=tk.LEFT)
 
@@ -495,14 +504,14 @@ class AppHidrometrosWindow:
             messagebox.showerror("Erro de Preenchimento", "Por favor, insira um valor válido para o m³.", parent=self.root)
             return
 
-        out_dir = self.lbl_pasta.get().strip()
-        if not out_dir:
-            out_dir = os.path.join(os.path.expanduser("~"), "Documents", "Relatorios_Hidrometros")
-        os.makedirs(out_dir, exist_ok=True)
+        base_out = self.lbl_pasta.get().strip()
+        if not base_out:
+            base_out = os.path.join(os.path.expanduser("~"), "Documents", "Relatorios_Hidrometros")
 
-        # Padrão: "Rateio de água - Junho.xlsx"
+        # Organização automática por subpastas: Ano / Mês
+        target_dir = get_report_output_folder(base_out, d_fim_date)
         default_filename = format_report_filename(d_fim_date)
-        output_path = os.path.join(out_dir, default_filename)
+        output_path = os.path.join(target_dir, default_filename)
 
         # Salvar o último valor do m3 no config
         self.config["default_m3_price"] = v_m3
@@ -539,7 +548,13 @@ class AppHidrometrosWindow:
     def _on_success(self, final_file, warnings=None):
         self.prog_bar["value"] = 100
         self.btn_gerar.config(state=tk.NORMAL)
-        self.lbl_status.config(text=f"Relatório concluído com sucesso: {os.path.basename(final_file)}")
+
+        pdf_file = os.path.splitext(final_file)[0] + ".pdf"
+        has_pdf = os.path.exists(pdf_file)
+        status_txt = f"Relatório concluído com sucesso: {os.path.basename(final_file)}"
+        if has_pdf:
+            status_txt += " (+ PDF)"
+        self.lbl_status.config(text=status_txt)
         self._refresh_history()
 
         # Exibir avisos não-fatais (ex: gráficos não gerados)
@@ -557,14 +572,18 @@ class AppHidrometrosWindow:
             except Exception as e:
                 messagebox.showwarning("Aviso", f"Relatório gerado em:\n{final_file}\n\nNão foi possível abrir o Excel automaticamente: {e}", parent=self.root)
         else:
+            folder_dir = os.path.dirname(final_file)
+            pdf_line = f"\n• PDF: {os.path.basename(pdf_file)}" if has_pdf else ""
             resp = messagebox.askyesno(
                 "Sucesso!",
-                f"Relatório gerado com sucesso!\nSalvo em:\n{final_file}\n\nDeseja abrir o arquivo agora?",
+                f"Relatório gerado com sucesso!\n\n"
+                f"• Excel: {os.path.basename(final_file)}{pdf_line}\n\n"
+                f"Pasta: {folder_dir}\n\nDeseja abrir a pasta agora?",
                 parent=self.root
             )
             if resp:
                 try:
-                    os.startfile(final_file)
+                    os.startfile(folder_dir)
                 except Exception:
                     pass
 
