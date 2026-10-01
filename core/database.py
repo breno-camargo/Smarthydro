@@ -114,7 +114,24 @@ def fetch_hidrometros_data(dt_inicio, dt_fim, valor_m3, config=None, progress_ca
         CAST((SELECT TOP(1) FloatVALUE FROM tbLogTimeValues WHERE tbLogTimeValues.ParentID = tbTrendLogRelation.EntityID AND DateTimeStamp BETWEEN DATEADD(day,-365,@INICIO) AND @INICIO ORDER BY DateTimeStamp) AS DECIMAL(18,2)) AS LEITURA_INICIAL_ANO,
         (SELECT TOP(1) DateTimeStamp FROM tbLogTimeValues WHERE tbLogTimeValues.ParentID = tbTrendLogRelation.EntityID AND DateTimeStamp BETWEEN DATEADD(day,-365,@INICIO) AND @INICIO ORDER BY DateTimeStamp) AS HORA_LEITURA_INICIAL_ANO,
         CAST((SELECT TOP(1) FloatVALUE FROM tbLogTimeValues WHERE tbLogTimeValues.ParentID = tbTrendLogRelation.EntityID AND DateTimeStamp BETWEEN DATEADD(day,-365,@INICIO) AND @INICIO ORDER BY DateTimeStamp DESC) AS DECIMAL(18,2)) AS LEITURA_FINAL_ANO,
-        (SELECT TOP(1) DateTimeStamp FROM tbLogTimeValues WHERE tbLogTimeValues.ParentID = tbTrendLogRelation.EntityID AND DateTimeStamp BETWEEN DATEADD(day,-365,@INICIO) AND @INICIO ORDER BY DateTimeStamp DESC) AS HORA_LEITURA_FINAL_ANO
+        (SELECT TOP(1) DateTimeStamp FROM tbLogTimeValues WHERE tbLogTimeValues.ParentID = tbTrendLogRelation.EntityID AND DateTimeStamp BETWEEN DATEADD(day,-365,@INICIO) AND @INICIO ORDER BY DateTimeStamp DESC) AS HORA_LEITURA_FINAL_ANO,
+
+        -- Detecção de salto artificial de calibração / reboot do Automation Server em 30/09/2026 às 12:05:42
+        ISNULL(CAST((
+            SELECT TOP(1) pos.FloatVALUE - pre.FloatVALUE
+            FROM tbLogTimeValues pos
+            CROSS JOIN (
+                SELECT TOP(1) FloatVALUE 
+                FROM tbLogTimeValues 
+                WHERE ParentID = tbTrendLogRelation.EntityID 
+                  AND DateTimeStamp BETWEEN '2026-09-30 00:00:00' AND '2026-09-30 02:00:00' 
+                ORDER BY DateTimeStamp DESC
+            ) pre
+            WHERE pos.ParentID = tbTrendLogRelation.EntityID 
+              AND pos.DateTimeStamp BETWEEN '2026-09-30 12:00:00' AND '2026-09-30 12:15:00'
+              AND pos.FloatVALUE > pre.FloatVALUE
+            ORDER BY pos.DateTimeStamp ASC
+        ) AS DECIMAL(18,2)), 0.0) AS SALTO_REBOOT_2026_09_30
     INTO #TempHidroMedia
     FROM tbTrendLogRelation
     WHERE Type = 'trend.ETLog'
@@ -123,35 +140,71 @@ def fetch_hidrometros_data(dt_inicio, dt_fim, valor_m3, config=None, progress_ca
 
     SELECT
         Name AS [Usuario], 
-        CASE 
+        ISNULL(CASE 
             WHEN Name LIKE 'Sala Com Problema' THEN 1.0
-            ELSE ((LEITURA_FINAL - LEITURA_INICIAL)/1000.0) 
-        END AS [Consumo_m3], 
+            ELSE (
+                CASE 
+                    WHEN (LEITURA_FINAL - LEITURA_INICIAL - CASE WHEN @INICIO < '2026-09-30 12:05:42' AND @FIM >= '2026-09-30 12:05:42' THEN SALTO_REBOOT_2026_09_30 ELSE 0.0 END) < 0 
+                    THEN 0.0
+                    ELSE (LEITURA_FINAL - LEITURA_INICIAL - CASE WHEN @INICIO < '2026-09-30 12:05:42' AND @FIM >= '2026-09-30 12:05:42' THEN SALTO_REBOOT_2026_09_30 ELSE 0.0 END) / 1000.0
+                END
+            ) 
+        END, 0.0) AS [Consumo_m3], 
         
-        CASE 
+        ISNULL(CASE 
             WHEN Name LIKE 'Sala Com Problema' THEN @valor_m3
-            ELSE ((LEITURA_FINAL - LEITURA_INICIAL) * @valor_m3 / 1000.0)
-        END AS [Valor_RS],
+            ELSE (
+                CASE 
+                    WHEN (LEITURA_FINAL - LEITURA_INICIAL - CASE WHEN @INICIO < '2026-09-30 12:05:42' AND @FIM >= '2026-09-30 12:05:42' THEN SALTO_REBOOT_2026_09_30 ELSE 0.0 END) < 0 
+                    THEN 0.0
+                    ELSE (LEITURA_FINAL - LEITURA_INICIAL - CASE WHEN @INICIO < '2026-09-30 12:05:42' AND @FIM >= '2026-09-30 12:05:42' THEN SALTO_REBOOT_2026_09_30 ELSE 0.0 END) * @valor_m3 / 1000.0
+                END
+            ) 
+        END, 0.0) AS [Valor_RS],
 
-        CASE 
+        ISNULL(CASE 
             WHEN LEITURA_FINAL_ANO < LEITURA_INICIAL_ANO THEN 0
-            ELSE ((LEITURA_FINAL_ANO - LEITURA_INICIAL_ANO)/1000.0) 
-        END AS [Consumo_Total_11m],
+            ELSE (
+                CASE 
+                    WHEN (LEITURA_FINAL_ANO - LEITURA_INICIAL_ANO - CASE WHEN DATEADD(day,-365,@INICIO) < '2026-09-30 12:05:42' AND @INICIO >= '2026-09-30 12:05:42' THEN SALTO_REBOOT_2026_09_30 ELSE 0.0 END) < 0
+                    THEN 0.0
+                    ELSE (LEITURA_FINAL_ANO - LEITURA_INICIAL_ANO - CASE WHEN DATEADD(day,-365,@INICIO) < '2026-09-30 12:05:42' AND @INICIO >= '2026-09-30 12:05:42' THEN SALTO_REBOOT_2026_09_30 ELSE 0.0 END) / 1000.0
+                END
+            )
+        END, 0.0) AS [Consumo_Total_11m],
         
-        CASE 
+        ISNULL(CASE 
             WHEN LEITURA_FINAL_ANO < LEITURA_INICIAL_ANO THEN 0
-            ELSE (((LEITURA_FINAL_ANO - LEITURA_INICIAL_ANO) * @valor_m3 / 1000.0))
-        END AS [Valor_Total_11m],
+            ELSE (
+                CASE 
+                    WHEN (LEITURA_FINAL_ANO - LEITURA_INICIAL_ANO - CASE WHEN DATEADD(day,-365,@INICIO) < '2026-09-30 12:05:42' AND @INICIO >= '2026-09-30 12:05:42' THEN SALTO_REBOOT_2026_09_30 ELSE 0.0 END) < 0
+                    THEN 0.0
+                    ELSE (LEITURA_FINAL_ANO - LEITURA_INICIAL_ANO - CASE WHEN DATEADD(day,-365,@INICIO) < '2026-09-30 12:05:42' AND @INICIO >= '2026-09-30 12:05:42' THEN SALTO_REBOOT_2026_09_30 ELSE 0.0 END) * @valor_m3 / 1000.0
+                END
+            )
+        END, 0.0) AS [Valor_Total_11m],
 
-        CASE 
+        ISNULL(CASE 
             WHEN LEITURA_FINAL_ANO < LEITURA_INICIAL_ANO THEN 0
-            ELSE (((LEITURA_FINAL_ANO - LEITURA_INICIAL_ANO)/1000.0)/11.0)
-        END AS [Consumo_Medio_11m],
+            ELSE (
+                CASE 
+                    WHEN (LEITURA_FINAL_ANO - LEITURA_INICIAL_ANO - CASE WHEN DATEADD(day,-365,@INICIO) < '2026-09-30 12:05:42' AND @INICIO >= '2026-09-30 12:05:42' THEN SALTO_REBOOT_2026_09_30 ELSE 0.0 END) < 0
+                    THEN 0.0
+                    ELSE (LEITURA_FINAL_ANO - LEITURA_INICIAL_ANO - CASE WHEN DATEADD(day,-365,@INICIO) < '2026-09-30 12:05:42' AND @INICIO >= '2026-09-30 12:05:42' THEN SALTO_REBOOT_2026_09_30 ELSE 0.0 END) / 1000.0 / 11.0
+                END
+            )
+        END, 0.0) AS [Consumo_Medio_11m],
 
-        CASE 
+        ISNULL(CASE 
             WHEN LEITURA_FINAL_ANO < LEITURA_INICIAL_ANO THEN 0
-            ELSE ((((LEITURA_FINAL_ANO - LEITURA_INICIAL_ANO) * @valor_m3 / 1000.0))/11.0)
-        END AS [Valor_Medio_11m]
+            ELSE (
+                CASE 
+                    WHEN (LEITURA_FINAL_ANO - LEITURA_INICIAL_ANO - CASE WHEN DATEADD(day,-365,@INICIO) < '2026-09-30 12:05:42' AND @INICIO >= '2026-09-30 12:05:42' THEN SALTO_REBOOT_2026_09_30 ELSE 0.0 END) < 0
+                    THEN 0.0
+                    ELSE ((LEITURA_FINAL_ANO - LEITURA_INICIAL_ANO - CASE WHEN DATEADD(day,-365,@INICIO) < '2026-09-30 12:05:42' AND @INICIO >= '2026-09-30 12:05:42' THEN SALTO_REBOOT_2026_09_30 ELSE 0.0 END) * @valor_m3 / 1000.0) / 11.0
+                END
+            )
+        END, 0.0) AS [Valor_Medio_11m]
 
     FROM #TempHidroMedia
     WHERE Name NOT IN ('Sala 1007')
