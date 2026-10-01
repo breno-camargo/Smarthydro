@@ -124,50 +124,72 @@ def save_config(new_config):
 
 def get_recent_reports():
     """
-    Retorna a lista dos relatórios gerados recentemente que ainda existem no disco.
-    Também verifica a pasta de saída para descobrir relatórios existentes caso a lista esteja vazia.
+    Retorna a lista dos relatórios presentes na pasta de saída,
+    enriquecidos com metadados do histórico quando disponíveis.
+    Sempre escaneia a pasta para refletir mudanças (renomear, deletar, adicionar).
     """
     cfg = load_config()
     history = cfg.get("recent_reports", [])
-    valid = []
-    seen_paths = set()
+    out_dir = cfg.get("output_directory", "")
 
+    # Índice do histórico por caminho absoluto para consulta rápida de metadados
+    hist_by_path = {}
     for item in history:
         if isinstance(item, dict):
             p = item.get("path", "")
-            if p and os.path.exists(p) and p not in seen_paths:
-                valid.append(item)
-                seen_paths.add(p)
+            if p:
+                hist_by_path[os.path.normcase(os.path.abspath(p))] = item
 
-    # Se a lista estiver vazia, varrer a pasta de saída para encontrar arquivos Rateio_Agua_*.xlsx
-    if not valid:
-        out_dir = cfg.get("output_directory", "")
-        if out_dir and os.path.exists(out_dir):
-            try:
-                files = [
-                    os.path.join(out_dir, f) for f in os.listdir(out_dir)
-                    if (f.startswith("Rateio de água -") or f.startswith("Rateio de agua -") or f.startswith("Rateio_Agua_")) and f.endswith(".xlsx")
-                ]
-                # Ordenar pelos mais recentes
-                files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
-                for f_path in files[:5]:
-                    mtime = os.path.getmtime(f_path)
-                    dt_str = datetime.fromtimestamp(mtime).strftime("%d/%m/%Y %H:%M")
-                    valid.append({
+    result = []
+
+    # Escaneia a pasta de saída para pegar TODOS os arquivos .xlsx de rateio
+    if out_dir and os.path.exists(out_dir):
+        try:
+            files = [
+                os.path.join(out_dir, f) for f in os.listdir(out_dir)
+                if f.lower().endswith(".xlsx") and (
+                    f.startswith("Rateio de água -") or
+                    f.startswith("Rateio de agua -") or
+                    f.startswith("Rateio_Agua_")
+                )
+            ]
+            # Ordenar pelos mais recentes (data de modificação)
+            files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+
+            for f_path in files[:5]:
+                abs_path = os.path.abspath(f_path)
+                key = os.path.normcase(abs_path)
+                mtime = os.path.getmtime(f_path)
+                dt_str = datetime.fromtimestamp(mtime).strftime("%d/%m/%Y %H:%M")
+
+                # Se tiver metadados do histórico, usa; senão cria entrada básica
+                if key in hist_by_path:
+                    entry = hist_by_path[key].copy()
+                    # Atualiza nome caso o arquivo tenha sido renomeado
+                    entry["filename"] = os.path.basename(f_path)
+                    entry["path"] = abs_path
+                else:
+                    entry = {
                         "filename": os.path.basename(f_path),
-                        "path": os.path.abspath(f_path),
-                        "periodo": "Gerado anteriormente",
+                        "path": abs_path,
+                        "periodo": "",
                         "gerado_em": dt_str,
                         "total_m3": None,
                         "total_rs": None
-                    })
-                if valid:
-                    cfg["recent_reports"] = valid
-                    save_config(cfg)
-            except Exception:
-                pass
+                    }
+                result.append(entry)
+        except Exception:
+            pass
 
-    return valid[:5]
+    # Fallback: se a pasta não existe ou está vazia, usa histórico do config
+    if not result:
+        for item in history:
+            if isinstance(item, dict):
+                p = item.get("path", "")
+                if p and os.path.exists(p):
+                    result.append(item)
+
+    return result[:5]
 
 
 def add_recent_report(path, periodo=None, total_m3=None, total_rs=None):
