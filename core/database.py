@@ -82,6 +82,14 @@ def fetch_hidrometros_data(dt_inicio, dt_fim, valor_m3, config=None, progress_ca
     Executa a consulta SQL no banco StruxureWareReportsDB e retorna um DataFrame com os consumos.
     dt_inicio e dt_fim devem estar no formato 'YYYY-MM-DD HH:MM:SS'
     """
+    # Normalização defensiva: se vier apenas a data YYYY-MM-DD, adiciona o horário completo
+    dt_ini_str = str(dt_inicio).strip()
+    dt_fim_str = str(dt_fim).strip()
+    if len(dt_ini_str) == 10:
+        dt_ini_str = f"{dt_ini_str} 00:00:00"
+    if len(dt_fim_str) == 10:
+        dt_fim_str = f"{dt_fim_str} 23:59:59"
+
     conn_str, driver = build_connection_string(config)
     
     sql_query = """
@@ -98,10 +106,10 @@ def fetch_hidrometros_data(dt_inicio, dt_fim, valor_m3, config=None, progress_ca
     SELECT 
         Name,
         REPLACE(Name, 'Sala 1007_', 'Sala 1007') as Name2,
-        CAST((SELECT TOP(1) FloatVALUE FROM tbLogTimeValues WHERE tbLogTimeValues.ParentID = tbTrendLogRelation.EntityID AND DateTimeStamp BETWEEN @INICIO AND DATEADD(day,1,@FIM) ORDER BY DateTimeStamp) AS DECIMAL(18,2)) AS LEITURA_INICIAL,
-        (SELECT TOP(1) DateTimeStamp FROM tbLogTimeValues WHERE tbLogTimeValues.ParentID = tbTrendLogRelation.EntityID AND DateTimeStamp BETWEEN @INICIO AND DATEADD(day,1,@FIM) ORDER BY DateTimeStamp) AS HORA_LEITURA_INICIAL,
-        CAST((SELECT TOP(1) FloatVALUE FROM tbLogTimeValues WHERE tbLogTimeValues.ParentID = tbTrendLogRelation.EntityID AND DateTimeStamp BETWEEN @INICIO AND DATEADD(day,1,@FIM) ORDER BY DateTimeStamp DESC) AS DECIMAL(18,2)) AS LEITURA_FINAL,
-        (SELECT TOP(1) DateTimeStamp FROM tbLogTimeValues WHERE tbLogTimeValues.ParentID = tbTrendLogRelation.EntityID AND DateTimeStamp BETWEEN @INICIO AND DATEADD(day,1,@FIM) ORDER BY DateTimeStamp DESC) AS HORA_LEITURA_FINAL,
+        CAST((SELECT TOP(1) FloatVALUE FROM tbLogTimeValues WHERE tbLogTimeValues.ParentID = tbTrendLogRelation.EntityID AND DateTimeStamp BETWEEN @INICIO AND @FIM ORDER BY DateTimeStamp) AS DECIMAL(18,2)) AS LEITURA_INICIAL,
+        (SELECT TOP(1) DateTimeStamp FROM tbLogTimeValues WHERE tbLogTimeValues.ParentID = tbTrendLogRelation.EntityID AND DateTimeStamp BETWEEN @INICIO AND @FIM ORDER BY DateTimeStamp) AS HORA_LEITURA_INICIAL,
+        CAST((SELECT TOP(1) FloatVALUE FROM tbLogTimeValues WHERE tbLogTimeValues.ParentID = tbTrendLogRelation.EntityID AND DateTimeStamp BETWEEN @INICIO AND @FIM ORDER BY DateTimeStamp DESC) AS DECIMAL(18,2)) AS LEITURA_FINAL,
+        (SELECT TOP(1) DateTimeStamp FROM tbLogTimeValues WHERE tbLogTimeValues.ParentID = tbTrendLogRelation.EntityID AND DateTimeStamp BETWEEN @INICIO AND @FIM ORDER BY DateTimeStamp DESC) AS HORA_LEITURA_FINAL,
 
         CAST((SELECT TOP(1) FloatVALUE FROM tbLogTimeValues WHERE tbLogTimeValues.ParentID = tbTrendLogRelation.EntityID AND DateTimeStamp BETWEEN DATEADD(day,-365,@INICIO) AND @INICIO ORDER BY DateTimeStamp) AS DECIMAL(18,2)) AS LEITURA_INICIAL_ANO,
         (SELECT TOP(1) DateTimeStamp FROM tbLogTimeValues WHERE tbLogTimeValues.ParentID = tbTrendLogRelation.EntityID AND DateTimeStamp BETWEEN DATEADD(day,-365,@INICIO) AND @INICIO ORDER BY DateTimeStamp) AS HORA_LEITURA_INICIAL_ANO,
@@ -182,7 +190,7 @@ def fetch_hidrometros_data(dt_inicio, dt_fim, valor_m3, config=None, progress_ca
         if progress_callback:
             progress_callback(35, "2/4: Consultando histórico e medições de hidrômetros...")
         cursor = conn.cursor()
-        cursor.execute(sql_query, (dt_inicio, dt_fim, float(valor_m3)))
+        cursor.execute(sql_query, (dt_ini_str, dt_fim_str, float(valor_m3)))
         rows = cursor.fetchall()
         col_names = [column[0] for column in cursor.description]
         df = pd.DataFrame.from_records(rows, columns=col_names)
