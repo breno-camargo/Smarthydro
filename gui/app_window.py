@@ -7,7 +7,7 @@ from tkinter import ttk, messagebox, filedialog
 from tkcalendar import DateEntry
 from PIL import Image, ImageTk
 
-from core.config_manager import load_config, save_config, get_base_dir, get_recent_reports
+from core.config_manager import load_config, save_config, get_base_dir, get_recent_reports, format_report_filename
 from core.database import test_db_connection
 from core.report_generator import open_template_in_excel
 from cli.runner import execute_extraction
@@ -362,7 +362,7 @@ class AppHidrometrosWindow:
 
             # Padronizar nome: retirar .xlsx e truncar de forma uniforme no mesmo tamanho
             clean_name = f_name[:-5] if f_name.lower().endswith(".xlsx") else f_name
-            max_len = 24
+            max_len = 32
             disp_name = clean_name[:max_len] + "..." if len(clean_name) > max_len else clean_name
 
             row_frame = tk.Frame(self.frame_history_list, bg=COLOR_BG_LIGHT)
@@ -376,14 +376,14 @@ class AppHidrometrosWindow:
             )
             btn_open.pack(side=tk.RIGHT, padx=(8, 0))
 
-            # Lado esquerdo: Nome em negrito com largura fixa de 28 caracteres para alinhamento em coluna
+            # Lado esquerdo: Nome em negrito com largura fixa para alinhamento em coluna
             lbl_left = tk.Frame(row_frame, bg=COLOR_BG_LIGHT)
             lbl_left.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
             lbl_f = tk.Label(
                 lbl_left, text=f"•  {disp_name}", font=("Segoe UI", 9, "bold"),
                 fg=COLOR_TEXT_MAIN, bg=COLOR_BG_LIGHT,
-                width=28, anchor="w"
+                width=30, anchor="w"
             )
             lbl_f.pack(side=tk.LEFT)
 
@@ -490,8 +490,8 @@ class AppHidrometrosWindow:
             out_dir = os.path.join(os.path.expanduser("~"), "Documents", "Relatorios_Hidrometros")
         os.makedirs(out_dir, exist_ok=True)
 
-        d_tag = d_fim_date.strftime("%Y_%m")
-        default_filename = f"Rateio_Agua_{d_tag}.xlsx"
+        # Padrão: "Rateio de água - Junho.xlsx"
+        default_filename = format_report_filename(d_fim_date)
         output_path = os.path.join(out_dir, default_filename)
 
         # Salvar o último valor do m3 no config

@@ -5,7 +5,7 @@ import logging
 from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
 
-from core.config_manager import load_config, get_base_dir
+from core.config_manager import load_config, get_base_dir, format_report_filename
 from core.database import fetch_hidrometros_data, test_db_connection
 from core.report_generator import generate_excel_report
 
@@ -78,9 +78,8 @@ def execute_extraction(dt_inicio, dt_fim, valor_m3=None, output_path=None, confi
     if output_path is None:
         out_dir = config.get("output_directory", os.path.join(get_base_dir(), "relatorios"))
         os.makedirs(out_dir, exist_ok=True)
-        # Identificador de ano/mês no nome do arquivo
-        d_ref = dt_fim.split(" ")[0].replace("-", "_")
-        filename = f"Rateio_Agua_{d_ref}.xlsx"
+        # Identificador padronizado: "Rateio de água - Junho.xlsx"
+        filename = format_report_filename(dt_fim)
         output_path = os.path.join(out_dir, filename)
 
     if progress_callback:

@@ -31,6 +31,30 @@ def get_config_path():
     return os.path.join(get_base_dir(), "config.json")
 
 
+MESES_PT = [
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+]
+
+def format_report_filename(reference_date):
+    """
+    Retorna o nome padronizado do arquivo com base no mês de referência.
+    Padrão solicitado: 'Rateio de água - Junho.xlsx'
+    reference_date pode ser datetime, date ou string no formato 'YYYY-MM-DD...'
+    """
+    try:
+        if isinstance(reference_date, str):
+            clean = reference_date.strip().split(" ")[0]
+            parts = clean.split("-")
+            month = int(parts[1])
+        else:
+            month = reference_date.month
+        mes_nome = MESES_PT[month - 1]
+    except Exception:
+        mes_nome = "Medicao"
+    return f"Rateio de água - {mes_nome}.xlsx"
+
+
 def _encode_password(plain_text):
     """Ofusca a senha em base64 para não ficar visível em texto puro no config.json."""
     if not plain_text:
@@ -122,7 +146,7 @@ def get_recent_reports():
             try:
                 files = [
                     os.path.join(out_dir, f) for f in os.listdir(out_dir)
-                    if f.startswith("Rateio_Agua_") and f.endswith(".xlsx")
+                    if (f.startswith("Rateio de água -") or f.startswith("Rateio de agua -") or f.startswith("Rateio_Agua_")) and f.endswith(".xlsx")
                 ]
                 # Ordenar pelos mais recentes
                 files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
