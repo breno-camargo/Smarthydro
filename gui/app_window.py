@@ -342,6 +342,11 @@ class AppHidrometrosWindow:
 
     def _refresh_history(self):
         """Atualiza a lista visual dos relatórios gerados recentemente."""
+        # Cancela timer anterior para evitar acúmulo de callbacks
+        if hasattr(self, "_history_timer_id") and self._history_timer_id is not None:
+            self.root.after_cancel(self._history_timer_id)
+            self._history_timer_id = None
+
         for child in self.frame_history_list.winfo_children():
             child.destroy()
 
@@ -353,6 +358,8 @@ class AppHidrometrosWindow:
                 font=("Segoe UI", 8, "italic"), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT
             )
             lbl_empty.pack(anchor=tk.W, pady=4, padx=4)
+            # Agenda próximo refresh mesmo sem itens
+            self._history_timer_id = self.root.after(10000, self._refresh_history)
             return
 
         for idx, item in enumerate(recent[:3]):
@@ -393,6 +400,9 @@ class AppHidrometrosWindow:
                     fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT
                 )
                 lbl_d.pack(side=tk.LEFT, padx=(4, 0))
+
+        # Agenda próximo refresh automático (10 segundos)
+        self._history_timer_id = self.root.after(10000, self._refresh_history)
 
     def _open_specific_file(self, path):
         """Abre com segurança um arquivo do histórico recente."""
