@@ -135,6 +135,27 @@ def _apply_cell(cell, font=None, fill=None, alignment=None, border=None, number_
         cell.number_format = number_format
 
 
+def _configure_print_settings(ws, last_data_row=None):
+    """Configura a planilha para impressão otimizada: paisagem, ajustada à largura, margens reduzidas."""
+    from openpyxl.worksheet.properties import PageSetupProperties
+    ws.page_setup.orientation = 'landscape'
+    ws.page_setup.paperSize = ws.PAPERSIZE_A4
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 0  # 0 = quantas páginas de altura forem necessárias
+    # Ativar o modo "Ajustar à página" (fitToPage) no Excel
+    ws.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
+    ws.page_margins = PageMargins(
+        left=0.4, right=0.4,
+        top=0.5, bottom=0.5,
+        header=0.3, footer=0.3
+    )
+    # Repetir cabeçalho em todas as páginas impressas
+    ws.print_title_rows = '1:7'
+    # Área de impressão (se última linha conhecida)
+    if last_data_row:
+        ws.print_area = f'A1:G{last_data_row + 5}'
+
+
 def format_date_display(d_str):
     for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d', '%d/%m/%Y %H:%M:%S', '%d/%m/%Y'):
         try:
@@ -600,6 +621,9 @@ def generate_excel_from_template(template_path, df, dt_inicio_str, dt_fim_str, v
     # Manter a aba 'Consumo e Rateio' como ativa ao abrir o arquivo
     wb.active = 0
 
+    # Configurar impressão: paisagem, ajustado à largura, margens reduzidas
+    _configure_print_settings(ws, last_data_row=total_row)
+
     if progress_callback:
         progress_callback(92, "4/4: Gravando arquivo Excel...")
 
@@ -969,6 +993,9 @@ def _generate_excel_full_code(df, dt_inicio_str, dt_fim_str, valor_m3, output_pa
 
     ws.freeze_panes = f"A{ROW_DATA_START}"
     ws.auto_filter.ref = f"A{ROW_HEADER}:G{last_data_row}"
+
+    # Configurar impressão: paisagem, ajustado à largura, margens reduzidas
+    _configure_print_settings(ws, last_data_row=last_data_row)
 
     if progress_callback:
         progress_callback(92, "4/4: Gravando arquivo Excel...")
