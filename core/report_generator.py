@@ -442,9 +442,9 @@ def _build_graphics_sheet(wb, df, dt_inicio_str, dt_fim_str, valor_m3):
         elif len(bar.series) == 1:
             bar.series[0].graphicalProperties.solidFill = CLR_BRAND_GREEN
 
-        ws_g.add_chart(bar, "I5")
+        ws_g.add_chart(bar, "A27")
 
-    # ── Gráfico 2: Proporção do Consumo (lado direito, a partir de I19) ──
+    # ── Gráfico 2: Proporção do Consumo (abaixo do gráfico de barras) ──
     if total_consumo > 0:
         pie = PieChart()
         pie.title = "Distribuição do Consumo: Top 10 vs. Demais Salas"
@@ -454,7 +454,10 @@ def _build_graphics_sheet(wb, df, dt_inicio_str, dt_fim_str, valor_m3):
         cats_pie = Reference(ws_g, min_col=1, min_row=23, max_row=24)
         pie.add_data(data_pie, titles_from_data=True)
         pie.set_categories(cats_pie)
-        ws_g.add_chart(pie, "I19")
+        ws_g.add_chart(pie, "A44")
+
+    # Configurar impressão da aba Gráficos
+    _configure_print_settings(ws_g, last_data_row=60)
 
 
 def generate_excel_from_template(template_path, df, dt_inicio_str, dt_fim_str, valor_m3, output_path, sort_by_consumption=False, progress_callback=None):
@@ -527,11 +530,19 @@ def generate_excel_from_template(template_path, df, dt_inicio_str, dt_fim_str, v
     # Estilização no Padrão Executivo / Diretoria
     font_tbl_hdr= Font(name="Segoe UI", size=9, bold=True, color=CLR_TEXT_WHITE)
     fill_tbl_hdr= PatternFill(start_color=CLR_FOREST_DEEP, end_color=CLR_FOREST_DEEP, fill_type="solid")
-    ws.row_dimensions[7].height = 26
+    ws.row_dimensions[7].height = 32
+    # Garantir larguras corretas das colunas (podem ser perdidas ao inserir/excluir linhas)
+    col_widths_template = {"A": 28, "B": 14, "C": 16, "D": 18, "E": 18, "F": 18, "G": 18}
+    for letter, width in col_widths_template.items():
+        ws.column_dimensions[letter].width = width
     for c in range(1, 8):
         cell_h = ws.cell(row=7, column=c)
         _apply_cell(cell_h, font=font_tbl_hdr, fill=fill_tbl_hdr, border=Border())
-        cell_h.alignment = Alignment(horizontal="left" if c == 1 else "right", vertical="center")
+        cell_h.alignment = Alignment(
+            horizontal="left" if c == 1 else "right",
+            vertical="center",
+            wrap_text=True
+        )
 
     # Fontes e preenchimentos dos dados executivos
     font_data   = Font(name="Segoe UI", size=9, color=CLR_TEXT_DARK)
