@@ -308,14 +308,14 @@ def _build_graphics_sheet(wb, df, dt_inicio_str, dt_fim_str, valor_m3):
         c.alignment = Alignment(horizontal="center" if col_i in (1, 5, 7) else ("left" if col_i == 2 else "right"), vertical="center")
     ws_g.row_dimensions[8].height = 26
 
-    for idx, (_, r_top) in enumerate(df_top10.iterrows(), 1):
+    for idx, r_top in enumerate(df_top10.itertuples(index=False), 1):
         rn = 8 + idx
         ws_g.row_dimensions[rn].height = 21
-        sala_name = str(r_top["Usuario"])
-        c_val = _safe_float(r_top.get("Consumo_m3"))
-        cm_val = _safe_float(r_top.get("Consumo_Medio_11m"))
+        sala_name = str(getattr(r_top, "Usuario", ""))
+        c_val = _safe_float(getattr(r_top, "Consumo_m3", 0.0))
+        cm_val = _safe_float(getattr(r_top, "Consumo_Medio_11m", 0.0))
         var_pct = ((c_val - cm_val) / cm_val) if cm_val > 0 else 0.0
-        v_val = _safe_float(r_top.get("Valor_RS"))
+        v_val = _safe_float(getattr(r_top, "Valor_RS", 0.0))
         pct = (c_val / total_consumo) if total_consumo > 0 else 0.0
 
         vals = [f"{idx:02d}", sala_name, c_val, cm_val, var_pct, v_val, pct]
@@ -584,23 +584,23 @@ def generate_excel_from_template(template_path, df, dt_inicio_str, dt_fim_str, v
     al_right    = Alignment(horizontal="right", vertical="center")
 
     # Inserir cada linha de medição com respiração e sem grades verticais
-    for i, (_, r) in enumerate(df.iterrows()):
+    for i, r in enumerate(df.itertuples(index=False)):
         curr_r = ROW_START + i
         ws.row_dimensions[curr_r].height = 21
 
-        consumo = _safe_float(r.get("Consumo_m3"))
-        valor   = _safe_float(r.get("Valor_RS"))
-        ct11    = _safe_float(r.get("Consumo_Total_11m"))
-        vt11    = _safe_float(r.get("Valor_Total_11m"))
-        cm11    = _safe_float(r.get("Consumo_Medio_11m"))
-        vm11    = _safe_float(r.get("Valor_Medio_11m"))
+        consumo = _safe_float(getattr(r, "Consumo_m3", 0.0))
+        valor   = _safe_float(getattr(r, "Valor_RS", 0.0))
+        ct11    = _safe_float(getattr(r, "Consumo_Total_11m", 0.0))
+        vt11    = _safe_float(getattr(r, "Valor_Total_11m", 0.0))
+        cm11    = _safe_float(getattr(r, "Consumo_Medio_11m", 0.0))
+        vm11    = _safe_float(getattr(r, "Valor_Medio_11m", 0.0))
 
         is_zero = (consumo == 0 and valor == 0)
         f = font_data_0 if is_zero else font_data
         fill = fill_a if i % 2 == 0 else fill_b
 
         row_vals = [
-            (str(r["Usuario"]), al_left, None),
+            (str(getattr(r, "Usuario", "")), al_left, None),
             (consumo, al_right, '#,##0.00'),
             (valor, al_right, 'R$ #,##0.00'),
             (ct11, al_right, '#,##0.00'),
@@ -960,20 +960,21 @@ def _generate_excel_full_code(df, dt_inicio_str, dt_fim_str, valor_m3, output_pa
     ROW_DATA_START = 8
     curr_row = ROW_DATA_START
 
-    for idx, r in df.iterrows():
+    for idx, r in enumerate(df.itertuples(index=False)):
+        curr_row = ROW_DATA_START + idx
         ws.row_dimensions[curr_row].height = 21
-        consumo = _safe_float(r.get("Consumo_m3"))
-        valor   = _safe_float(r.get("Valor_RS"))
-        ct11    = _safe_float(r.get("Consumo_Total_11m"))
-        vt11    = _safe_float(r.get("Valor_Total_11m"))
-        cm11    = _safe_float(r.get("Consumo_Medio_11m"))
-        vm11    = _safe_float(r.get("Valor_Medio_11m"))
+        consumo = _safe_float(getattr(r, "Consumo_m3", 0.0))
+        valor   = _safe_float(getattr(r, "Valor_RS", 0.0))
+        ct11    = _safe_float(getattr(r, "Consumo_Total_11m", 0.0))
+        vt11    = _safe_float(getattr(r, "Valor_Total_11m", 0.0))
+        cm11    = _safe_float(getattr(r, "Consumo_Medio_11m", 0.0))
+        vm11    = _safe_float(getattr(r, "Valor_Medio_11m", 0.0))
 
         is_zero = (consumo == 0 and valor == 0)
         row_font = font_data_m if is_zero else font_data
-        row_fill = fill_zebra_a if (curr_row - ROW_DATA_START) % 2 == 0 else fill_zebra_b
+        row_fill = fill_zebra_a if idx % 2 == 0 else fill_zebra_b
 
-        ws.cell(row=curr_row, column=1, value=str(r["Usuario"]))
+        ws.cell(row=curr_row, column=1, value=str(getattr(r, "Usuario", "")))
         ws.cell(row=curr_row, column=2, value=consumo)
         ws.cell(row=curr_row, column=3, value=valor)
         ws.cell(row=curr_row, column=4, value=ct11)

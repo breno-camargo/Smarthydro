@@ -132,6 +132,14 @@ class SettingsDialog(tk.Toplevel):
         )
         self.chk_trusted.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=4)
 
+        self.lbl_trusted_hint = tk.Label(
+            parent,
+            text="🔒 Autenticação integrada do Windows ativa (usuário e senha dispensados).",
+            font=("Segoe UI", 8, "italic"),
+            fg=COLOR_PRIMARY,
+            bg=COLOR_BG_LIGHT
+        )
+
         self.frame_auth = ttk.Frame(parent)
         self.frame_auth.grid(row=5, column=0, columnspan=2, sticky=tk.EW, pady=2)
 
@@ -506,9 +514,14 @@ class SettingsDialog(tk.Toplevel):
 
     def _toggle_auth(self):
         is_trusted = self.var_trusted.get()
-        state = tk.DISABLED if is_trusted else tk.NORMAL
-        self.ent_user.config(state=state)
-        self.ent_pass.config(state=state)
+        if is_trusted:
+            self.frame_auth.grid_remove()
+            self.lbl_trusted_hint.grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(0, 4))
+        else:
+            self.lbl_trusted_hint.grid_remove()
+            self.frame_auth.grid(row=5, column=0, columnspan=2, sticky=tk.EW, pady=2)
+            self.ent_user.config(state=tk.NORMAL)
+            self.ent_pass.config(state=tk.NORMAL)
 
     def _load_values(self):
         # Banco

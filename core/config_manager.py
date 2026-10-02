@@ -110,8 +110,18 @@ def organize_loose_reports(base_out_dir):
         return
 
     try:
+        # Fast-check: se não houver arquivos soltos .xlsx/.pdf na raiz, retorna imediatamente sem I/O pesado
+        entries = os.listdir(base_out_dir)
+        has_loose = any(
+            (f.lower().endswith((".xlsx", ".pdf")) and not f.startswith("~$"))
+            for f in entries
+            if os.path.isfile(os.path.join(base_out_dir, f))
+        )
+        if not has_loose:
+            return
+
         # 1. Migrar pastas antigas que usavam nome de mês em texto (ex: 2026\Outubro -> 2026\10.26)
-        for year_item in os.listdir(base_out_dir):
+        for year_item in entries:
             year_path = os.path.join(base_out_dir, year_item)
             if os.path.isdir(year_path) and re.match(r'^\d{4}$', year_item):
                 year_short = year_item[-2:]
