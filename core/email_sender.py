@@ -413,19 +413,57 @@ def extract_report_summary(xlsx_path):
 
         # Totais gerais no final da planilha
         max_r = ws.max_row or 350
-        for r in range(max_r, max(7, max_r - 20), -1):
+        total_row_idx = None
+        for r in range(max_r, max(7, max_r - 25), -1):
             try:
                 cell_a = ws.cell(r, 1).value
             except Exception:
                 continue
             if cell_a and "TOTAL GERAL" in str(cell_a).upper():
+                total_row_idx = r
                 t_m3 = ws.cell(r, 2).value
                 t_rs = ws.cell(r, 3).value
-                if t_m3 is not None:
+                if isinstance(t_m3, (int, float)):
                     summary["total_m3"] = format_br_number(t_m3)
-                if t_rs is not None:
+                if isinstance(t_rs, (int, float)):
                     summary["total_valor"] = format_br_currency(t_rs)
                 break
+
+        # Se as células de total forem fórmulas do Excel (=SUM(...)) que ainda não foram
+        # avaliadas pelo Excel Desktop (data_only=True retorna None), calcula a soma diretamente das salas!
+        if summary["total_m3"] == "0,00" or summary["total_valor"] == "0,00":
+            end_r = total_row_idx if total_row_idx else max_r
+            calc_m3 = 0.0
+            calc_rs = 0.0
+            rooms_count = 0
+            for r in range(8, end_r):
+                try:
+                    c_name = ws.cell(r, 1).value
+                    val_m = ws.cell(r, 2).value
+                    val_r = ws.cell(r, 3).value
+                except Exception:
+                    continue
+
+                if c_name and not str(c_name).upper().startswith("TOTAL"):
+                    rooms_count += 1
+                    if isinstance(val_m, (int, float)):
+                        calc_m3 += float(val_m)
+                    if isinstance(val_r, (int, float)):
+                        calc_rs += float(val_r)
+
+            if calc_m3 > 0:
+                summary["total_m3"] = format_br_number(calc_m3)
+            if calc_rs > 0:
+                summary["total_valor"] = format_br_currency(calc_rs)
+            elif calc_m3 > 0:
+                try:
+                    v_m3_float = float(summary["valor_m3"].replace(".", "").replace(",", "."))
+                    summary["total_valor"] = format_br_currency(calc_m3 * v_m3_float)
+                except Exception:
+                    pass
+
+            if rooms_count > 0:
+                summary["qtd_salas"] = str(rooms_count)
 
         wb.close()
     except Exception as e:
