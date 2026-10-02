@@ -2,6 +2,8 @@ import os
 import sys
 import re
 import smtplib
+import imaplib
+import time
 import mimetypes
 import logging
 import base64
@@ -609,10 +611,79 @@ def get_effective_smtp_host(host, user):
     return h or "smtps.uhserver.com"
 
 
+def get_effective_imap_host(user):
+    """Retorna o servidor IMAP correto com base no domínio do usuário."""
+    u = (user or "").strip().lower()
+    if u.endswith("@uol.com.br"):
+        return "imap.uol.com.br"
+    return "imap.uhserver.com"
+
+
+def save_email_to_sent_imap(smtp_cfg, msg_bytes):
+    """
+    Salva uma cópia exata do e-mail enviado na pasta 'Itens Enviados' da conta via IMAP.
+    Dessa forma, o e-mail aparece no Outlook e Webmail com a data e hora em que foi enviado.
+    """
+    user = smtp_cfg.get("smtp_user", "").strip()
+    pwd = smtp_cfg.get("smtp_password", "").strip()
+    if not user or not pwd:
+        return False, "Usuário ou senha não configurados."
+
+    imap_host = get_effective_imap_host(user)
+
+    try:
+        imap = imaplib.IMAP4_SSL(imap_host, 993, timeout=15)
+        imap.login(user, pwd)
+
+        # Detectar a pasta de Enviados do servidor
+        target_folder = None
+        status, folder_list = imap.list()
+        if status == "OK" and folder_list:
+            candidates = ["itens enviados", "sent", "sent items", "inbox.sent", "inbox/sent", "enviados"]
+            for f_bytes in folder_list:
+                f_str = f_bytes.decode("utf-8", errors="ignore")
+                for cand in candidates:
+                    if f'"{cand}"' in f_str.lower() or f' {cand}' in f_str.lower() or f'.{cand}' in f_str.lower():
+                        for sep in [' "/" ', ' "." ', ' ']:
+                            parts = f_str.split(sep)
+                            if len(parts) > 1:
+                                cand_name = parts[-1].strip().strip('"')
+                                if cand in cand_name.lower():
+                                    target_folder = cand_name
+                                    break
+                        if target_folder:
+                            break
+                if target_folder:
+                    break
+
+        if not target_folder:
+            target_folder = "INBOX.Sent"
+
+        now_time = imaplib.Time2Internaldate(time.time())
+        res, _ = imap.append(target_folder, r'(\Seen)', now_time, msg_bytes)
+
+        if res != "OK":
+            for fallback in ["Sent", "Itens Enviados", "INBOX.Sent", "INBOX/Sent", "Enviados"]:
+                if fallback != target_folder:
+                    res, _ = imap.append(fallback, r'(\Seen)', now_time, msg_bytes)
+                    if res == "OK":
+                        target_folder = fallback
+                        break
+
+        imap.logout()
+        if res == "OK":
+            logger.info(f"Cópia arquivada com sucesso em '{target_folder}' no servidor via IMAP.")
+            return True, target_folder
+        return False, f"Resposta IMAP: {res}"
+    except Exception as e:
+        logger.warning(f"Erro ao salvar cópia em Itens Enviados via IMAP: {e}")
+        return False, str(e)
+
+
 def send_email_smtp(smtp_cfg, to_addrs, subject, html_body, attachment_paths, cc_addrs=None):
     """
     Envia o e-mail diretamente via servidor SMTP (ex: UOL Pro - smtps.uhserver.com / smtps.uol.com.br)
-    para o destinatário principal e cópias (Cc).
+    para o destinatário principal e cópias (Cc), e salva uma cópia na pasta 'Itens Enviados' via IMAP.
     """
     raw_host = smtp_cfg.get("smtp_server", "").strip()
     user = smtp_cfg.get("smtp_user", "").strip()
@@ -658,8 +729,21 @@ def send_email_smtp(smtp_cfg, to_addrs, subject, html_body, attachment_paths, cc
 
         server.sendmail(from_addr, all_recipients, msg.as_string())
         server.quit()
+
+        # Salvar cópia na pasta 'Itens Enviados' do UOL Pro via IMAP
+        saved_sent = False
+        try:
+            ok_imap, _ = save_email_to_sent_imap(smtp_cfg, msg.as_bytes())
+            saved_sent = ok_imap
+        except Exception as ex_imap:
+            logger.warning(f"Não foi possível arquivar em Itens Enviados: {ex_imap}")
+
         cc_count_txt = f" e {len(cc_addrs)} em cópia" if cc_addrs else ""
-        return True, f"E-mail enviado com sucesso para {len(to_addrs)} destinatário(s){cc_count_txt}!"
+        msg_result = f"E-mail enviado com sucesso para {len(to_addrs)} destinatário(s){cc_count_txt}!"
+        if saved_sent:
+            msg_result += "\n\n✓ Cópia arquivada na sua pasta 'Itens Enviados' da conta UOL Pro."
+
+        return True, msg_result
     except smtplib.SMTPAuthenticationError:
         return False, "Erro de autenticação SMTP: Usuário ou senha do e-mail incorretos."
     except smtplib.SMTPConnectError as ce:

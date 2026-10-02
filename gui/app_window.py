@@ -435,6 +435,15 @@ class AppHidrometrosWindow:
                 )
                 lbl_d.pack(side=tk.LEFT, padx=(4, 0))
 
+            send_log = self.config.get("report_send_log", {})
+            sent_time = send_log.get(f_name)
+            if sent_time:
+                lbl_sent = tk.Label(
+                    lbl_left, text=f"• ✉ Enviado em {sent_time}", font=("Segoe UI", 8, "italic"),
+                    fg="#2D6B22", bg=COLOR_BG_LIGHT
+                )
+                lbl_sent.pack(side=tk.LEFT, padx=(6, 0))
+
         # Agenda próximo refresh automático (10 segundos)
         self._history_timer_id = self.root.after(10000, self._refresh_history)
 

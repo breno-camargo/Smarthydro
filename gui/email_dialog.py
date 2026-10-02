@@ -238,6 +238,16 @@ class SendEmailDialog(tk.Toplevel):
             self.btn_send.config(state=tk.NORMAL)
             if ok:
                 self.lbl_status.config(text="Sucesso!")
+                try:
+                    f_name = os.path.basename(self.xlsx_path)
+                    now_str = datetime.now().strftime("%d/%m/%Y às %H:%M")
+                    send_log = self.config.get("report_send_log", {})
+                    send_log[f_name] = now_str
+                    self.config["report_send_log"] = send_log
+                    save_config(self.config)
+                except Exception:
+                    pass
+
                 messagebox.showinfo("Envio de E-mail", msg, parent=self)
                 self.destroy()
             else:
