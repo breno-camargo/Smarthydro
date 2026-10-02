@@ -40,11 +40,11 @@ class AppHidrometrosWindow:
             self.root.update_idletasks()
             s_w = self.root.winfo_screenwidth()
             s_h = self.root.winfo_screenheight()
-            pos_x = max(0, (s_w - 640) // 2)
-            pos_y = max(0, (s_h - 600) // 2)
-            self.root.geometry(f"640x600+{pos_x}+{pos_y}")
+            pos_x = max(0, (s_w - 720) // 2)
+            pos_y = max(0, (s_h - 620) // 2)
+            self.root.geometry(f"720x620+{pos_x}+{pos_y}")
         except Exception:
-            self.root.geometry("640x600")
+            self.root.geometry("720x620")
 
         self._set_window_icon()
 
@@ -146,7 +146,7 @@ class AppHidrometrosWindow:
         lbl_op_tag = tk.Label(frame_op_box, text="👤 Operador:", font=("Segoe UI", 8, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT)
         lbl_op_tag.pack(side=tk.LEFT)
 
-        self.cmb_active_op = ttk.Combobox(frame_op_box, state="readonly", width=22, font=("Segoe UI", 8))
+        self.cmb_active_op = ttk.Combobox(frame_op_box, state="readonly", width=32, font=("Segoe UI", 8))
         self.cmb_active_op.pack(side=tk.LEFT, padx=(4, 6))
         self.cmb_active_op.bind("<<ComboboxSelected>>", self._on_operator_combobox_change)
 
@@ -177,11 +177,32 @@ class AppHidrometrosWindow:
         frame_hero_top = tk.Frame(frame_sabesp_hero, bg=COLOR_BG_LIGHT)
         frame_hero_top.pack(fill=tk.X)
 
+        # Empacota os botões de ação na DIREITA PRIMEIRO com largura garantida
+        frame_hero_actions = tk.Frame(frame_hero_top, bg=COLOR_BG_LIGHT)
+        frame_hero_actions.pack(side=tk.RIGHT, padx=(14, 0))
+
+        self.btn_hero_sync = tk.Button(
+            frame_hero_actions,
+            text="🔄 Buscar no E-mail",
+            command=self._sync_sabesp_from_email_only,
+            bg=COLOR_PRIMARY, fg="white", activebackground=COLOR_PRIMARY_HOVER, activeforeground="white",
+            font=("Segoe UI", 8, "bold"), relief="flat", padx=12, pady=4, cursor="hand2"
+        )
+        self.btn_hero_sync.pack(side=tk.TOP, fill=tk.X, pady=(0, 4))
+
+        btn_hero_file = ttk.Button(
+            frame_hero_actions,
+            text="📁 Escolher PDF...",
+            command=self._open_sabesp_dialog,
+            style="Secondary.TButton"
+        )
+        btn_hero_file.pack(side=tk.TOP, fill=tk.X)
+
         self.lbl_hero_icon = tk.Label(frame_hero_top, text="📄", font=("Segoe UI", 18), bg=COLOR_BG_LIGHT, fg=COLOR_PRIMARY)
         self.lbl_hero_icon.pack(side=tk.LEFT, padx=(0, 10))
 
         frame_hero_info = tk.Frame(frame_hero_top, bg=COLOR_BG_LIGHT)
-        frame_hero_info.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        frame_hero_info.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         self.lbl_hero_title = tk.Label(
             frame_hero_info,
@@ -196,26 +217,6 @@ class AppHidrometrosWindow:
             font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT, anchor="w"
         )
         self.lbl_hero_sub.pack(fill=tk.X, pady=(2, 0))
-
-        frame_hero_actions = tk.Frame(frame_hero_top, bg=COLOR_BG_LIGHT)
-        frame_hero_actions.pack(side=tk.RIGHT, padx=(10, 0))
-
-        self.btn_hero_sync = tk.Button(
-            frame_hero_actions,
-            text="🔄 Buscar no E-mail",
-            command=self._sync_sabesp_from_email_only,
-            bg=COLOR_PRIMARY, fg="white", activebackground=COLOR_PRIMARY_HOVER, activeforeground="white",
-            font=("Segoe UI", 8, "bold"), relief="flat", padx=10, pady=4, cursor="hand2"
-        )
-        self.btn_hero_sync.pack(side=tk.TOP, fill=tk.X, pady=(0, 3))
-
-        btn_hero_file = ttk.Button(
-            frame_hero_actions,
-            text="📁 Escolher PDF...",
-            command=self._open_sabesp_dialog,
-            style="Secondary.TButton"
-        )
-        btn_hero_file.pack(side=tk.TOP, fill=tk.X)
 
         # ─── 2. CARD DE PARÂMETROS DO RATEIO (ESPELHO DA FATURA) ───
         frame_params = ttk.LabelFrame(
@@ -444,12 +445,16 @@ class AppHidrometrosWindow:
         tot = data.get("valor_total_fatura", 0.0)
         m3 = data.get("consumo_sabesp_m3", 0.0)
 
+        rate_str = f"{rate:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        tot_str = f"{tot:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        m3_str = f"{m3:,.0f}".replace(",", ".")
+
         self.lbl_hero_icon.config(text="✔", fg=COLOR_PRIMARY)
         self.lbl_hero_title.config(
             text=f"Fatura Sabesp Ativa: {fn}"
         )
         self.lbl_hero_sub.config(
-            text=f"Período: {ini} a {fim}  |  Tarifa Marginal: R$ {rate:.2f}/m³  |  Sabesp: {m3:,.0f} m³ (R$ {tot:,.2f})"
+            text=f"Período: {ini} a {fim}  |  Tarifa Marginal: R$ {rate_str}/m³  |  Sabesp: {m3_str} m³ (R$ {tot_str})"
         )
 
     def _one_click_email_and_generate(self):
@@ -564,7 +569,7 @@ class AppHidrometrosWindow:
             self._update_sabesp_hero_card(data)
 
             self.lbl_status.config(
-                text=f"✔ Fatura Sabesp ({data.get('arquivo_origem', 'PDF')}): {ini_str} a {fim_str} | R$ {selected_rate:.2f}/m³",
+                text="✔ Fatura Sabesp sincronizada! Pronto para gerar relatório com 1 clique.",
                 fg=COLOR_PRIMARY
             )
             if not silent:
@@ -713,7 +718,7 @@ class AppHidrometrosWindow:
 
             # Disparo de e-mail
             btn_email = ttk.Button(
-                row_frame, text="✉ E-mail", width=7,
+                row_frame, text="✉ E-mail",
                 command=lambda x=f_path, p=pdf_p: self._send_email_action(x, p),
                 style="History.TButton"
             )
@@ -722,7 +727,7 @@ class AppHidrometrosWindow:
             # Visualização do PDF (se gerado)
             if has_pdf:
                 btn_pdf = ttk.Button(
-                    row_frame, text="PDF", width=5,
+                    row_frame, text="PDF",
                     command=lambda p=pdf_p: self._open_specific_file(p),
                     style="History.TButton"
                 )
@@ -730,7 +735,7 @@ class AppHidrometrosWindow:
 
             # Abertura da planilha Excel
             btn_open = ttk.Button(
-                row_frame, text="📊 Excel", width=7,
+                row_frame, text="📊 Excel",
                 command=lambda p=f_path: self._open_specific_file(p),
                 style="History.TButton"
             )
@@ -743,7 +748,7 @@ class AppHidrometrosWindow:
             lbl_f = tk.Label(
                 lbl_left, text=f"•  {disp_name}", font=("Segoe UI", 9, "bold"),
                 fg=COLOR_TEXT_MAIN, bg=COLOR_BG_LIGHT,
-                width=28, anchor="w", cursor="hand2"
+                anchor="w", cursor="hand2"
             )
             lbl_f.pack(side=tk.LEFT)
             lbl_f.bind("<Button-1>", lambda e, p=f_path: self._open_specific_file(p))
