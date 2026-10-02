@@ -664,6 +664,13 @@ def save_email_to_sent_imap(smtp_cfg, msg_bytes):
     """
     user = smtp_cfg.get("smtp_user", "").strip()
     pwd = smtp_cfg.get("smtp_password", "").strip()
+    if pwd.startswith("b64:"):
+        try:
+            import base64
+            pwd = base64.b64decode(pwd[4:]).decode("utf-8")
+        except Exception:
+            pass
+
     if not user or not pwd:
         return False, "Usuário ou senha não configurados."
 
@@ -677,36 +684,51 @@ def save_email_to_sent_imap(smtp_cfg, msg_bytes):
         target_folder = None
         status, folder_list = imap.list()
         if status == "OK" and folder_list:
-            candidates = ["itens enviados", "sent", "sent items", "inbox.sent", "inbox/sent", "enviados"]
+            # 1. Procurar primeiro pasta com atributo RFC 6154 (\Sent)
             for f_bytes in folder_list:
                 f_str = f_bytes.decode("utf-8", errors="ignore")
-                for cand in candidates:
-                    if f'"{cand}"' in f_str.lower() or f' {cand}' in f_str.lower() or f'.{cand}' in f_str.lower():
-                        for sep in [' "/" ', ' "." ', ' ']:
-                            parts = f_str.split(sep)
-                            if len(parts) > 1:
-                                cand_name = parts[-1].strip().strip('"')
-                                if cand in cand_name.lower():
-                                    target_folder = cand_name
-                                    break
-                        if target_folder:
-                            break
-                if target_folder:
-                    break
+                if r"\sent" in f_str.lower():
+                    m = re.search(r'"([^"]+)"\s*$|(\S+)\s*$', f_str)
+                    if m:
+                        target_folder = m.group(1) or m.group(2)
+                        break
+
+            # 2. Se não achou por atributo, buscar candidatos de nome
+            if not target_folder:
+                candidates = ["itens enviados", "sent items", "sent", "inbox.sent", "inbox/sent", "enviados"]
+                for f_bytes in folder_list:
+                    f_str = f_bytes.decode("utf-8", errors="ignore")
+                    for cand in candidates:
+                        if cand in f_str.lower():
+                            m = re.search(r'"([^"]+)"\s*$|(\S+)\s*$', f_str)
+                            if m:
+                                target_folder = m.group(1) or m.group(2)
+                                break
+                    if target_folder:
+                        break
 
         if not target_folder:
-            target_folder = "INBOX.Sent"
+            target_folder = "Itens Enviados"
+
+        # Sempre colocar aspas duplas no nome da pasta para suportar espaços no protocolo IMAP
+        clean_target = target_folder.strip().strip('"')
+        quoted_folder = f'"{clean_target}"'
 
         now_time = imaplib.Time2Internaldate(time.time())
-        res, _ = imap.append(target_folder, r'(\Seen)', now_time, msg_bytes)
+        res, data = imap.append(quoted_folder, r'(\Seen)', now_time, msg_bytes)
 
         if res != "OK":
-            for fallback in ["Sent", "Itens Enviados", "INBOX.Sent", "INBOX/Sent", "Enviados"]:
-                if fallback != target_folder:
-                    res, _ = imap.append(fallback, r'(\Seen)', now_time, msg_bytes)
-                    if res == "OK":
-                        target_folder = fallback
-                        break
+            for fallback in ["Itens Enviados", "INBOX.Sent", "Sent", "Enviados"]:
+                quoted_fb = f'"{fallback}"'
+                if quoted_fb != quoted_folder:
+                    try:
+                        res_fb, _ = imap.append(quoted_fb, r'(\Seen)', now_time, msg_bytes)
+                        if res_fb == "OK":
+                            target_folder = fallback
+                            res = "OK"
+                            break
+                    except Exception:
+                        pass
 
         imap.logout()
         if res == "OK":
@@ -730,6 +752,12 @@ def send_email_smtp(smtp_cfg, to_addrs, subject, html_body, attachment_paths, cc
     use_ssl = bool(smtp_cfg.get("smtp_use_ssl", False))
     use_tls = bool(smtp_cfg.get("smtp_use_tls", True))
     pwd = smtp_cfg.get("smtp_password", "").strip()
+    if pwd.startswith("b64:"):
+        try:
+            import base64
+            pwd = base64.b64decode(pwd[4:]).decode("utf-8")
+        except Exception:
+            pass
 
     if not server_host:
         return False, "Endereço do servidor SMTP não informado."
@@ -770,16 +798,19 @@ def send_email_smtp(smtp_cfg, to_addrs, subject, html_body, attachment_paths, cc
 
         # Salvar cópia na pasta 'Itens Enviados' do UOL Pro via IMAP
         saved_sent = False
+        saved_folder = ""
         try:
-            ok_imap, _ = save_email_to_sent_imap(smtp_cfg, msg.as_bytes())
+            ok_imap, folder_or_err = save_email_to_sent_imap(smtp_cfg, msg.as_bytes())
             saved_sent = ok_imap
+            saved_folder = folder_or_err
         except Exception as ex_imap:
             logger.warning(f"Não foi possível arquivar em Itens Enviados: {ex_imap}")
 
         cc_count_txt = f" e {len(cc_addrs)} em cópia" if cc_addrs else ""
         msg_result = f"E-mail enviado com sucesso para {len(to_addrs)} destinatário(s){cc_count_txt}!"
         if saved_sent:
-            msg_result += "\n\n✓ Cópia arquivada na sua pasta 'Itens Enviados' da conta UOL Pro."
+            msg_result += f"\n\n✓ Cópia arquivada na pasta '{saved_folder}' no servidor de e-mail."
+            msg_result += "\n(Para atualizar no Outlook imediatamente, clique em 'Enviar/Receber' ou pressione F9)."
 
         return True, msg_result
     except smtplib.SMTPAuthenticationError:
