@@ -11,12 +11,26 @@
   "sort_by_consumption": true,
   "odbc_driver": "ODBC Driver 17 for SQL Server",
   "email_recipients": "financeiro@pracapamplona.com.br",
-  "email_send_mode": "outlook",
+  "email_cc": "operacao@compasss.com.br",
+  "email_send_mode": "smtp",
   "smtp_server": "smtps.uhserver.com",
-  "smtp_port": 587,
-  "smtp_use_tls": true,
-  "smtp_use_ssl": false,
+  "smtp_port": 465,
+  "smtp_use_tls": false,
+  "smtp_use_ssl": true,
   "smtp_user": "",
   "smtp_password": "",
-  "recent_reports": []
+  "recent_reports": [],
+  "active_operator_id": "operador_1",
+  "operators": [
+    {
+      "id": "operador_1",
+      "name": "Nome do Técnico",
+      "role": "Técnico de Sistemas Prediais",
+      "email": "tecnico@compasss.com.br",
+      "phone": "+55 11 99999-9999",
+      "smtp_user": "tecnico@compasss.com.br",
+      "smtp_password": "",
+      "is_default": true
+    }
+  ]
 }

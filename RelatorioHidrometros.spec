@@ -13,7 +13,7 @@ a = Analysis(
         ('modelo_relatorio.xlsx', '.'),
         ('modelo_email.html', '.')
     ],
-    hiddenimports=['babel.numbers', 'win32com', 'win32com.client', 'pythoncom', 'pywintypes'],
+    hiddenimports=['babel.numbers', 'win32com', 'win32com.client', 'pythoncom', 'pywintypes', 'openpyxl.chart'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

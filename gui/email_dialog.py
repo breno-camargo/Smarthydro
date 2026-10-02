@@ -6,7 +6,7 @@ from datetime import datetime
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-from core.config_manager import load_config, save_config
+from core.config_manager import load_config, save_config, get_operators, get_active_operator
 from core.email_sender import (
     load_email_template, extract_report_summary, render_email,
     parse_recipients, send_email_smtp, prepare_html_for_preview
@@ -36,16 +36,18 @@ class SendEmailDialog(tk.Toplevel):
         )
 
         self.config = load_config()
+        self.operators = get_operators(self.config)
+        self.active_operator = get_active_operator(self.config)
         self.summary = extract_report_summary(self.xlsx_path)
         self.subj_template, self.body_template = load_email_template()
 
-        # Renderizar assunto e corpo com os dados desta medição
+        # Renderizar assunto e corpo com os dados desta medição e operador
         self.rendered_subj, self.rendered_body = render_email(
-            self.subj_template, self.body_template, self.summary
+            self.subj_template, self.body_template, self.summary, operator=self.active_operator
         )
 
         self._build_ui()
-        center_modal(self, parent, 580, 520)
+        center_modal(self, parent, 600, 560)
 
     def _build_ui(self):
         container = ttk.Frame(self, padding="18 16 18 16")
@@ -68,7 +70,31 @@ class SendEmailDialog(tk.Toplevel):
             container, text=info_txt,
             font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT, justify=tk.LEFT
         )
-        lbl_info.pack(anchor=tk.W, pady=(0, 12))
+        lbl_info.pack(anchor=tk.W, pady=(0, 10))
+
+        # ─── REMETENTE / OPERADOR ───
+        frame_op = tk.Frame(container, bg=COLOR_BG_LIGHT)
+        frame_op.pack(fill=tk.X, pady=(0, 8))
+
+        lbl_op = ttk.Label(frame_op, text="Remetente:", font=("Segoe UI", 9, "bold"))
+        lbl_op.pack(side=tk.LEFT)
+
+        self.ops_map = {f"{op.get('name')} <{op.get('email')}>": op for op in self.operators}
+        op_names = list(self.ops_map.keys())
+        self.cmb_op = ttk.Combobox(frame_op, values=op_names, state="readonly", font=("Segoe UI", 9), width=42)
+        self.cmb_op.pack(side=tk.LEFT, padx=(6, 0))
+
+        curr_op_name = None
+        for name, op in self.ops_map.items():
+            if self.active_operator and op.get("id") == self.active_operator.get("id"):
+                curr_op_name = name
+                break
+        if curr_op_name:
+            self.cmb_op.set(curr_op_name)
+        elif op_names:
+            self.cmb_op.set(op_names[0])
+
+        self.cmb_op.bind("<<ComboboxSelected>>", self._on_operator_change)
 
         # ─── DESTINATÁRIOS ───
         lbl_to = ttk.Label(container, text="Para (Gerente):", font=("Segoe UI", 9, "bold"))
@@ -161,6 +187,16 @@ class SendEmailDialog(tk.Toplevel):
         btn_cancel = ttk.Button(frame_bottom, text="Cancelar", command=self.destroy)
         btn_cancel.pack(side=tk.RIGHT)
 
+    def _on_operator_change(self, event=None):
+        val = self.cmb_op.get()
+        if val in self.ops_map:
+            self.active_operator = self.ops_map[val]
+            self.rendered_subj, self.rendered_body = render_email(
+                self.subj_template, self.body_template, self.summary, operator=self.active_operator
+            )
+            self.ent_subj.delete(0, tk.END)
+            self.ent_subj.insert(0, self.rendered_subj)
+
     def _preview_email(self):
         """Abre no navegador uma prévia exata do e-mail com os dados preenchidos."""
         try:
@@ -248,7 +284,7 @@ class SendEmailDialog(tk.Toplevel):
         ).start()
 
     def _send_worker(self, recipients, cc_recipients, subject, body, attachments):
-        ok, msg = send_email_smtp(self.config, recipients, subject, body, attachments, cc_addrs=cc_recipients)
+        ok, msg = send_email_smtp(self.config, recipients, subject, body, attachments, cc_addrs=cc_recipients, operator=self.active_operator)
 
         def _ui_done():
             self.prog_bar.stop()

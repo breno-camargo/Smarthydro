@@ -7,12 +7,17 @@ from tkinter import ttk, messagebox, filedialog
 from tkcalendar import DateEntry
 from PIL import Image, ImageTk
 
-from core.config_manager import load_config, save_config, get_base_dir, get_recent_reports, format_report_filename, get_report_output_folder
+from core.config_manager import (
+    load_config, save_config, get_base_dir, get_recent_reports, format_report_filename,
+    get_report_output_folder, get_operators, get_active_operator, set_active_operator
+)
 from core.database import test_db_connection
 from cli.runner import execute_extraction
 from gui.settings_dialog import SettingsDialog
 from gui.email_dialog import SendEmailDialog
 from gui.anomaly_dialog import AnomalyDialog
+from gui.operators_dialog import OperatorsDialog
+from gui.history_dialog import AnnualHistoryDialog
 from gui.ui_helpers import apply_window_icon
 
 # Cores institucionais CompaSSS
@@ -56,6 +61,7 @@ class AppHidrometrosWindow:
         self._build_ui()
         self._set_default_dates()
         self._refresh_history()
+        self._refresh_operators_ui()
 
     def _set_window_icon(self):
         """Define o ícone da aplicação no Windows (barra de título e barra de tarefas)."""
@@ -102,14 +108,38 @@ class AppHidrometrosWindow:
         title_box = tk.Frame(frame_top, bg=COLOR_BG_LIGHT)
         title_box.pack(side=tk.LEFT, fill=tk.Y)
 
-        lbl_title = tk.Label(title_box, text="Medição de Hidrômetros", font=("Segoe UI", 15, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT)
+        lbl_title = tk.Label(title_box, text="Medição de Hidrômetros", font=("Segoe UI", 14, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT)
         lbl_title.pack(anchor=tk.W)
-        lbl_sub = tk.Label(title_box, text="Condomínio Praça Pamplona  •  StruxureWare EBO", font=("Segoe UI", 9), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT)
+        lbl_sub = tk.Label(title_box, text="Condomínio Praça Pamplona  •  StruxureWare EBO", font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT)
         lbl_sub.pack(anchor=tk.W)
 
-        # Botão de Configurações no canto superior direito
-        btn_settings = ttk.Button(frame_top, text="⚙ Configurações", command=self._open_settings, style="Secondary.TButton")
-        btn_settings.pack(side=tk.RIGHT, anchor=tk.NE, pady=4)
+        # Seletor discreto do operador ativo
+        frame_op_box = tk.Frame(title_box, bg=COLOR_BG_LIGHT)
+        frame_op_box.pack(anchor=tk.W, pady=(2, 0))
+
+        lbl_op_tag = tk.Label(frame_op_box, text="👤 Operador:", font=("Segoe UI", 8, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT)
+        lbl_op_tag.pack(side=tk.LEFT)
+
+        self.cmb_active_op = ttk.Combobox(frame_op_box, state="readonly", width=22, font=("Segoe UI", 8))
+        self.cmb_active_op.pack(side=tk.LEFT, padx=(4, 6))
+        self.cmb_active_op.bind("<<ComboboxSelected>>", self._on_operator_combobox_change)
+
+        btn_manage_ops = tk.Button(
+            frame_op_box, text="👥 Gerenciar", command=self._open_operators_dialog,
+            font=("Segoe UI", 7, "bold"), fg=COLOR_PRIMARY, bg="#EBF3E6",
+            activebackground=COLOR_ACCENT, relief="flat", padx=6, pady=1, cursor="hand2"
+        )
+        btn_manage_ops.pack(side=tk.LEFT)
+
+        # Botões de Ação no canto superior direito
+        frame_top_btns = tk.Frame(frame_top, bg=COLOR_BG_LIGHT)
+        frame_top_btns.pack(side=tk.RIGHT, anchor=tk.NE, pady=2)
+
+        btn_settings = ttk.Button(frame_top_btns, text="⚙ Configurações", command=self._open_settings, style="Secondary.TButton")
+        btn_settings.pack(side=tk.RIGHT, padx=(6, 0))
+
+        btn_history = ttk.Button(frame_top_btns, text="📈 Histórico Anual", command=self._open_annual_history, style="Secondary.TButton")
+        btn_history.pack(side=tk.RIGHT)
 
         # Linha divisória verde suave
         div = tk.Frame(main_container, height=2, bg=COLOR_ACCENT)
@@ -325,12 +355,50 @@ class AppHidrometrosWindow:
     def _open_settings(self):
         SettingsDialog(self.root, on_save_callback=self._on_settings_saved)
 
+    def _open_annual_history(self):
+        """Abre a janela de Histórico Anual de Telemetria com KPIs e gráficos dos 12 meses."""
+        AnnualHistoryDialog(self.root)
+
+    def _open_operators_dialog(self):
+        """Abre o diálogo de gerenciamento de perfis de operadores e assinaturas."""
+        OperatorsDialog(self.root, on_change_callback=self._refresh_operators_ui)
+
+    def _refresh_operators_ui(self):
+        """Atualiza a lista de operadores no combobox do cabeçalho da janela."""
+        self.config = load_config()
+        ops = get_operators(self.config)
+        active = get_active_operator(self.config)
+
+        self.ops_map = {f"{op.get('name')} ({op.get('role', 'Operador')})": op.get('id') for op in ops}
+        names = list(self.ops_map.keys())
+        self.cmb_active_op["values"] = names
+
+        curr_key = None
+        for name, op_id in self.ops_map.items():
+            if active and op_id == active.get("id"):
+                curr_key = name
+                break
+        if curr_key:
+            self.cmb_active_op.set(curr_key)
+        elif names:
+            self.cmb_active_op.set(names[0])
+
+    def _on_operator_combobox_change(self, event=None):
+        """Disparado quando o usuário seleciona outro operador ativo no combobox."""
+        val = self.cmb_active_op.get()
+        if hasattr(self, "ops_map") and val in self.ops_map:
+            set_active_operator(self.ops_map[val])
+            self.config = load_config()
+            op = get_active_operator(self.config)
+            self.lbl_status.config(text=f"Operador ativo alterado para: {op.get('name')}")
+
     def _on_settings_saved(self, new_cfg):
         self.config = new_cfg
         self.lbl_pasta.delete(0, tk.END)
         self.lbl_pasta.insert(0, self.config.get("output_directory", ""))
         self.ent_valor.delete(0, tk.END)
         self.ent_valor.insert(0, str(self.config.get("default_m3_price", 63.68)))
+        self._refresh_operators_ui()
 
     def _refresh_history(self, force=False):
         """Atualiza a lista visual dos relatórios gerados recentemente sem travamentos."""

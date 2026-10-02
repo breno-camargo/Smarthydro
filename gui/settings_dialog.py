@@ -6,7 +6,9 @@ import webbrowser
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 
-from core.config_manager import load_config, save_config
+from core.config_manager import (
+    load_config, save_config, get_operators, get_active_operator, set_active_operator
+)
 from core.database import get_available_odbc_drivers, test_db_connection
 from core.report_generator import open_template_in_excel
 from core.email_sender import (
@@ -15,6 +17,7 @@ from core.email_sender import (
 )
 from gui.email_template_dialog import EmailTemplateDialog
 from gui.scheduler_dialog import SchedulerDialog
+from gui.operators_dialog import OperatorsDialog
 from gui.ui_helpers import apply_window_icon, center_modal
 
 COLOR_PRIMARY = "#3D6B24"
@@ -96,7 +99,12 @@ class SettingsDialog(tk.Toplevel):
         self.notebook.add(tab_email, text=" ✉ E-mail & UOL Pro ")
         self._build_tab_email(tab_email)
 
-        # ─── ABA 3: DESENVOLVEDOR ───
+        # ─── ABA 3: OPERADORES & PERFIS ───
+        tab_ops = ttk.Frame(self.notebook, padding="14 8 14 8")
+        self.notebook.add(tab_ops, text=" 👤 Operadores ")
+        self._build_tab_operators(tab_ops)
+
+        # ─── ABA 4: DESENVOLVEDOR ───
         tab_dev = ttk.Frame(self.notebook, padding="14 8 14 8")
         self.notebook.add(tab_dev, text=" 💻 Desenvolvedor ")
         self._build_tab_dev(tab_dev)
@@ -334,6 +342,86 @@ class SettingsDialog(tk.Toplevel):
             command=self._open_template_in_notepad
         )
         btn_open_tmpl_file.pack(side=tk.LEFT)
+
+    def _build_tab_operators(self, parent):
+        parent.columnconfigure(1, weight=1)
+
+        lbl_sec = tk.Label(
+            parent, text="Perfis de Operadores & Assinaturas Corporativas",
+            font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
+        )
+        lbl_sec.grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 2))
+
+        lbl_desc = tk.Label(
+            parent,
+            text="Alterne o operador ativo ou gerencie múltiplos perfis. Cada operador possui seu próprio e-mail e assinatura corporativa nos relatórios.",
+            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT, wraplength=480, justify=tk.LEFT
+        )
+        lbl_desc.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(0, 10))
+
+        # Card de Resumo do Operador Ativo
+        self.frame_active_card = tk.LabelFrame(
+            parent, text="  Operador Ativo no Momento  ",
+            bg=COLOR_BG_LIGHT, fg=COLOR_PRIMARY, font=("Segoe UI", 9, "bold"),
+            padx=14, pady=12
+        )
+        self.frame_active_card.grid(row=2, column=0, columnspan=2, sticky=tk.EW, pady=(0, 12))
+        self.frame_active_card.columnconfigure(1, weight=1)
+
+        ttk.Label(self.frame_active_card, text="Operador Selecionado:").grid(row=0, column=0, sticky=tk.W, pady=4)
+        self.cmb_tab_operator = ttk.Combobox(self.frame_active_card, state="readonly", width=34)
+        self.cmb_tab_operator.grid(row=0, column=1, sticky=tk.W, pady=4, padx=(8, 0))
+        self.cmb_tab_operator.bind("<<ComboboxSelected>>", self._on_tab_operator_change)
+
+        self.lbl_op_info = tk.Label(
+            self.frame_active_card, text="",
+            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT, justify=tk.LEFT
+        )
+        self.lbl_op_info.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(8, 0))
+
+        # Botão para abrir o gerenciador completo
+        btn_open_mgr = tk.Button(
+            parent,
+            text="👥 Abrir Gerenciador de Operadores (Cadastrar / Editar)",
+            command=self._open_operators_manager,
+            bg="#EBF3E6", fg=COLOR_PRIMARY, activebackground=COLOR_ACCENT,
+            font=("Segoe UI", 9, "bold"), relief="flat", padx=14, pady=8,
+            cursor="hand2", takefocus=False
+        )
+        btn_open_mgr.grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=(8, 4))
+
+        self._refresh_tab_operators()
+
+    def _refresh_tab_operators(self):
+        cfg = load_config()
+        ops = get_operators(cfg)
+        active = get_active_operator(cfg)
+        self.ops_map = {f"{op.get('name')} ({op.get('role', 'Operador')})": op.get('id') for op in ops}
+        names = list(self.ops_map.keys())
+        self.cmb_tab_operator["values"] = names
+
+        curr_key = None
+        for name, op_id in self.ops_map.items():
+            if active and op_id == active.get("id"):
+                curr_key = name
+                break
+        if curr_key:
+            self.cmb_tab_operator.set(curr_key)
+        elif names:
+            self.cmb_tab_operator.set(names[0])
+
+        if active:
+            info_txt = f"• E-mail: {active.get('email', '')}\n• Telefone: {active.get('phone', 'Não informado')}\n• Status: {'★ Operador Padrão do Sistema (Usado no Agendamento)' if active.get('is_default') else 'Operador Secundário'}"
+            self.lbl_op_info.config(text=info_txt)
+
+    def _on_tab_operator_change(self, event=None):
+        val = self.cmb_tab_operator.get()
+        if val in self.ops_map:
+            set_active_operator(self.ops_map[val])
+            self._refresh_tab_operators()
+
+    def _open_operators_manager(self):
+        OperatorsDialog(self, on_change_callback=self._refresh_tab_operators)
 
     def _build_tab_dev(self, parent):
         """Constrói a aba com informações de autoria e créditos do desenvolvedor."""

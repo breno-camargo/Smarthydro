@@ -53,9 +53,22 @@ O **SmartHydro** foi desenvolvido para:
 - Integração nativa com o **Agendador de Tarefas do Windows** (*Windows Task Scheduler*).
 - Modo silencioso (`python -m cli.runner --headless`) que executa todo dia 29 sem necessidade de intervenção humana.
 
+### 👤 Sistema de Perfis de Operador & Assinaturas Próprias
+- Suporte a múltiplos técnicos/operadores cadastrados no sistema.
+- Seletor rápido de operador no cabeçalho da janela e no diálogo de envio de e-mails.
+- Tags dinâmicas no modelo de e-mail (`{{remetente_nome}}`, `{{remetente_cargo}}`, `{{remetente_email}}`, `{{remetente_telefone}}`) com atualização automática da assinatura oficial CompaSSS.
+- Configuração de operador padrão para execuções silenciosas do agendador automático.
+
+### 📈 Painel de Histórico Anual de Telemetria (12 Meses)
+- Consulta consolidada dos últimos 12 ciclos de faturamento direto no SQL Server do EcoStruxure EBO.
+- **Painel de Indicadores Anuais:** Consumo total acumulado em m³, faturamento anual em R$, média mensal e identificação do mês de pico.
+- **Gráfico Interativo de Barras:** Renderização fluida em Canvas nativo com linha guia da média anual.
+- **Tabela com Análise de Tendência:** Comparativo mês a mês com indicador de variação volumétrica e percentual.
+- **Exportação Executiva em Excel:** Geração de planilha anual formatada com gráficos para apresentações e reuniões de condomínio.
+
 ### 🖥️ Interface Gráfica Executiva (Desktop)
 - Desenvolvida em **Tkinter** com design moderno e paleta executiva.
-- Modal completo de configurações com abas dedicadas (Conexão EBO, E-mail & SMTP, Automação & Agendador, Desenvolvedor).
+- Modal completo de configurações com abas dedicadas (Conexão EBO, E-mail & UOL Pro, Operadores, Desenvolvedor).
 - Utilitário integrado para criação instantânea de atalho na Área de Trabalho com ícone oficial.
 
 ---
@@ -82,15 +95,18 @@ automacao_hidrometros/
 │   └── runner.py               # Executor headless integrado ao Agendador do Windows
 ├── core/                       # Lógica de negócios e comunicação externa
 │   ├── anomaly_detector.py     # Motor heurístico de detecção de anomalias
-│   ├── config_manager.py       # Gerenciador de configurações e histórico
+│   ├── config_manager.py       # Gerenciador de configurações, perfis de operadores e histórico
 │   ├── database.py             # Conector e queries otimizadas SQL Server
 │   ├── email_sender.py         # Despachador de e-mails (SMTP / Outlook) e auditoria IMAP
+│   ├── history_manager.py      # Motor de consulta dos 12 ciclos históricos e exportação Excel
 │   └── report_generator.py     # Motor de renderização e estilização de planilhas Excel
 ├── gui/                        # Interface gráfica de usuário (Tkinter)
 │   ├── anomaly_dialog.py       # Modal de auditoria e revisão de anomalias
-│   ├── app_window.py           # Janela principal da aplicação
+│   ├── app_window.py           # Janela principal da aplicação com seletor de operador
 │   ├── email_dialog.py         # Modal de confirmação e disparo de e-mails
 │   ├── email_template_dialog.py# Editor visual de templates HTML
+│   ├── history_dialog.py       # Painel interativo de Histórico Anual (12 Meses) com Gráficos
+│   ├── operators_dialog.py     # Gerenciador de perfis de operadores e assinaturas
 │   ├── scheduler_dialog.py     # Assistente de agendamento no Windows
 │   ├── settings_dialog.py      # Painel de configurações gerais e créditos
 │   └── ui_helpers.py           # Utilitários de ícones, estilos e janelas

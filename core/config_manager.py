@@ -7,6 +7,19 @@ import re
 import shutil
 from datetime import datetime
 
+DEFAULT_OPERATORS = [
+    {
+        "id": "breno",
+        "name": "Breno Camargo",
+        "role": "Técnico de Sistemas Prediais",
+        "email": "breno.camargo@compasss.com.br",
+        "phone": "+55 11 99012 7316",
+        "smtp_user": "breno.camargo@compasss.com.br",
+        "smtp_password": "",
+        "is_default": True
+    }
+]
+
 DEFAULT_CONFIG = {
     "server": "WELLCARE-PC\\SQLEXPRESS",
     "database": "StruxureWareReportsDB",
@@ -28,7 +41,9 @@ DEFAULT_CONFIG = {
     "smtp_use_ssl": True,
     "smtp_user": "",
     "smtp_password": "",
-    "recent_reports": []
+    "recent_reports": [],
+    "active_operator_id": "breno",
+    "operators": DEFAULT_OPERATORS
 }
 
 def get_base_dir():
@@ -229,6 +244,28 @@ def load_config():
     config["db_password"] = _decode_password(config.get("db_password", ""))
     config["smtp_password"] = _decode_password(config.get("smtp_password", ""))
 
+    # Garantir que operadores existam e senhas estejam decodificadas
+    if "operators" in config and isinstance(config["operators"], list) and len(config["operators"]) > 0:
+        for op in config["operators"]:
+            if isinstance(op, dict):
+                op["smtp_password"] = _decode_password(op.get("smtp_password", ""))
+    else:
+        # Migração automática a partir do usuário atual do SMTP
+        smtp_u = config.get("smtp_user", "breno.camargo@compasss.com.br")
+        config["operators"] = [
+            {
+                "id": "breno",
+                "name": "Breno Camargo",
+                "role": "Técnico de Sistemas Prediais",
+                "email": smtp_u or "breno.camargo@compasss.com.br",
+                "phone": "+55 11 99012 7316",
+                "smtp_user": smtp_u or "breno.camargo@compasss.com.br",
+                "smtp_password": "",
+                "is_default": True
+            }
+        ]
+        config["active_operator_id"] = "breno"
+
     return config
 
 def save_config(new_config):
@@ -254,12 +291,114 @@ def save_config(new_config):
         if raw_smtp_pwd and not raw_smtp_pwd.startswith("b64:"):
             config_to_save["smtp_password"] = _encode_password(raw_smtp_pwd)
 
+        # Ofuscar senhas individuais dos operadores se houverem
+        if "operators" in config_to_save and isinstance(config_to_save["operators"], list):
+            encoded_ops = []
+            for op in config_to_save["operators"]:
+                if isinstance(op, dict):
+                    op_copy = op.copy()
+                    raw_op_pwd = op_copy.get("smtp_password", "")
+                    if raw_op_pwd and not raw_op_pwd.startswith("b64:"):
+                        op_copy["smtp_password"] = _encode_password(raw_op_pwd)
+                    encoded_ops.append(op_copy)
+            config_to_save["operators"] = encoded_ops
+
         with open(cfg_path, "w", encoding="utf-8") as f:
             json.dump(config_to_save, f, indent=2, ensure_ascii=False)
         return True
     except Exception as e:
         logging.error(f"Falha ao salvar configurações em {cfg_path}: {e}")
         return False
+
+
+def get_operators(config=None):
+    """Retorna a lista de operadores cadastrados."""
+    if config is None:
+        config = load_config()
+    ops = config.get("operators")
+    if not ops or not isinstance(ops, list) or len(ops) == 0:
+        ops = DEFAULT_OPERATORS.copy()
+        config["operators"] = ops
+        config["active_operator_id"] = "breno"
+    return ops
+
+
+def get_active_operator(config=None):
+    """Retorna o operador ativo atual (ou o padrão)."""
+    if config is None:
+        config = load_config()
+    ops = get_operators(config)
+    active_id = config.get("active_operator_id", "")
+    for op in ops:
+        if op.get("id") == active_id:
+            return op
+    for op in ops:
+        if op.get("is_default"):
+            return op
+    return ops[0] if ops else DEFAULT_OPERATORS[0]
+
+
+def set_active_operator(operator_id, config=None):
+    """Define o operador ativo atual no sistema e persiste no config.json."""
+    if config is None:
+        config = load_config()
+    config["active_operator_id"] = operator_id
+    save_config(config)
+    return config
+
+
+def save_operator(operator_data, config=None):
+    """Adiciona ou atualiza os dados de um operador."""
+    if config is None:
+        config = load_config()
+    ops = [dict(o) for o in get_operators(config)]
+    op_id = operator_data.get("id")
+    if not op_id:
+        import uuid
+        op_id = str(uuid.uuid4())[:8]
+        operator_data["id"] = op_id
+
+    # Se for marcado como default, remove o default dos demais
+    if operator_data.get("is_default"):
+        for op in ops:
+            op["is_default"] = False
+
+    found = False
+    for i, op in enumerate(ops):
+        if op.get("id") == op_id:
+            ops[i] = operator_data
+            found = True
+            break
+    if not found:
+        ops.append(operator_data)
+
+    config["operators"] = ops
+    if operator_data.get("is_default") or not config.get("active_operator_id"):
+        config["active_operator_id"] = op_id
+
+    save_config(config)
+    return op_id
+
+
+def delete_operator(operator_id, config=None):
+    """Remove um operador (se houver mais de um)."""
+    if config is None:
+        config = load_config()
+    ops = [dict(o) for o in get_operators(config)]
+    if len(ops) <= 1:
+        return False, "Não é possível remover o único operador cadastrado."
+
+    new_ops = [op for op in ops if op.get("id") != operator_id]
+    if len(new_ops) == len(ops):
+        return False, "Operador não encontrado."
+
+    config["operators"] = new_ops
+    if config.get("active_operator_id") == operator_id:
+        config["active_operator_id"] = new_ops[0].get("id")
+        new_ops[0]["is_default"] = True
+
+    save_config(config)
+    return True, "Operador removido com sucesso."
 
 
 def get_recent_reports():

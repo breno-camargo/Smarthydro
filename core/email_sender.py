@@ -137,9 +137,10 @@ DEFAULT_HTML_BODY = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional
                 <tr>
                   <td style="padding-top: 14px;">
                     <div style="font-family: Calibri, 'Segoe UI', Arial, sans-serif; line-height: 1.35;">
-                      <span style="color: #006600; font-weight: bold; font-size: 11pt;">Breno Camargo</span><br />
-                      <span style="color: #006600; font-weight: bold; font-size: 10pt;">+55 11 99012 7316</span><br />
-                      <a href="mailto:breno.camargo@compasss.com.br" style="color: #0563C1; text-decoration: underline; font-size: 10pt;">breno.camargo@compasss.com.br</a><br />
+                      <span style="color: #006600; font-weight: bold; font-size: 11pt;">{{remetente_nome}}</span><br />
+                      <span style="color: #55664C; font-size: 10pt;">{{remetente_cargo}}</span><br />
+                      <span style="color: #006600; font-weight: bold; font-size: 10pt;">{{remetente_telefone}}</span><br />
+                      <a href="mailto:{{remetente_email}}" style="color: #0563C1; text-decoration: underline; font-size: 10pt;">{{remetente_email}}</a><br />
                       <a href="https://www.compasss.com.br" style="color: #0563C1; text-decoration: underline; font-size: 10pt;">www.compasss.com.br</a><br />
                       <span style="color: #006600; font-size: 9.5pt;">RJ – Praia de Botafogo, 300 – Mezanino – Botafogo – CEP: 20031-040</span><br />
                       <span style="color: #006600; font-size: 9.5pt;">SP – Alameda Santos, 2477 – 11º Andar – Jardim Paulista – CEP: 01419-101</span>
@@ -492,15 +493,30 @@ def get_greeting():
         return "boa noite"
 
 
-def render_email(subject_template, body_template, context):
+def render_email(subject_template, body_template, context, operator=None):
     """
-    Substitui as tags/placeholders do modelo pelos valores reais do contexto.
+    Substitui as tags/placeholders do modelo pelos valores reais do contexto e operador.
     Tags suportadas:
     {MES}, {ANO}, {PERIODO}, {TOTAL_M3}, {TOTAL_VALOR}, {VALOR_M3},
-    {QTD_MEDIDORES}, {QTD_SALAS}, {DATA_EMISSAO}, {SAUDACAO}
+    {QTD_MEDIDORES}, {QTD_SALAS}, {DATA_EMISSAO}, {SAUDACAO},
+    {REMETENTE_NOME}, {REMETENTE_CARGO}, {REMETENTE_EMAIL}, {REMETENTE_TELEFONE}
     """
     rendered_subject = subject_template
     rendered_body = body_template
+
+    if operator is None:
+        operator = context.get("operator")
+    if operator is None:
+        try:
+            from core.config_manager import get_active_operator
+            operator = get_active_operator()
+        except Exception:
+            operator = None
+
+    op_nome = operator.get("name", "Breno Camargo") if operator else "Breno Camargo"
+    op_cargo = operator.get("role", "Técnico de Sistemas Prediais") if operator else "Técnico de Sistemas Prediais"
+    op_email = operator.get("email", "breno.camargo@compasss.com.br") if operator else "breno.camargo@compasss.com.br"
+    op_tel = operator.get("phone", "+55 11 99012 7316") if operator else "+55 11 99012 7316"
 
     qtd_val = str(context.get("qtd_medidores") or context.get("qtd_salas") or "289")
     saudacao_val = get_greeting()
@@ -516,6 +532,22 @@ def render_email(subject_template, body_template, context):
         "{QTD_SALAS}": qtd_val,
         "{DATA_EMISSAO}": str(context.get("data_emissao", "")),
         "{SAUDACAO}": saudacao_val,
+        "{REMETENTE_NOME}": op_nome,
+        "{{remetente_nome}}": op_nome,
+        "{OPERADOR_NOME}": op_nome,
+        "{{operador_nome}}": op_nome,
+        "{REMETENTE_CARGO}": op_cargo,
+        "{{remetente_cargo}}": op_cargo,
+        "{OPERADOR_CARGO}": op_cargo,
+        "{{operador_cargo}}": op_cargo,
+        "{REMETENTE_EMAIL}": op_email,
+        "{{remetente_email}}": op_email,
+        "{OPERADOR_EMAIL}": op_email,
+        "{{operador_email}}": op_email,
+        "{REMETENTE_TELEFONE}": op_tel,
+        "{{remetente_telefone}}": op_tel,
+        "{OPERADOR_TELEFONE}": op_tel,
+        "{{operador_telefone}}": op_tel,
     }
 
     # Substituição case-insensitive
@@ -523,6 +555,14 @@ def render_email(subject_template, body_template, context):
         pattern = re.compile(re.escape(key), re.IGNORECASE)
         rendered_subject = pattern.sub(val, rendered_subject)
         rendered_body = pattern.sub(val, rendered_body)
+
+    # Retrocompatibilidade: se o modelo ainda possuir a assinatura antiga com dados estáticos de Breno
+    if operator and op_nome and op_nome != "Breno Camargo":
+        rendered_body = rendered_body.replace("Breno Camargo", op_nome)
+        if op_email and op_email != "breno.camargo@compasss.com.br":
+            rendered_body = rendered_body.replace("breno.camargo@compasss.com.br", op_email)
+        if op_tel and op_tel != "+55 11 99012 7316":
+            rendered_body = rendered_body.replace("+55 11 99012 7316", op_tel)
 
     return rendered_subject, rendered_body
 
@@ -690,18 +730,31 @@ def save_email_to_sent_imap(smtp_cfg, msg_bytes):
         return False, str(e)
 
 
-def send_email_smtp(smtp_cfg, to_addrs, subject, html_body, attachment_paths, cc_addrs=None):
+def send_email_smtp(smtp_cfg, to_addrs, subject, html_body, attachment_paths, cc_addrs=None, operator=None):
     """
     Envia o e-mail diretamente via servidor SMTP (ex: UOL Pro - smtps.uhserver.com / smtps.uol.com.br)
     para o destinatário principal e cópias (Cc), e salva uma cópia na pasta 'Itens Enviados' via IMAP.
+    Suporta credenciais e assinatura do operador ativo.
     """
+    if operator is None:
+        try:
+            from core.config_manager import get_active_operator
+            operator = get_active_operator()
+        except Exception:
+            operator = None
+
     raw_host = smtp_cfg.get("smtp_server", "").strip()
-    user = smtp_cfg.get("smtp_user", "").strip()
+    user = (operator.get("smtp_user") if operator and operator.get("smtp_user") else smtp_cfg.get("smtp_user", "")).strip()
     server_host = get_effective_smtp_host(raw_host, user)
     port = int(smtp_cfg.get("smtp_port", 587))
     use_ssl = bool(smtp_cfg.get("smtp_use_ssl", False))
     use_tls = bool(smtp_cfg.get("smtp_use_tls", True))
-    pwd = decode_password(smtp_cfg.get("smtp_password", "").strip())
+
+    op_pwd = operator.get("smtp_password", "").strip() if operator else ""
+    if op_pwd:
+        pwd = decode_password(op_pwd)
+    else:
+        pwd = decode_password(smtp_cfg.get("smtp_password", "").strip())
 
     if not server_host:
         return False, "Endereço do servidor SMTP não informado."
@@ -710,7 +763,7 @@ def send_email_smtp(smtp_cfg, to_addrs, subject, html_body, attachment_paths, cc
     if not user:
         return False, "Por favor, preencha o seu e-mail do UOL nas configurações para enviar."
 
-    from_addr = user
+    from_addr = (operator.get("email") if operator and operator.get("email") else user).strip()
     msg = build_mime_message(
         to_addrs=to_addrs,
         subject=subject,
@@ -740,11 +793,14 @@ def send_email_smtp(smtp_cfg, to_addrs, subject, html_body, attachment_paths, cc
         server.sendmail(from_addr, all_recipients, msg.as_string())
         server.quit()
 
-        # Salvar cópia na pasta 'Itens Enviados' do UOL Pro via IMAP
+        # Salvar cópia na pasta 'Itens Enviados' do servidor de e-mail via IMAP
         saved_sent = False
         saved_folder = ""
+        effective_cfg = dict(smtp_cfg)
+        effective_cfg["smtp_user"] = user
+        effective_cfg["smtp_password"] = pwd
         try:
-            ok_imap, folder_or_err = save_email_to_sent_imap(smtp_cfg, msg.as_bytes())
+            ok_imap, folder_or_err = save_email_to_sent_imap(effective_cfg, msg.as_bytes())
             saved_sent = ok_imap
             saved_folder = folder_or_err
         except Exception as ex_imap:

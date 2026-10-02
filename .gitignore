@@ -1,5 +1,7 @@
 # Configuração real local (contém credenciais, hostnames e histórico pessoal)
 config.json
+config.backup.json
+*.backup.json
 
 # Diretórios e binários de compilação PyInstaller
 build/
