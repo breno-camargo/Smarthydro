@@ -12,6 +12,7 @@ from core.email_sender import (
     parse_recipients, send_email_smtp, prepare_html_for_preview
 )
 from gui.email_template_dialog import EmailTemplateDialog
+from gui.ui_helpers import apply_window_icon, center_modal
 
 COLOR_PRIMARY = "#3D6B24"
 COLOR_PRIMARY_HOVER = "#2D501A"
@@ -26,6 +27,8 @@ class SendEmailDialog(tk.Toplevel):
         self.configure(bg=COLOR_BG_LIGHT)
         self.transient(parent)
         self.grab_set()
+
+        apply_window_icon(self)
 
         self.xlsx_path = xlsx_path
         self.pdf_path = pdf_path if pdf_path and os.path.exists(pdf_path) else (
@@ -42,20 +45,7 @@ class SendEmailDialog(tk.Toplevel):
         )
 
         self._build_ui()
-        self._center_on_parent(parent, 580, 520)
-
-    def _center_on_parent(self, parent, w, h):
-        self.update_idletasks()
-        try:
-            p_x = parent.winfo_rootx()
-            p_y = parent.winfo_rooty()
-            p_w = parent.winfo_width()
-            p_h = parent.winfo_height()
-            x = p_x + (p_w - w) // 2
-            y = p_y + (p_h - h) // 2
-            self.geometry(f"{w}x{h}+{max(0, x)}+{max(0, y)}")
-        except Exception:
-            self.geometry(f"{w}x{h}")
+        center_modal(self, parent, 580, 520)
 
     def _build_ui(self):
         container = ttk.Frame(self, padding="18 16 18 16")

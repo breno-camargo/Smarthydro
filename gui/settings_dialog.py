@@ -10,6 +10,7 @@ from core.database import get_available_odbc_drivers, test_db_connection
 from core.report_generator import open_template_in_excel
 from core.email_sender import test_smtp_connection, get_email_template_path
 from gui.email_template_dialog import EmailTemplateDialog
+from gui.ui_helpers import apply_window_icon, center_modal
 
 COLOR_PRIMARY = "#3D6B24"
 COLOR_PRIMARY_HOVER = "#2D501A"
@@ -27,6 +28,8 @@ class SettingsDialog(tk.Toplevel):
         self.transient(parent)
         self.grab_set()
 
+        apply_window_icon(self)
+
         self.on_save_callback = on_save_callback
         self.initial_tab = initial_tab
         self.config = load_config()
@@ -40,21 +43,8 @@ class SettingsDialog(tk.Toplevel):
             except Exception:
                 pass
 
-        # Centralizar sobre a janela principal
-        self._center_on_parent(parent, 560, 540)
-
-    def _center_on_parent(self, parent, w, h):
-        self.update_idletasks()
-        try:
-            p_x = parent.winfo_rootx()
-            p_y = parent.winfo_rooty()
-            p_w = parent.winfo_width()
-            p_h = parent.winfo_height()
-            x = p_x + (p_w - w) // 2
-            y = p_y + (p_h - h) // 2
-            self.geometry(f"{w}x{h}+{max(0, x)}+{max(0, y)}")
-        except Exception:
-            self.geometry(f"{w}x{h}")
+        # Centralizar perfeitamente sobre a janela principal
+        center_modal(self, parent, 560, 520)
 
     def _build_ui(self):
         container = ttk.Frame(self, padding="16 12 16 12")

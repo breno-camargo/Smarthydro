@@ -4,20 +4,23 @@ import subprocess
 import tkinter as tk
 from tkinter import ttk, messagebox
 from core.config_manager import get_base_dir
+from gui.ui_helpers import apply_window_icon, center_modal
 
 TASK_NAME = "ExtracaoHidrometrosPamplona"
 
 class SchedulerDialog(tk.Toplevel):
     def __init__(self, parent):
         super().__init__(parent)
-        self.title("Agendamento Automático no Windows")
-        self.geometry("500x380")
+        self.title("Agendamento Automático no Windows — CompaSSS")
         self.resizable(False, False)
         self.transient(parent)
         self.grab_set()
 
+        apply_window_icon(self)
+
         self._build_ui()
         self._check_existing_task()
+        center_modal(self, parent, 520, 390)
 
     def _build_ui(self):
         pad = ttk.Frame(self, padding=16)

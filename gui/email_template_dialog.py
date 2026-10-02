@@ -10,6 +10,7 @@ from core.email_sender import (
     load_email_template, save_email_template, get_email_template_path,
     DEFAULT_HTML_BODY, DEFAULT_SUBJECT_TEMPLATE, render_email, prepare_html_for_preview
 )
+from gui.ui_helpers import apply_window_icon, center_modal
 
 COLOR_PRIMARY = "#3D6B24"
 COLOR_PRIMARY_HOVER = "#2D501A"
@@ -24,23 +25,13 @@ class EmailTemplateDialog(tk.Toplevel):
         self.transient(parent)
         self.grab_set()
 
+        apply_window_icon(self)
+
         self.on_save_callback = on_save_callback
         self._build_ui()
         self._load_template()
-        self._center_on_parent(parent, 760, 650)
+        center_modal(self, parent, 560, 510)
 
-    def _center_on_parent(self, parent, w, h):
-        self.update_idletasks()
-        try:
-            p_x = parent.winfo_rootx()
-            p_y = parent.winfo_rooty()
-            p_w = parent.winfo_width()
-            p_h = parent.winfo_height()
-            x = p_x + (p_w - w) // 2
-            y = p_y + (p_h - h) // 2
-            self.geometry(f"{w}x{h}+{max(0, x)}+{max(0, y)}")
-        except Exception:
-            self.geometry(f"{w}x{h}")
 
     def _build_ui(self):
         container = ttk.Frame(self, padding="18 16 18 16")
@@ -86,16 +77,15 @@ class EmailTemplateDialog(tk.Toplevel):
             ("{DATA_EMISSAO}", "Data/Hora Atual"),
         ]
 
-        row_f = ttk.Frame(frame_tags)
-        row_f.pack(fill=tk.X)
-
-        for tag, hint in tags:
+        for i, (tag, hint) in enumerate(tags):
             btn = ttk.Button(
-                row_f, text=tag,
+                frame_tags, text=tag,
                 command=lambda t=tag: self._insert_tag(t),
-                width=13
             )
-            btn.pack(side=tk.LEFT, padx=3, pady=2)
+            btn.grid(row=i // 4, column=i % 4, padx=3, pady=2, sticky=tk.EW)
+
+        for col in range(4):
+            frame_tags.columnconfigure(col, weight=1)
 
         # ─── ÁREA DE TEXTO / HTML ───
         lbl_body = ttk.Label(container, text="Conteúdo da Mensagem (HTML):", font=("Segoe UI", 9, "bold"))

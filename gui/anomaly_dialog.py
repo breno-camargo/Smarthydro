@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+from gui.ui_helpers import apply_window_icon, center_modal
 
 COLOR_PRIMARY = "#3D6B24"
 COLOR_PRIMARY_HOVER = "#2D501A"
@@ -15,24 +16,14 @@ class AnomalyDialog(tk.Toplevel):
         self.transient(parent)
         self.grab_set()
 
+        apply_window_icon(self)
+
         self.anomalies = anomalies
         self.periodo_str = periodo_str
 
         self._build_ui()
-        self._center_on_parent(parent, 720, 460)
+        center_modal(self, parent, 600, 480)
 
-    def _center_on_parent(self, parent, w, h):
-        self.update_idletasks()
-        try:
-            p_x = parent.winfo_rootx()
-            p_y = parent.winfo_rooty()
-            p_w = parent.winfo_width()
-            p_h = parent.winfo_height()
-            x = p_x + (p_w - w) // 2
-            y = p_y + (p_h - h) // 2
-            self.geometry(f"{w}x{h}+{max(0, x)}+{max(0, y)}")
-        except Exception:
-            self.geometry(f"{w}x{h}")
 
     def _build_ui(self):
         container = ttk.Frame(self, padding="18 16 18 16")
@@ -78,11 +69,11 @@ class AnomalyDialog(tk.Toplevel):
         self.tree.heading("variacao", text="Variação", anchor=tk.CENTER)
         self.tree.heading("diagnostico", text="Diagnóstico Sugerido", anchor=tk.W)
 
-        self.tree.column("sala", width=170, minwidth=140, anchor=tk.W)
-        self.tree.column("consumo", width=105, minwidth=90, anchor=tk.E)
-        self.tree.column("media", width=100, minwidth=85, anchor=tk.E)
-        self.tree.column("variacao", width=95, minwidth=80, anchor=tk.CENTER)
-        self.tree.column("diagnostico", width=210, minwidth=170, anchor=tk.W)
+        self.tree.column("sala", width=140, minwidth=120, anchor=tk.W)
+        self.tree.column("consumo", width=95, minwidth=80, anchor=tk.E)
+        self.tree.column("media", width=90, minwidth=75, anchor=tk.E)
+        self.tree.column("variacao", width=80, minwidth=70, anchor=tk.CENTER)
+        self.tree.column("diagnostico", width=160, minwidth=130, anchor=tk.W)
 
         scroll_y = ttk.Scrollbar(frame_table, orient=tk.VERTICAL, command=self.tree.yview)
         self.tree.configure(yscrollcommand=scroll_y.set)
