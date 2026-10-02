@@ -4,7 +4,7 @@
 ![SQL Server](https://img.shields.io/badge/Microsoft%20SQL%20Server-2019%2B-CC292B?style=for-the-badge&logo=microsoftsqlserver&logoColor=white)
 ![Schneider Electric](https://img.shields.io/badge/Schneider%20Electric-EcoStruxure%20EBO-3DCD58?style=for-the-badge)
 ![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20%7C%20Server-0078D6?style=for-the-badge&logo=windows)
-![Status](https://img.shields.io/badge/Status-Produção%20(v2.1)-brightgreen?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Produção%20(v2.3)-brightgreen?style=for-the-badge)
 [![CI](https://github.com/breno-camargo/Smarthydro/actions/workflows/ci.yml/badge.svg)](https://github.com/breno-camargo/Smarthydro/actions/workflows/ci.yml)
 
 Sistema corporativo desenvolvido para extração, cálculo, auditoria e geração automatizada de relatórios mensais de consumo predial de água, conectado diretamente ao banco de dados do **Schneider Electric EcoStruxure Building Operation (EBO)**.
@@ -66,9 +66,20 @@ O **SmartHydro** foi desenvolvido para:
 - **Tabela com Análise de Tendência:** Comparativo mês a mês com indicador de variação volumétrica e percentual.
 - **Exportação Executiva em Excel:** Geração de planilha anual formatada com gráficos para apresentações e reuniões de condomínio.
 
+### 📲 Notificações em Tempo Real (Webhooks)
+- Notificação automática do resumo da medição para canais de equipe de manutenção e engenharia predial.
+- Suporte nativo a **Microsoft Teams** (MessageCards), **Discord** (Embeds coloridos), **Slack** (Blocks), **Telegram** (Bot API) e **Webhooks Genéricos** (JSON POST para gateways de WhatsApp ou automações n8n/Node-RED).
+- Disparo imediato pós-geração e disparo automático durante rotinas silenciosas do Agendador do Windows todo dia 29.
+
+### 💾 Central de Backup & Restauração Completa
+- Exportação segura em `.zip` com 1 clique de todas as preferências, credenciais salvas, perfis de operadores e modelo HTML.
+- Restauração assistida com verificação prévia de manifesto e snapshot de segurança automático antes de aplicar.
+- Facilidade para transferir o software para novos computadores ou migrar de servidor em segundos.
+
 ### 🖥️ Interface Gráfica Executiva (Desktop)
-- Desenvolvida em **Tkinter** com design moderno e paleta executiva.
-- Modal completo de configurações com abas dedicadas (Conexão EBO, E-mail & UOL Pro, Operadores, Desenvolvedor).
+- Desenvolvida em **Tkinter** com design moderno e paleta executiva CompaSSS.
+- Botões compactos de ícones (`⚙️` e `📈`) com tooltips dinâmicos e layout harmonioso.
+- Modal completo de configurações com 6 abas dedicadas (Banco, E-mail, Operadores, Webhooks, Backup, Sobre).
 - Utilitário integrado para criação instantânea de atalho na Área de Trabalho com ícone oficial.
 
 ---
@@ -95,9 +106,14 @@ automacao_hidrometros/
 │   └── runner.py               # Executor headless integrado ao Agendador do Windows
 ├── core/                       # Lógica de negócios e comunicação externa
 │   ├── anomaly_detector.py     # Motor heurístico de detecção de anomalias
+│   ├── backup_manager.py       # Central de exportação e restauração de dados (.zip)
 │   ├── config_manager.py       # Gerenciador de configurações, perfis de operadores e histórico
 │   ├── database.py             # Conector e queries otimizadas SQL Server
 │   ├── email_sender.py         # Despachador de e-mails (SMTP / Outlook) e auditoria IMAP
+│   ├── history_manager.py      # Extração e consolidação dos 12 meses históricos
+│   ├── pdf_generator.py        # Conversor de relatórios em formato PDF executivo
+│   ├── report_generator.py     # Motor de formatação e montagem de planilhas Excel
+│   └── webhook_notifier.py     # Despachador de notificações Webhook (Teams, Discord, Slack, Telegram)
 │   ├── history_manager.py      # Motor de consulta dos 12 ciclos históricos e exportação Excel
 │   └── report_generator.py     # Motor de renderização e estilização de planilhas Excel
 ├── gui/                        # Interface gráfica de usuário (Tkinter)

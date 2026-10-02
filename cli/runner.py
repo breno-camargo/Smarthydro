@@ -135,11 +135,37 @@ def run_cli():
         dt_ini, dt_fim, _, _ = get_billing_cycle_dates(cycle_type)
         val = args.valor or float(config.get("default_m3_price", 63.68))
         try:
-            out_file, warnings, _ = execute_extraction(dt_ini, dt_fim, val, args.saida, config, sort_by_consumption=sort_by_consumption)
+            out_file, warnings, anoms = execute_extraction(dt_ini, dt_fim, val, args.saida, config, sort_by_consumption=sort_by_consumption)
             logging.info(f"[SUCESSO] Relatório gerado: {out_file}")
             if warnings:
                 for w in warnings:
                     logging.warning(f"[AVISO] {w}")
+
+            # Disparo automático de Webhook para Agendamentos
+            if config.get("webhook_enabled", False) and config.get("webhook_notify_scheduled", True):
+                try:
+                    from core.webhook_notifier import send_report_webhook
+                    from core.config_manager import get_active_operator, load_config
+                    cfg_fresh = load_config()
+                    active_op = get_active_operator(cfg_fresh)
+                    op_str = f"{active_op.get('name', 'Sistema')} (Agendador)" if active_op else "Agendador Automático"
+                    recent = cfg_fresh.get("recent_reports", [])
+                    tot_m3 = recent[0].get("total_m3", 0.0) if recent else 0.0
+                    tot_rs = recent[0].get("total_rs", 0.0) if recent else 0.0
+                    p_str = f"{dt_ini[:10]} a {dt_fim[:10]}"
+                    wh_sum = {
+                        "periodo": p_str,
+                        "total_m3": tot_m3,
+                        "total_rs": tot_rs,
+                        "anomalias": anoms or [],
+                        "operador": op_str,
+                        "excel_file": os.path.basename(out_file)
+                    }
+                    ok_wh, msg_wh = send_report_webhook(wh_sum, cfg_fresh)
+                    logging.info(f"Notificação Webhook agendada: {msg_wh}")
+                except Exception as ex_wh:
+                    logging.warning(f"Erro ao disparar webhook agendado: {ex_wh}")
+
             if sys.stdout:
                 print(f"[SUCESSO] Relatório gerado: {out_file}")
             sys.exit(0)

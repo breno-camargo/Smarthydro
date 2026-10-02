@@ -1,0 +1,296 @@
+"""
+Módulo de Notificações via Webhook para SmartHydro.
+Suporta Microsoft Teams, Discord, Slack, Telegram e Webhook Genérico (WhatsApp gateways / JSON POST).
+Utiliza apenas a biblioteca padrão (urllib) para total portabilidade sem dependências externas.
+"""
+
+import json
+import logging
+import urllib.request
+import urllib.error
+import urllib.parse
+from datetime import datetime
+
+from core.config_manager import load_config
+
+PLATFORMS = [
+    ("teams", "Microsoft Teams (Incoming Webhook)"),
+    ("discord", "Discord (Canal de Alertas)"),
+    ("slack", "Slack (Incoming Webhook)"),
+    ("telegram", "Telegram (Bot API)"),
+    ("generic", "Webhook Genérico / WhatsApp API (JSON POST)")
+]
+
+
+def _make_http_post(url: str, payload_dict: dict = None, custom_json_str: str = None, headers: dict = None, timeout: int = 12) -> tuple[bool, str]:
+    """Realiza uma requisição HTTP POST segura usando urllib."""
+    if headers is None:
+        headers = {}
+    if "User-Agent" not in headers:
+        headers["User-Agent"] = "SmartHydro-Notifier/2.3 (CompaSSS Praça Pamplona)"
+    if "Content-Type" not in headers:
+        headers["Content-Type"] = "application/json; charset=utf-8"
+
+    if custom_json_str is not None:
+        data_bytes = custom_json_str.encode("utf-8")
+    elif payload_dict is not None:
+        data_bytes = json.dumps(payload_dict, ensure_ascii=False).encode("utf-8")
+    else:
+        data_bytes = b""
+
+    try:
+        req = urllib.request.Request(url, data=data_bytes, headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            status = response.status
+            body = response.read().decode("utf-8", errors="ignore")
+            if 200 <= status < 300:
+                return True, f"Sucesso (HTTP {status})"
+            return False, f"Resposta HTTP {status}: {body[:150]}"
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8", errors="ignore")[:150]
+        return False, f"Erro HTTP {e.code}: {e.reason} ({err_body})"
+    except urllib.error.URLError as e:
+        return False, f"Falha de conexão: {e.reason}"
+    except Exception as e:
+        return False, f"Erro inesperado: {e}"
+
+
+def _format_teams_card(summary: dict) -> dict:
+    """Gera um MessageCard para Microsoft Teams com paleta verde CompaSSS."""
+    periodo = summary.get("periodo", "Período não informado")
+    total_m3 = summary.get("total_m3", 0.0)
+    total_rs = summary.get("total_rs", 0.0)
+    anomalias = summary.get("anomalias", [])
+    operador = summary.get("operador", "Sistema Automático")
+    salas_medidas = summary.get("salas_medidas", 0)
+
+    anomalias_txt = f"{len(anomalias)} sala(s) suspeita(s)" if anomalias else "Nenhuma suspeita detectada (OK)"
+
+    facts = [
+        {"name": "📅 Período de Medição:", "value": periodo},
+        {"name": "💧 Consumo Consolidado:", "value": f"**{total_m3:,.1f} m³**".replace(",", "X").replace(".", ",").replace("X", ".")},
+        {"name": "💰 Faturamento Estimado:", "value": f"**R$ {total_rs:,.2f}**".replace(",", "X").replace(".", ",").replace("X", ".")},
+        {"name": "🏢 Salas / Hidrômetros:", "value": f"{salas_medidas} unidades ativas" if salas_medidas else "54 unidades"},
+        {"name": "⚠️ Auditoria de Consumo:", "value": anomalias_txt},
+        {"name": "👤 Operador Responsável:", "value": operador}
+    ]
+
+    return {
+        "@type": "MessageCard",
+        "@context": "http://schema.org/extensions",
+        "themeColor": "3D6B24",
+        "summary": f"Fechamento de Hidrômetros: {periodo}",
+        "sections": [{
+            "activityTitle": "💧 Relatório de Hidrômetros Concluído",
+            "activitySubtitle": "Condomínio Praça Pamplona • Telemetria Schneider Electric EBO",
+            "facts": facts,
+            "markdown": True
+        }]
+    }
+
+
+def _format_discord_embed(summary: dict) -> dict:
+    """Gera um Embed estilizado para Discord."""
+    periodo = summary.get("periodo", "Período")
+    total_m3 = summary.get("total_m3", 0.0)
+    total_rs = summary.get("total_rs", 0.0)
+    anomalias = summary.get("anomalias", [])
+    operador = summary.get("operador", "Sistema Automático")
+
+    m3_fmt = f"{total_m3:,.1f} m³".replace(",", "X").replace(".", ",").replace("X", ".")
+    rs_fmt = f"R$ {total_rs:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    anom_txt = f"⚠️ {len(anomalias)} sala(s)" if anomalias else "✅ Normal (0)"
+
+    return {
+        "username": "SmartHydro CompaSSS",
+        "embeds": [{
+            "title": "💧 Fechamento Mensal de Hidrômetros — Praça Pamplona",
+            "description": "O relatório de medição foi extraído com sucesso do StruxureWare EBO e compilado.",
+            "color": 4025124,  # #3D6B24 em decimal
+            "fields": [
+                {"name": "📅 Período", "value": periodo, "inline": True},
+                {"name": "💧 Consumo Total", "value": m3_fmt, "inline": True},
+                {"name": "💰 Faturamento", "value": rs_fmt, "inline": True},
+                {"name": "🔍 Auditoria / Vazamento", "value": anom_txt, "inline": True},
+                {"name": "👤 Operador", "value": operador, "inline": True}
+            ],
+            "footer": {"text": "SmartHydro v2.3 • CompaSSS Engenharia Predial"}
+        }]
+    }
+
+
+def _format_slack_blocks(summary: dict) -> dict:
+    """Gera mensagem formatada para Slack."""
+    periodo = summary.get("periodo", "Período")
+    total_m3 = summary.get("total_m3", 0.0)
+    total_rs = summary.get("total_rs", 0.0)
+    operador = summary.get("operador", "Sistema")
+    anomalias = summary.get("anomalias", [])
+
+    m3_fmt = f"{total_m3:,.1f} m³".replace(",", "X").replace(".", ",").replace("X", ".")
+    rs_fmt = f"R$ {total_rs:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    anom_txt = f"⚠️ {len(anomalias)} suspeita(s)" if anomalias else "✅ Tudo normal"
+
+    msg = (
+        f"💧 *SmartHydro — Relatório de Água Concluído*\n"
+        f"🏢 *Condomínio Praça Pamplona*\n"
+        f"• *Período:* {periodo}\n"
+        f"• *Consumo:* {m3_fmt} | *Faturamento:* {rs_fmt}\n"
+        f"• *Auditoria:* {anom_txt}\n"
+        f"• *Operador:* {operador}"
+    )
+    return {"text": msg}
+
+
+def _format_telegram_message(summary: dict) -> str:
+    """Gera texto com formatação Markdown para Telegram."""
+    periodo = summary.get("periodo", "Período")
+    total_m3 = summary.get("total_m3", 0.0)
+    total_rs = summary.get("total_rs", 0.0)
+    operador = summary.get("operador", "Sistema Automático")
+    anomalias = summary.get("anomalias", [])
+
+    m3_fmt = f"{total_m3:,.1f} m³".replace(",", "X").replace(".", ",").replace("X", ".")
+    rs_fmt = f"R$ {total_rs:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    anom_txt = f"⚠️ {len(anomalias)} sala(s) sob suspeita" if anomalias else "✅ Nenhuma anomalia"
+
+    return (
+        f"💧 *SmartHydro — Fechamento Mensal de Água*\n"
+        f"🏢 *Condomínio Praça Pamplona*\n\n"
+        f"📅 *Período:* {periodo}\n"
+        f"💧 *Consumo Total:* `{m3_fmt}`\n"
+        f"💰 *Faturamento Estimado:* `{rs_fmt}`\n"
+        f"🔍 *Auditoria:* {anom_txt}\n"
+        f"👤 *Operador:* {operador}\n\n"
+        f"_Relatório gerado com sucesso via telemetria StruxureWare EBO._"
+    )
+
+
+def _format_generic_json(summary: dict) -> dict:
+    """Payload JSON limpo e estruturado para integrações customizadas (WhatsApp API / Node-RED / n8n)."""
+    return {
+        "event": "hidrometro_report_generated",
+        "app": "SmartHydro",
+        "condominio": "Condominio Praca Pamplona",
+        "periodo": summary.get("periodo"),
+        "total_consumo_m3": summary.get("total_m3"),
+        "total_faturamento_rs": summary.get("total_rs"),
+        "salas_medidas": summary.get("salas_medidas", 54),
+        "anomalias_detectadas": len(summary.get("anomalias", [])),
+        "operador": summary.get("operador"),
+        "arquivo_excel": summary.get("excel_file"),
+        "gerado_em": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+
+
+def send_report_webhook(summary: dict, config: dict = None) -> tuple[bool, str]:
+    """
+    Envia notificação via Webhook para a plataforma configurada.
+    """
+    if config is None:
+        config = load_config()
+
+    if not config.get("webhook_enabled", False):
+        return False, "Webhooks desativados nas configurações."
+
+    platform = config.get("webhook_platform", "teams").lower()
+    url = config.get("webhook_url", "").strip()
+
+    if platform == "telegram":
+        token = config.get("webhook_telegram_token", "").strip()
+        chat_id = config.get("webhook_telegram_chat_id", "").strip()
+        if not token or not chat_id:
+            return False, "Token ou Chat ID do Telegram não configurados."
+        
+        tele_url = f"https://api.telegram.org/bot{token}/sendMessage"
+        text = _format_telegram_message(summary)
+        payload = {
+            "chat_id": chat_id,
+            "text": text,
+            "parse_mode": "Markdown"
+        }
+        return _make_http_post(tele_url, payload)
+
+    if not url:
+        return False, "URL do Webhook não informada."
+
+    if platform == "teams":
+        payload = _format_teams_card(summary)
+    elif platform == "discord":
+        payload = _format_discord_embed(summary)
+    elif platform == "slack":
+        payload = _format_slack_blocks(summary)
+    else:  # generic
+        payload = _format_generic_json(summary)
+
+    return _make_http_post(url, payload)
+
+
+def send_test_webhook(platform: str, url: str, token: str = "", chat_id: str = "") -> tuple[bool, str]:
+    """Envia uma mensagem de teste para validar a conexão com o webhook."""
+    platform = platform.lower()
+    now_str = datetime.now().strftime("%d/%m/%Y às %H:%M:%S")
+
+    sample_summary = {
+        "periodo": "29/09/2026 a 28/10/2026 (Exemplo de Teste)",
+        "total_m3": 1450.2,
+        "total_rs": 92348.73,
+        "salas_medidas": 54,
+        "anomalias": ["Sala 1402 (Teste)"],
+        "operador": "Teste de Notificação CompaSSS",
+        "excel_file": "Rateio_Agua_Teste.xlsx"
+    }
+
+    if platform == "telegram":
+        if not token or not chat_id:
+            return False, "Preencha o Token do Bot e o Chat ID para testar o Telegram."
+        tele_url = f"https://api.telegram.org/bot{token}/sendMessage"
+        text = (
+            f"🔔 *Teste de Notificação SmartHydro*\n"
+            f"Conexão com Telegram Bot realizada com sucesso!\n"
+            f"📅 Testado em: `{now_str}`\n"
+            f"🏢 Condomínio Praça Pamplona • CompaSSS"
+        )
+        return _make_http_post(tele_url, {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"})
+
+    if not url:
+        return False, "Insira a URL do Webhook antes de testar."
+
+    if platform == "teams":
+        payload = {
+            "@type": "MessageCard",
+            "@context": "http://schema.org/extensions",
+            "themeColor": "3D6B24",
+            "summary": "Teste de Webhook SmartHydro",
+            "sections": [{
+                "activityTitle": "🔔 Teste de Notificação — SmartHydro",
+                "activitySubtitle": f"Comunicação com Microsoft Teams OK em {now_str}",
+                "facts": [
+                    {"name": "Status:", "value": "Conexão Estabelecida com Sucesso"},
+                    {"name": "Origem:", "value": "SmartHydro CompaSSS (Praça Pamplona)"}
+                ],
+                "markdown": True
+            }]
+        }
+    elif platform == "discord":
+        payload = {
+            "username": "SmartHydro CompaSSS",
+            "embeds": [{
+                "title": "🔔 Teste de Notificação — SmartHydro",
+                "description": f"Conexão via Webhook com Discord validada com sucesso em {now_str}!",
+                "color": 4025124,
+                "footer": {"text": "SmartHydro Praça Pamplona"}
+            }]
+        }
+    elif platform == "slack":
+        payload = {
+            "text": f"🔔 *Teste de Notificação SmartHydro:* Conexão com Slack estabelecida com sucesso em {now_str}!"
+        }
+    else:
+        payload = {
+            "event": "test_ping",
+            "message": "Teste de conexao SmartHydro realizado com sucesso",
+            "timestamp": now_str
+        }
+
+    return _make_http_post(url, payload)

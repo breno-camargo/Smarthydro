@@ -722,6 +722,37 @@ class AppHidrometrosWindow:
         self.lbl_status.config(text=status_txt)
         self._refresh_history()
 
+        # Disparo assíncrono de notificação Webhook (Teams, Discord, Slack, Telegram) se configurado
+        if self.config.get("webhook_enabled", False):
+            def _wh_worker():
+                try:
+                    from core.webhook_notifier import send_report_webhook
+                    active_op = get_active_operator(self.config)
+                    op_str = f"{active_op.get('name', 'Operador')} ({active_op.get('role', 'Técnico')})" if active_op else "Sistema CompaSSS"
+                    try:
+                        p_str = f"{self.cal_inicio.get_date().strftime('%d/%m/%Y')} a {self.cal_fim.get_date().strftime('%d/%m/%Y')}"
+                    except Exception:
+                        p_str = ""
+
+                    recent = self.config.get("recent_reports", [])
+                    tot_m3 = recent[0].get("total_m3", 0.0) if recent else 0.0
+                    tot_rs = recent[0].get("total_rs", 0.0) if recent else 0.0
+
+                    wh_summary = {
+                        "periodo": p_str,
+                        "total_m3": tot_m3,
+                        "total_rs": tot_rs,
+                        "anomalias": anomalies or [],
+                        "operador": op_str,
+                        "excel_file": os.path.basename(final_file),
+                        "pdf_file": os.path.basename(pdf_file) if has_pdf else None
+                    }
+                    send_report_webhook(wh_summary, self.config)
+                except Exception:
+                    pass
+
+            threading.Thread(target=_wh_worker, daemon=True).start()
+
         # Exibir avisos não-fatais (ex: gráficos não gerados)
         if warnings:
             warning_text = "\n".join(f"• {w}" for w in warnings)

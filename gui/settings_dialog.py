@@ -3,6 +3,7 @@ import subprocess
 import threading
 import tempfile
 import webbrowser
+from datetime import datetime
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 
@@ -63,7 +64,7 @@ class SettingsDialog(tk.Toplevel):
         self.style.configure(
             "Settings.TNotebook.Tab",
             font=("Segoe UI", 9, "bold"),
-            padding=[14, 6]
+            padding=[8, 5]
         )
 
     def _build_ui(self):
@@ -91,12 +92,12 @@ class SettingsDialog(tk.Toplevel):
 
         # ─── ABA 1: BANCO DE DADOS & EXCEL ───
         tab_db = ttk.Frame(self.notebook, padding="14 8 14 8")
-        self.notebook.add(tab_db, text=" 🏢 Banco & Relatórios ")
+        self.notebook.add(tab_db, text=" 🏢 Banco ")
         self._build_tab_db(tab_db)
 
         # ─── ABA 2: E-MAIL & UOL PRO ───
         tab_email = ttk.Frame(self.notebook, padding="14 8 14 8")
-        self.notebook.add(tab_email, text=" ✉ E-mail & UOL Pro ")
+        self.notebook.add(tab_email, text=" ✉ E-mail ")
         self._build_tab_email(tab_email)
 
         # ─── ABA 3: OPERADORES & PERFIS ───
@@ -104,9 +105,19 @@ class SettingsDialog(tk.Toplevel):
         self.notebook.add(tab_ops, text=" 👤 Operadores ")
         self._build_tab_operators(tab_ops)
 
-        # ─── ABA 4: DESENVOLVEDOR ───
+        # ─── ABA 4: NOTIFICAÇÕES & WEBHOOKS ───
+        tab_webhooks = ttk.Frame(self.notebook, padding="14 8 14 8")
+        self.notebook.add(tab_webhooks, text=" 📲 Webhooks ")
+        self._build_tab_webhooks(tab_webhooks)
+
+        # ─── ABA 5: BACKUP & DADOS ───
+        tab_backup = ttk.Frame(self.notebook, padding="14 8 14 8")
+        self.notebook.add(tab_backup, text=" 💾 Backup ")
+        self._build_tab_backup(tab_backup)
+
+        # ─── ABA 6: DESENVOLVEDOR ───
         tab_dev = ttk.Frame(self.notebook, padding="14 8 14 8")
-        self.notebook.add(tab_dev, text=" 💻 Desenvolvedor ")
+        self.notebook.add(tab_dev, text=" 💻 Sobre ")
         self._build_tab_dev(tab_dev)
 
     def _build_tab_db(self, parent):
@@ -423,6 +434,272 @@ class SettingsDialog(tk.Toplevel):
     def _open_operators_manager(self):
         OperatorsDialog(self, on_change_callback=self._refresh_tab_operators)
 
+    def _build_tab_webhooks(self, parent):
+        """Constrói a aba de configuração de Webhooks para Teams, Discord, Slack e Telegram."""
+        parent.columnconfigure(1, weight=1)
+
+        lbl_sec = tk.Label(
+            parent, text="Notificações em Tempo Real (Webhooks)",
+            font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
+        )
+        lbl_sec.grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 2))
+
+        lbl_desc = tk.Label(
+            parent,
+            text="Envie resumos automáticos do fechamento mensal para canais de equipe no Microsoft Teams, Discord, Slack ou Telegram.",
+            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT, wraplength=520, justify=tk.LEFT
+        )
+        lbl_desc.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(0, 8))
+
+        self.var_webhook_enabled = tk.BooleanVar(value=False)
+        self.chk_webhook_enabled = ttk.Checkbutton(
+            parent, text="Ativar Notificações via Webhook ao concluir relatório",
+            variable=self.var_webhook_enabled
+        )
+        self.chk_webhook_enabled.grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(0, 6))
+
+        # Painel de parâmetros do webhook
+        self.frame_wh_settings = ttk.LabelFrame(parent, text="  Configuração da Plataforma  ", padding="12 10 12 10")
+        self.frame_wh_settings.grid(row=3, column=0, columnspan=2, sticky=tk.EW, pady=(0, 8))
+        self.frame_wh_settings.columnconfigure(1, weight=1)
+
+        ttk.Label(self.frame_wh_settings, text="Plataforma:").grid(row=0, column=0, sticky=tk.W, pady=3)
+        self.wh_platform_names = [
+            "Microsoft Teams (Incoming Webhook)",
+            "Discord (Canal de Alertas)",
+            "Slack (Incoming Webhook)",
+            "Telegram (Bot API)",
+            "Webhook Genérico / WhatsApp (JSON POST)"
+        ]
+        self.wh_platform_keys = ["teams", "discord", "slack", "telegram", "generic"]
+        self.cmb_wh_platform = ttk.Combobox(
+            self.frame_wh_settings, values=self.wh_platform_names, state="readonly", width=34
+        )
+        self.cmb_wh_platform.grid(row=0, column=1, sticky=tk.EW, pady=3)
+        self.cmb_wh_platform.bind("<<ComboboxSelected>>", self._on_wh_platform_change)
+
+        # URL Webhook (para Teams, Discord, Slack, Genérico)
+        self.lbl_wh_url = ttk.Label(self.frame_wh_settings, text="URL do Webhook:")
+        self.lbl_wh_url.grid(row=1, column=0, sticky=tk.W, pady=3)
+        self.ent_wh_url = ttk.Entry(self.frame_wh_settings, width=36)
+        self.ent_wh_url.grid(row=1, column=1, sticky=tk.EW, pady=3)
+
+        # Campos específicos para Telegram
+        self.lbl_wh_tele_token = ttk.Label(self.frame_wh_settings, text="Token do Bot:")
+        self.ent_wh_tele_token = ttk.Entry(self.frame_wh_settings, width=36)
+
+        self.lbl_wh_tele_chat = ttk.Label(self.frame_wh_settings, text="Chat ID / Grupo:")
+        self.ent_wh_tele_chat = ttk.Entry(self.frame_wh_settings, width=36)
+
+        # Opções adicionais
+        self.var_wh_scheduled = tk.BooleanVar(value=True)
+        chk_wh_sch = ttk.Checkbutton(
+            self.frame_wh_settings, text="Disparar também em execuções automáticas do Agendador (dia 29)",
+            variable=self.var_wh_scheduled
+        )
+        chk_wh_sch.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=(6, 2))
+
+        self.var_wh_anomalies = tk.BooleanVar(value=True)
+        chk_wh_anom = ttk.Checkbutton(
+            self.frame_wh_settings, text="Destacar alertas de suspeita de vazamento / anomalia no card",
+            variable=self.var_wh_anomalies
+        )
+        chk_wh_anom.grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(0, 6))
+
+        # Botão de Teste
+        frame_test_wh = tk.Frame(parent, bg=COLOR_BG_LIGHT)
+        frame_test_wh.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=(4, 0))
+
+        self.btn_test_webhook = ttk.Button(
+            frame_test_wh, text="🔔 Enviar Mensagem de Teste", command=self._test_webhook_action
+        )
+        self.btn_test_webhook.pack(side=tk.LEFT, padx=(0, 10))
+
+        self.lbl_wh_test_status = tk.Label(
+            frame_test_wh, text="", font=("Segoe UI", 8, "italic"), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT
+        )
+        self.lbl_wh_test_status.pack(side=tk.LEFT)
+
+    def _on_wh_platform_change(self, event=None):
+        idx = self.cmb_wh_platform.current()
+        key = self.wh_platform_keys[idx] if idx >= 0 else "teams"
+        if key == "telegram":
+            self.lbl_wh_url.grid_remove()
+            self.ent_wh_url.grid_remove()
+            self.lbl_wh_tele_token.grid(row=1, column=0, sticky=tk.W, pady=3)
+            self.ent_wh_tele_token.grid(row=1, column=1, sticky=tk.EW, pady=3)
+            self.lbl_wh_tele_chat.grid(row=2, column=0, sticky=tk.W, pady=3)
+            self.ent_wh_tele_chat.grid(row=2, column=1, sticky=tk.EW, pady=3)
+        else:
+            self.lbl_wh_tele_token.grid_remove()
+            self.ent_wh_tele_token.grid_remove()
+            self.lbl_wh_tele_chat.grid_remove()
+            self.ent_wh_tele_chat.grid_remove()
+            self.lbl_wh_url.grid(row=1, column=0, sticky=tk.W, pady=3)
+            self.ent_wh_url.grid(row=1, column=1, sticky=tk.EW, pady=3)
+
+    def _test_webhook_action(self):
+        idx = self.cmb_wh_platform.current()
+        platform = self.wh_platform_keys[idx] if idx >= 0 else "teams"
+        url = self.ent_wh_url.get().strip()
+        token = self.ent_wh_tele_token.get().strip()
+        chat_id = self.ent_wh_tele_chat.get().strip()
+
+        self.btn_test_webhook.config(state=tk.DISABLED)
+        self.lbl_wh_test_status.config(text="Enviando notificação de teste...")
+
+        def _worker():
+            from core.webhook_notifier import send_test_webhook
+            ok, msg = send_test_webhook(platform, url, token, chat_id)
+            def _ui():
+                self.btn_test_webhook.config(state=tk.NORMAL)
+                self.lbl_wh_test_status.config(text=msg)
+                if ok:
+                    messagebox.showinfo("Webhook OK", f"Notificação de teste enviada com sucesso!\n\n{msg}", parent=self)
+                else:
+                    messagebox.showerror("Falha no Webhook", f"Não foi possível enviar para o webhook:\n\n{msg}", parent=self)
+            self.after(0, _ui)
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _build_tab_backup(self, parent):
+        """Constrói a aba de Backup e Restauração de configurações."""
+        lbl_sec = tk.Label(
+            parent, text="Central de Backup & Restauração de Dados",
+            font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
+        )
+        lbl_sec.pack(anchor=tk.W, pady=(0, 2))
+
+        lbl_desc = tk.Label(
+            parent,
+            text="Gere cópias completas de todos os parâmetros, operadores e modelos para transferir entre computadores ou recuperar com segurança.",
+            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT, wraplength=520, justify=tk.LEFT
+        )
+        lbl_desc.pack(anchor=tk.W, pady=(0, 8))
+
+        # Card 1: Exportar Backup
+        card_exp = ttk.LabelFrame(parent, text="  1. Exportar Backup Completo  ", padding="12 8 12 10")
+        card_exp.pack(fill=tk.X, pady=(0, 8))
+
+        lbl_exp_info = ttk.Label(
+            card_exp,
+            text="Cria um arquivo comprimido (.zip) contendo config.json, todos os perfis de operadores cadastrados, senhas salvas e modelo de e-mail.",
+            wraplength=500
+        )
+        lbl_exp_info.pack(anchor=tk.W, pady=(0, 6))
+
+        btn_exp = tk.Button(
+            card_exp, text="💾 Criar e Exportar Backup (.zip)",
+            command=self._export_backup_action,
+            bg=COLOR_PRIMARY, fg="white", activebackground=COLOR_PRIMARY_HOVER,
+            activeforeground="white", font=("Segoe UI", 9, "bold"),
+            relief="flat", padx=14, pady=5, cursor="hand2"
+        )
+        btn_exp.pack(anchor=tk.W)
+
+        # Card 2: Restaurar Backup
+        card_imp = ttk.LabelFrame(parent, text="  2. Restaurar Backup  ", padding="12 8 12 10")
+        card_imp.pack(fill=tk.X, pady=(0, 8))
+
+        lbl_imp_info = ttk.Label(
+            card_imp,
+            text="Carrega as configurações de um arquivo .zip exportado anteriormente. O sistema cria automaticamente uma cópia de segurança antes de aplicar.",
+            wraplength=500
+        )
+        lbl_imp_info.pack(anchor=tk.W, pady=(0, 6))
+
+        btn_imp = tk.Button(
+            card_imp, text="📂 Selecionar Arquivo de Backup para Restaurar...",
+            command=self._restore_backup_action,
+            bg="#EBF3E6", fg=COLOR_PRIMARY, activebackground=COLOR_ACCENT,
+            font=("Segoe UI", 9, "bold"), relief="flat", padx=14, pady=5, cursor="hand2"
+        )
+        btn_imp.pack(anchor=tk.W)
+
+        # Card 3: Atalho da pasta de dados
+        card_data = ttk.LabelFrame(parent, text="  3. Pasta de Arquivos do Sistema  ", padding="12 8 12 10")
+        card_data.pack(fill=tk.X)
+
+        btn_open_data = ttk.Button(
+            card_data, text="📁 Abrir Pasta Raiz do Software no Windows Explorer",
+            command=self._open_data_folder
+        )
+        btn_open_data.pack(anchor=tk.W)
+
+    def _export_backup_action(self):
+        try:
+            from core.backup_manager import create_backup
+            default_name = f"SmartHydro_Backup_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}.zip"
+            target_path = filedialog.asksaveasfilename(
+                parent=self,
+                title="Salvar Arquivo de Backup",
+                initialdir=os.path.join(os.path.expanduser("~"), "Desktop"),
+                initialfile=default_name,
+                filetypes=[("Backup do SmartHydro (*.zip)", "*.zip")]
+            )
+            if not target_path:
+                return
+
+            saved = create_backup(target_path)
+            messagebox.showinfo(
+                "Backup Realizado com Sucesso",
+                f"Todas as configurações, operadores e modelos foram salvos com sucesso em:\n\n{saved}",
+                parent=self
+            )
+        except Exception as e:
+            messagebox.showerror("Erro ao Gerar Backup", f"Falha ao criar arquivo de backup:\n{e}", parent=self)
+
+    def _restore_backup_action(self):
+        zip_file = filedialog.askopenfilename(
+            parent=self,
+            title="Selecionar Arquivo de Backup (.zip)",
+            filetypes=[("Backup do SmartHydro (*.zip)", "*.zip")]
+        )
+        if not zip_file:
+            return
+
+        from core.backup_manager import read_backup_manifest, restore_backup
+        ok, manifest, msg = read_backup_manifest(zip_file)
+        if not ok:
+            messagebox.showerror("Arquivo Inválido", msg, parent=self)
+            return
+
+        created = manifest.get("created_at", "Não informada")
+        n_ops = manifest.get("operators_count", 0)
+        ops_names = ", ".join(manifest.get("operators_names", []))
+
+        confirm = messagebox.askyesno(
+            "Confirmar Restauração",
+            f"Deseja restaurar as configurações deste backup?\n\n"
+            f"• Data do Backup: {created}\n"
+            f"• Operadores ({n_ops}): {ops_names}\n"
+            f"• Banco: {manifest.get('server', '-')}\n\n"
+            f"Uma cópia de segurança do seu estado atual será criada automaticamente.",
+            parent=self,
+            icon="warning"
+        )
+        if not confirm:
+            return
+
+        res_ok, res_msg, new_cfg = restore_backup(zip_file)
+        if res_ok:
+            self.config = new_cfg
+            self._load_values()
+            self._refresh_tab_operators()
+            if self.on_save_callback:
+                self.on_save_callback(new_cfg)
+            messagebox.showinfo("Restauração Concluída", f"{res_msg}\n\nAs telas foram atualizadas com os dados importados!", parent=self)
+        else:
+            messagebox.showerror("Erro ao Restaurar", res_msg, parent=self)
+
+    def _open_data_folder(self):
+        from core.config_manager import get_base_dir
+        base = get_base_dir()
+        try:
+            os.startfile(base)
+        except Exception as e:
+            messagebox.showerror("Erro", f"Não foi possível abrir a pasta:\n{e}", parent=self)
+
     def _build_tab_dev(self, parent):
         """Constrói a aba com informações de autoria e créditos do desenvolvedor."""
         card = tk.Frame(
@@ -721,6 +998,23 @@ class SettingsDialog(tk.Toplevel):
         self.ent_smtp_user.insert(0, self.config.get("smtp_user", ""))
         self.ent_smtp_pass.insert(0, self.config.get("smtp_password", ""))
 
+        # Webhook
+        self.var_webhook_enabled.set(self.config.get("webhook_enabled", False))
+        curr_plat = self.config.get("webhook_platform", "teams").lower()
+        if curr_plat in self.wh_platform_keys:
+            self.cmb_wh_platform.current(self.wh_platform_keys.index(curr_plat))
+        else:
+            self.cmb_wh_platform.current(0)
+        self.ent_wh_url.delete(0, tk.END)
+        self.ent_wh_url.insert(0, self.config.get("webhook_url", ""))
+        self.ent_wh_tele_token.delete(0, tk.END)
+        self.ent_wh_tele_token.insert(0, self.config.get("webhook_telegram_token", ""))
+        self.ent_wh_tele_chat.delete(0, tk.END)
+        self.ent_wh_tele_chat.insert(0, self.config.get("webhook_telegram_chat_id", ""))
+        self.var_wh_scheduled.set(self.config.get("webhook_notify_scheduled", True))
+        self.var_wh_anomalies.set(self.config.get("webhook_notify_anomalies", True))
+        self._on_wh_platform_change()
+
     def _browse_dir(self):
         selected = filedialog.askdirectory(initialdir=self.ent_dir.get() or os.path.expanduser("~"))
         if selected:
@@ -732,6 +1026,9 @@ class SettingsDialog(tk.Toplevel):
             port_val = int(self.ent_smtp_port.get().strip())
         except ValueError:
             port_val = 465
+
+        idx_plat = self.cmb_wh_platform.current()
+        wh_plat = self.wh_platform_keys[idx_plat] if idx_plat >= 0 else "teams"
 
         updated_cfg = self.config.copy()
         updated_cfg.update({
@@ -754,6 +1051,14 @@ class SettingsDialog(tk.Toplevel):
             "smtp_use_ssl": self.var_smtp_ssl.get(),
             "smtp_user": self.ent_smtp_user.get().strip(),
             "smtp_password": self.ent_smtp_pass.get().strip(),
+            # Webhook
+            "webhook_enabled": self.var_webhook_enabled.get(),
+            "webhook_platform": wh_plat,
+            "webhook_url": self.ent_wh_url.get().strip(),
+            "webhook_telegram_token": self.ent_wh_tele_token.get().strip(),
+            "webhook_telegram_chat_id": self.ent_wh_tele_chat.get().strip(),
+            "webhook_notify_scheduled": self.var_wh_scheduled.get(),
+            "webhook_notify_anomalies": self.var_wh_anomalies.get(),
         })
         return updated_cfg
 

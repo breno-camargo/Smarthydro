@@ -43,7 +43,14 @@ DEFAULT_CONFIG = {
     "smtp_password": "",
     "recent_reports": [],
     "active_operator_id": "breno",
-    "operators": DEFAULT_OPERATORS
+    "operators": DEFAULT_OPERATORS,
+    "webhook_enabled": False,
+    "webhook_platform": "teams",
+    "webhook_url": "",
+    "webhook_telegram_token": "",
+    "webhook_telegram_chat_id": "",
+    "webhook_notify_scheduled": True,
+    "webhook_notify_anomalies": True
 }
 
 def get_base_dir():
