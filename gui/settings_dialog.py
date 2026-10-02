@@ -369,7 +369,7 @@ class SettingsDialog(tk.Toplevel):
 
         info_items = [
             ("Desenvolvido por:", "Breno Camargo", True),
-            ("E-mail:", "breno.camargo@compasss.com.br", False),
+            ("E-mail / Contato:", "breno.hsc75@gmail.com", False),
             ("Empresa:", "CompaSSS Tecnologia e Automação", False),
             ("Empreendimento:", "Condomínio Praça Pamplona", False),
             ("Integração BMS:", "Schneider Electric StruxureWare EBO (SQL Server)", False),
@@ -398,10 +398,10 @@ class SettingsDialog(tk.Toplevel):
 
         btn_github = tk.Button(
             frame_actions,
-            text="🌐 Repositório no GitHub",
+            text="🌐 GitHub",
             command=lambda: webbrowser.open("https://github.com/breno-camargo/Smarthydro"),
             bg="#EBF3E6", fg=COLOR_PRIMARY, activebackground=COLOR_ACCENT,
-            font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=5,
+            font=("Segoe UI", 9, "bold"), relief="flat", padx=10, pady=5,
             cursor="hand2", takefocus=False
         )
         btn_github.pack(side=tk.LEFT, padx=(0, 8))
@@ -418,7 +418,7 @@ class SettingsDialog(tk.Toplevel):
 
         btn_shortcut = tk.Button(
             frame_actions,
-            text="🖥️ Criar Atalho na Área de Trabalho",
+            text="🖥️ Criar Atalho",
             command=self._create_desktop_shortcut_action,
             bg="#EBF3E6", fg=COLOR_PRIMARY, activebackground=COLOR_ACCENT,
             font=("Segoe UI", 9, "bold"), relief="flat", padx=10, pady=5,
@@ -443,10 +443,10 @@ class SettingsDialog(tk.Toplevel):
 
     def _copy_dev_email(self):
         self.clipboard_clear()
-        self.clipboard_append("breno.camargo@compasss.com.br")
+        self.clipboard_append("breno.hsc75@gmail.com")
         messagebox.showinfo(
             "Copiado!",
-            "E-mail de contato copiado para a área de transferência:\n\nbreno.camargo@compasss.com.br",
+            "E-mail de contato copiado para a área de transferência:\n\nbreno.hsc75@gmail.com",
             parent=self
         )
 
