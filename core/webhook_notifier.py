@@ -94,12 +94,21 @@ def _format_whatsapp_message(summary: dict) -> str:
     rs_fmt = f"R$ {total_rs:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     anom_txt = f"⚠️ {len(anomalias)} sala(s) sob suspeita" if anomalias else "✅ Nenhuma anomalia (Normal)"
 
+    sabesp = summary.get("sabesp")
+    sabesp_line = ""
+    if sabesp:
+        m3_sab = sabesp.get("consumo_sabesp_m3", 0.0)
+        val_sab = sabesp.get("valor_total_fatura", 0.0)
+        val_sab_fmt = f"R$ {val_sab:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        sabesp_line = f"🏷️ *Fatura Sabesp:* {val_sab_fmt} (Sabesp: {m3_sab:,.0f} m³)\n"
+
     return (
         f"💧 *SmartHydro — Relatório de Água Concluído*\n"
         f"🏢 *Condomínio Praça Pamplona*\n\n"
         f"📅 *Período:* {periodo}\n"
         f"💧 *Consumo Total:* {m3_fmt}\n"
         f"💰 *Faturamento Estimado:* {rs_fmt}\n"
+        f"{sabesp_line}"
         f"🔍 *Auditoria:* {anom_txt}\n"
         f"👤 *Operador:* {operador}\n"
         f"📄 *Planilha:* {excel_file}\n\n"

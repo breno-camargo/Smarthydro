@@ -72,6 +72,13 @@ O **SmartHydro** foi desenvolvido para:
 - Suporte corporativo a canais de equipe de manutenção e engenharia predial: **Microsoft Teams** (MessageCards), **Discord** (Embeds coloridos), **Slack** (Blocks), **Telegram** (Bot API) e **Webhooks Genéricos** (JSON POST para gateways ou automações n8n/Node-RED).
 - Disparo imediato pós-geração e disparo automático durante rotinas silenciosas do Agendador do Windows todo dia 29.
 
+### 📄 Leitor Inteligente de Fatura Sabesp (PDF & E-mail IMAP)
+- **Extração Automática de Metadados:** Leitura digital direta do PDF oficial da concessionária (Sabesp) usando `pypdf`.
+- **Identificação da Tarifa Marginal da Faixa:** Localização da faixa de consumo predial (> 50 m³) e soma automática das tarifas de Água + Esgoto (`R$ 31,84 + R$ 31,84 = R$ 63,68`), imune a esquecimento durante reajustes tarifários anuais.
+- **Sincronização de Ciclos:** Ajuste automático das datas de início e término das leituras das salas baseado na leitura anterior e atual da Sabesp.
+- **Busca Assistida no E-mail (IMAP):** Conexão segura com a caixa de entrada do operador para localizar e baixar faturas enviadas pela administradora.
+- **Preenchimento em 1 Clique:** Ajuste instantâneo de todos os parâmetros na tela principal do SmartHydro.
+
 ### 💾 Central de Backup & Restauração Completa
 - Exportação segura em `.zip` com 1 clique de todas as preferências, credenciais salvas, perfis de operadores e modelo HTML.
 - Restauração assistida com verificação prévia de manifesto e snapshot de segurança automático antes de aplicar.

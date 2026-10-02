@@ -57,6 +57,7 @@ class AppHidrometrosWindow:
 
         self._configure_styles()
         self.config = load_config()
+        self.sabesp_data = None
 
         self._build_ui()
         self._set_default_dates()
@@ -199,14 +200,26 @@ class AppHidrometrosWindow:
         self.ent_valor.insert(0, str(self.config.get("default_m3_price", "63.68")))
         self.ent_valor.grid(row=2, column=1, sticky=tk.W, pady=6, padx=(10, 0))
 
-        # ─── LADO DIREITO: BOTÃO DO CICLO + OPÇÕES INTEGRADAS ───
+        # ─── LADO DIREITO: BOTÕES DE PREENCHIMENTO RÁPIDO + OPÇÕES ───
         frame_right = tk.Frame(frame_card, bg=COLOR_BG_LIGHT)
         frame_right.grid(row=0, column=2, rowspan=3, sticky=tk.NW, padx=(26, 0), pady=(2, 6))
 
+        frame_quick_btns = tk.Frame(frame_right, bg=COLOR_BG_LIGHT)
+        frame_quick_btns.pack(anchor=tk.W, pady=(0, 6))
+
         btn_ciclo = ttk.Button(
-            frame_right, text="⚡ Preencher Ciclo Atual", command=self._apply_closed_cycle
+            frame_quick_btns, text="⚡ Ciclo Automático", command=self._apply_closed_cycle
         )
-        btn_ciclo.pack(anchor=tk.W, pady=(0, 6))
+        btn_ciclo.pack(side=tk.LEFT, padx=(0, 6))
+
+        btn_sabesp = tk.Button(
+            frame_quick_btns,
+            text="📄 Fatura Sabesp",
+            command=self._open_sabesp_dialog,
+            bg="#EBF3E6", fg=COLOR_PRIMARY, activebackground=COLOR_ACCENT,
+            font=("Segoe UI", 8, "bold"), relief="flat", padx=8, pady=3, cursor="hand2"
+        )
+        btn_sabesp.pack(side=tk.LEFT)
 
         self.var_sort_desc = tk.BooleanVar(value=self.config.get("sort_by_consumption", True))
         chk_sort = ttk.Checkbutton(
@@ -349,6 +362,47 @@ class AppHidrometrosWindow:
             self.lbl_status.config(text=f"Datas ajustadas para o ciclo fechado: {ini_str} a {fim_str}")
         except Exception:
             pass
+
+    def _open_sabesp_dialog(self):
+        """Abre o diálogo inteligente de importação e leitura de fatura da Sabesp."""
+        from gui.sabesp_dialog import SabespImportDialog
+        SabespImportDialog(self.root, self.config, on_apply_callback=self._apply_sabesp_data)
+
+    def _apply_sabesp_data(self, data: dict, selected_rate: float):
+        """Aplica as datas e a tarifa da fatura Sabesp diretamente nos campos da interface."""
+        try:
+            from datetime import datetime
+            ini_str = data.get("periodo_rateio_ini", "")
+            fim_str = data.get("periodo_rateio_fim", "")
+            if ini_str:
+                d_ini = datetime.strptime(ini_str, "%d/%m/%Y")
+                self.cal_inicio.set_date(d_ini)
+            if fim_str:
+                d_fim = datetime.strptime(fim_str, "%d/%m/%Y")
+                self.cal_fim.set_date(d_fim)
+
+            self.ent_valor.delete(0, tk.END)
+            self.ent_valor.insert(0, f"{selected_rate:.2f}")
+
+            self.sabesp_data = data
+            cons_sab = data.get("consumo_sabesp_m3", 0.0)
+            tot_fat = data.get("valor_total_fatura", 0.0)
+            self.lbl_status.config(
+                text=f"✔ Fatura Sabesp ({data.get('arquivo_origem', 'PDF')}): {ini_str} a {fim_str} | R$ {selected_rate:.2f}/m³ (Volume Sabesp: {cons_sab:,.0f} m³ | Total: R$ {tot_fat:,.2f})",
+                fg=COLOR_PRIMARY
+            )
+            messagebox.showinfo(
+                "Fatura Sabesp Aplicada",
+                f"Parâmetros atualizados com sucesso a partir da fatura Sabesp!\n\n"
+                f"• Período do Rateio: {ini_str} a {fim_str}\n"
+                f"• Tarifa Aplicada: R$ {selected_rate:.2f} / m³\n"
+                f"• Consumo Geral Sabesp: {cons_sab:,.1f} m³\n"
+                f"• Total da Fatura: R$ {tot_fat:,.2f}\n\n"
+                f"Pronto para gerar o relatório com 1 clique.",
+                parent=self.root
+            )
+        except Exception as e:
+            messagebox.showwarning("Aviso", f"Erro ao aplicar dados da Sabesp: {e}", parent=self.root)
 
     def _browse_output_dir(self):
         curr = self.lbl_pasta.get().strip() or os.path.expanduser("~")
@@ -745,7 +799,8 @@ class AppHidrometrosWindow:
                         "anomalias": anomalies or [],
                         "operador": op_str,
                         "excel_file": os.path.basename(final_file),
-                        "pdf_file": os.path.basename(pdf_file) if has_pdf else None
+                        "pdf_file": os.path.basename(pdf_file) if has_pdf else None,
+                        "sabesp": self.sabesp_data
                     }
                     send_report_webhook(wh_summary, self.config)
                 except Exception:
