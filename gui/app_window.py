@@ -26,8 +26,8 @@ class AppHidrometrosWindow:
     def __init__(self, root):
         self.root = root
         self.root.title("CompaSSS — Medição de Água Praça Pamplona")
-        self.root.geometry("620x700")
-        self.root.minsize(580, 660)
+        self.root.geometry("640x700")
+        self.root.minsize(600, 660)
         self.root.configure(bg=COLOR_BG_LIGHT)
 
         self._set_window_icon()
@@ -400,9 +400,9 @@ class AppHidrometrosWindow:
             f_name = item.get("filename", os.path.basename(f_path))
             dt_ger = item.get("gerado_em", "")
 
-            # Padronizar nome: retirar .xlsx e truncar de forma uniforme no mesmo tamanho
+            # Padronizar nome: retirar .xlsx e permitir exibição do nome completo sem cortes
             clean_name = f_name[:-5] if f_name.lower().endswith(".xlsx") else f_name
-            max_len = 32
+            max_len = 38
             disp_name = clean_name[:max_len] + "..." if len(clean_name) > max_len else clean_name
 
             row_frame = tk.Frame(self.frame_history_list, bg=COLOR_BG_LIGHT)
@@ -445,23 +445,24 @@ class AppHidrometrosWindow:
             )
             btn_del.pack(side=tk.RIGHT, padx=(4, 0))
 
-            # Lado esquerdo: Nome em negrito com largura fixa para alinhamento em coluna
+            # Lado esquerdo: Nome em negrito com espaço amplo para não cortar nenhum mês
             lbl_left = tk.Frame(row_frame, bg=COLOR_BG_LIGHT)
             lbl_left.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
             lbl_f = tk.Label(
                 lbl_left, text=f"•  {disp_name}", font=("Segoe UI", 9, "bold"),
                 fg=COLOR_TEXT_MAIN, bg=COLOR_BG_LIGHT,
-                width=22, anchor="w"
+                width=28, anchor="w"
             )
             lbl_f.pack(side=tk.LEFT)
 
+            # Data de geração posicionada mais ao meio
             if dt_ger:
                 lbl_d = tk.Label(
                     lbl_left, text=f"({dt_ger})", font=("Segoe UI", 8),
                     fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT
                 )
-                lbl_d.pack(side=tk.LEFT, padx=(4, 0))
+                lbl_d.pack(side=tk.LEFT, padx=(18, 0))
 
             sent_time = send_log.get(f_name)
             if sent_time:
@@ -469,7 +470,7 @@ class AppHidrometrosWindow:
                     lbl_left, text=f"• ✉ Enviado em {sent_time}", font=("Segoe UI", 8, "italic"),
                     fg="#2D6B22", bg=COLOR_BG_LIGHT
                 )
-                lbl_sent.pack(side=tk.LEFT, padx=(6, 0))
+                lbl_sent.pack(side=tk.LEFT, padx=(10, 0))
 
         # Agenda próxima checagem periódica em 30 segundos
         self._history_timer_id = self.root.after(30000, lambda: self._refresh_history(force=False))
