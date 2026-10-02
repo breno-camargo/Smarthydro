@@ -6,70 +6,172 @@
   <style>
     body {
       font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+      background-color: #F6F9F2;
       color: #1B2A12;
       margin: 0;
       padding: 20px;
+    }
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      background-color: #FFFFFF;
+      border: 1px solid #D5E5C9;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .header {
+      background-color: #3D6B24;
+      color: #FFFFFF;
+      padding: 20px 24px;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .header p {
+      margin: 4px 0 0 0;
+      font-size: 12px;
+      color: #C8DEB8;
+    }
+    .content {
+      padding: 22px 24px;
       font-size: 14px;
       line-height: 1.6;
-      background-color: #FFFFFF;
     }
-    .email-body {
-      max-width: 640px;
+    .summary-box {
+      background-color: #F6F9F2;
+      border: 1px solid #D5E5C9;
+      border-radius: 5px;
+      padding: 14px 18px;
+      margin: 16px 0;
     }
-    p {
-      margin: 0 0 12px 0;
+    .summary-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #3D6B24;
+      margin-bottom: 10px;
+    }
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .summary-table td {
+      padding: 4px 0;
+      font-size: 13px;
+    }
+    .summary-table td.label {
+      color: #55664C;
+      width: 45%;
+    }
+    .summary-table td.val {
+      color: #1B2A12;
+      font-weight: 600;
+      text-align: right;
+    }
+    .attachments {
+      background-color: #FAFCF8;
+      border-left: 3px solid #3D6B24;
+      padding: 10px 14px;
+      margin: 16px 0;
+      font-size: 13px;
+      color: #44553B;
+    }
+    .attachments ul {
+      margin: 4px 0 0 0;
+      padding-left: 18px;
+    }
+    .attachments li {
+      margin-bottom: 3px;
     }
     .signature {
-      margin-top: 28px;
-      padding-top: 16px;
+      margin-top: 24px;
+      padding-top: 14px;
       border-top: 1px solid #D5E5C9;
     }
     .sig-name {
       font-weight: 700;
       font-size: 14px;
       color: #1B2A12;
-      margin-bottom: 2px;
     }
     .sig-details {
-      font-size: 12px;
+      font-size: 11px;
       color: #55664C;
       line-height: 1.5;
+      margin-top: 2px;
     }
     .sig-details a {
       color: #3D6B24;
       text-decoration: none;
     }
-    .sig-details a:hover {
-      text-decoration: underline;
-    }
     .sig-logo {
-      margin-top: 12px;
+      margin-top: 10px;
     }
     .sig-logo img {
-      height: 45px;
+      height: 40px;
     }
   </style>
 </head>
 <body>
-  <div class="email-body">
-    <p>Prezados, boa tarde!</p>
+  <div class="container">
+    <div class="header">
+      <h1>Relatório de Insumos — {MES}/{ANO}</h1>
+      <p>Condomínio Praça Pamplona • CompaSSS</p>
+    </div>
+    <div class="content">
+      <p>Prezados, boa tarde!</p>
 
-    <p>Segue em anexo relatório do mês de {MES}.</p>
+      <p>Segue em anexo o relatório de insumos referente ao mês de <strong>{MES}</strong>, período de <strong>{PERIODO}</strong>.</p>
 
-    <p>Quaisquer dúvidas estamos à disposição!</p>
-
-    <div class="signature">
-      <div class="sig-name">Breno Camargo</div>
-      <div class="sig-details">
-        +55 11 99012 7316<br>
-        <a href="mailto:breno.camargo@compasss.com.br">breno.camargo@compasss.com.br</a><br>
-        <a href="https://www.compasss.com.br">www.compasss.com.br</a><br>
-        <br>
-        RJ – Praia de Botafogo, 300 – Mezanino – Botafogo – CEP: 20031-040<br>
-        SP – Alameda Santos, 2477 – 11º Andar – Jardim Paulista – CEP: 01419-101
+      <div class="summary-box">
+        <div class="summary-title">Resumo da Medição</div>
+        <table class="summary-table">
+          <tr>
+            <td class="label">Período:</td>
+            <td class="val">{PERIODO}</td>
+          </tr>
+          <tr>
+            <td class="label">Consumo Total:</td>
+            <td class="val">{TOTAL_M3} m³</td>
+          </tr>
+          <tr>
+            <td class="label">Valor do m³:</td>
+            <td class="val">R$ {VALOR_M3}</td>
+          </tr>
+          <tr>
+            <td class="label">Total Rateado:</td>
+            <td class="val">R$ {TOTAL_VALOR}</td>
+          </tr>
+          <tr>
+            <td class="label">Medidores:</td>
+            <td class="val">{QTD_SALAS}</td>
+          </tr>
+        </table>
       </div>
-      <div class="sig-logo">
-        <img src="https://compasss.com.br/wp-content/uploads/2023/10/Logo-CompaSSS-Positivo.png" alt="CompaSSS" style="height: 45px;">
+
+      <div class="attachments">
+        <strong>Arquivos em anexo:</strong>
+        <ul>
+          <li><strong>Planilha Excel (.xlsx)</strong> — Rateio detalhado sala a sala com histórico.</li>
+          <li><strong>Relatório PDF (.pdf)</strong> — Versão formatada para impressão.</li>
+        </ul>
+      </div>
+
+      <p>Quaisquer dúvidas estamos à disposição!</p>
+
+      <div class="signature">
+        <div class="sig-name">Breno Camargo</div>
+        <div class="sig-details">
+          +55 11 99012 7316<br>
+          <a href="mailto:breno.camargo@compasss.com.br">breno.camargo@compasss.com.br</a><br>
+          <a href="https://www.compasss.com.br">www.compasss.com.br</a><br>
+          <br>
+          RJ – Praia de Botafogo, 300 – Mezanino – Botafogo – CEP: 20031-040<br>
+          SP – Alameda Santos, 2477 – 11º Andar – Jardim Paulista – CEP: 01419-101
+        </div>
+        <div class="sig-logo">
+          <img src="https://compasss.com.br/wp-content/uploads/2023/10/Logo-CompaSSS-Positivo.png" alt="CompaSSS" style="height: 40px;">
+        </div>
       </div>
     </div>
   </div>
