@@ -136,8 +136,20 @@ DEFAULT_HTML_BODY = """<!DOCTYPE html>
 <body>
   <div class="container">
     <div class="header">
-      <h1>Relatório de Insumos — {MES}/{ANO}</h1>
-      <p>Condomínio Praça Pamplona • CompaSSS</p>
+      <table style="width: 100%; border-collapse: collapse; border: 0; margin: 0; padding: 0;">
+        <tr>
+          <td style="vertical-align: middle; text-align: left;">
+            <h1 style="margin: 0; font-size: 18px; font-weight: 600; color: #FFFFFF;">Relatório de Insumos — {MES}/{ANO}</h1>
+            <p style="margin: 4px 0 0 0; font-size: 12px; color: #C8DEB8;">Condomínio Praça Pamplona • Automação Predial</p>
+          </td>
+          <td style="vertical-align: middle; text-align: right; width: 150px;">
+            <div style="display: inline-block; background-color: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.28); border-radius: 4px; padding: 6px 12px; text-align: center;">
+              <div style="font-size: 9px; font-weight: 700; letter-spacing: 0.8px; color: #D7ECD0; text-transform: uppercase;">Telemetria BMS</div>
+              <div style="font-size: 11px; font-weight: 600; color: #FFFFFF; white-space: nowrap; margin-top: 2px;">StruxureWare EBO</div>
+            </div>
+          </td>
+        </tr>
+      </table>
     </div>
     <div class="content">
       <p>Prezados, boa tarde!</p>
