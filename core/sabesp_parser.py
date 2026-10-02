@@ -220,8 +220,8 @@ def search_sabesp_in_email(config: dict, destination_dir: str = None) -> tuple[b
                         subject += str(part)
 
                 sender = msg.get("From", "")
-                is_candidate = any(k in subject.lower() for k in ["sabesp", "agua", "água", "fatura", "conta", "insumos", "pamplona"]) or \
-                               any(k in sender.lower() for k in ["sabesp", "zangari", "pamplona", "joyce"])
+                is_candidate = any(k in subject.lower() for k in ["sabesp", "agua", "água", "fatura", "conta", "insumos", "pamplona", "rateio"]) or \
+                               any(k in sender.lower() for k in ["sabesp", "zangari", "pamplona", "joyce", "yasmim", "gerente", "assistente"])
 
                 # Percorre os anexos
                 for part in msg.walk():
