@@ -144,12 +144,12 @@ class SettingsDialog(tk.Toplevel):
         )
         lbl_sec_em.grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 6))
 
-        ttk.Label(parent, text="Destinatários (Para):").grid(row=1, column=0, sticky=tk.W, pady=4)
+        ttk.Label(parent, text="E-mail do Cliente (Para):").grid(row=1, column=0, sticky=tk.W, pady=4)
         self.ent_recipients = ttk.Entry(parent, width=36)
         self.ent_recipients.grid(row=1, column=1, sticky=tk.EW, pady=4)
 
         lbl_hint_to = tk.Label(
-            parent, text="Separe múltiplos e-mails por ponto-e-vírgula (;)",
+            parent, text="E-mail de quem recebe o relatório (separe vários com ';')",
             font=("Segoe UI", 8, "italic"), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT
         )
         lbl_hint_to.grid(row=2, column=1, sticky=tk.W, pady=(0, 6))
@@ -157,7 +157,7 @@ class SettingsDialog(tk.Toplevel):
         ttk.Label(parent, text="Método de Envio:").grid(row=3, column=0, sticky=tk.W, pady=4)
         self.cmb_send_mode = ttk.Combobox(
             parent,
-            values=["Microsoft Outlook (Recomendado)", "Envio Direto via SMTP (UOL Pro)"],
+            values=["Envio Direto via SMTP (UOL Pro)", "Microsoft Outlook"],
             state="readonly", width=34
         )
         self.cmb_send_mode.grid(row=3, column=1, sticky=tk.EW, pady=4)
@@ -168,7 +168,7 @@ class SettingsDialog(tk.Toplevel):
 
         # ─── SEÇÃO 2: SERVIDOR SMTP (UOL PRO) ───
         lbl_sec_smtp = tk.Label(
-            parent, text="Configurações SMTP (UOL Pro / uhserver)",
+            parent, text="Sua Conta de E-mail (UOL Pro / Remetente)",
             font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
         )
         lbl_sec_smtp.grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(0, 6))
@@ -185,18 +185,18 @@ class SettingsDialog(tk.Toplevel):
         self.ent_smtp_port.pack(side=tk.LEFT)
 
         self.var_smtp_tls = tk.BooleanVar(value=True)
-        self.chk_smtp_tls = ttk.Checkbutton(frame_port, text="STARTTLS", variable=self.var_smtp_tls)
+        self.chk_smtp_tls = ttk.Checkbutton(frame_port, text="STARTTLS (recomendado)", variable=self.var_smtp_tls)
         self.chk_smtp_tls.pack(side=tk.LEFT, padx=(12, 0))
 
-        ttk.Label(parent, text="E-mail / Usuário:").grid(row=8, column=0, sticky=tk.W, pady=3)
+        ttk.Label(parent, text="Seu E-mail (Remetente):").grid(row=8, column=0, sticky=tk.W, pady=3)
         self.ent_smtp_user = ttk.Entry(parent, width=36)
         self.ent_smtp_user.grid(row=8, column=1, sticky=tk.EW, pady=3)
 
-        ttk.Label(parent, text="Senha do E-mail:").grid(row=9, column=0, sticky=tk.W, pady=3)
+        ttk.Label(parent, text="Senha do seu E-mail:").grid(row=9, column=0, sticky=tk.W, pady=3)
         self.ent_smtp_pass = ttk.Entry(parent, width=36, show="*")
         self.ent_smtp_pass.grid(row=9, column=1, sticky=tk.EW, pady=3)
 
-        btn_test_smtp = ttk.Button(parent, text="🔌 Testar Conexão SMTP", command=self._test_smtp)
+        btn_test_smtp = ttk.Button(parent, text="🔌 Testar Conexão com seu E-mail", command=self._test_smtp)
         btn_test_smtp.grid(row=10, column=0, columnspan=2, sticky=tk.W, pady=(6, 8))
 
         # Separador

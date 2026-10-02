@@ -548,23 +548,35 @@ def open_in_outlook(to_addrs, subject, html_body, attachment_paths):
         return False, f"Não foi possível abrir o e-mail no Outlook: {com_err}"
 
 
+def get_effective_smtp_host(host, user):
+    """Retorna o host correto do UOL (smtps.uol.com.br para @uol.com.br ou smtps.uhserver.com para domínios próprios)."""
+    h = (host or "").strip()
+    u = (user or "").strip()
+    if u.lower().endswith("@uol.com.br") and h in ("", "smtps.uhserver.com"):
+        return "smtps.uol.com.br"
+    return h or "smtps.uhserver.com"
+
+
 def send_email_smtp(smtp_cfg, to_addrs, subject, html_body, attachment_paths):
     """
     Envia o e-mail diretamente via servidor SMTP (ex: UOL Pro - smtps.uhserver.com / smtps.uol.com.br).
     """
-    server_host = smtp_cfg.get("smtp_server", "smtps.uhserver.com").strip()
+    raw_host = smtp_cfg.get("smtp_server", "").strip()
+    user = smtp_cfg.get("smtp_user", "").strip()
+    server_host = get_effective_smtp_host(raw_host, user)
     port = int(smtp_cfg.get("smtp_port", 587))
     use_ssl = bool(smtp_cfg.get("smtp_use_ssl", False))
     use_tls = bool(smtp_cfg.get("smtp_use_tls", True))
-    user = smtp_cfg.get("smtp_user", "").strip()
     pwd = smtp_cfg.get("smtp_password", "").strip()
 
     if not server_host:
         return False, "Endereço do servidor SMTP não informado."
     if not to_addrs:
         return False, "Nenhum destinatário informado."
+    if not user:
+        return False, "Por favor, preencha o seu e-mail do UOL nas configurações para enviar."
 
-    from_addr = user if user and "@" in user else "relatorios@pracapamplona.com.br"
+    from_addr = user
     msg = build_mime_message(
         to_addrs=to_addrs,
         subject=subject,
@@ -602,11 +614,12 @@ def test_smtp_connection(smtp_cfg):
     """
     Testa a conexão e credenciais com o servidor SMTP sem enviar mensagem.
     """
-    server_host = smtp_cfg.get("smtp_server", "smtps.uhserver.com").strip()
+    raw_host = smtp_cfg.get("smtp_server", "").strip()
+    user = smtp_cfg.get("smtp_user", "").strip()
+    server_host = get_effective_smtp_host(raw_host, user)
     port = int(smtp_cfg.get("smtp_port", 587))
     use_ssl = bool(smtp_cfg.get("smtp_use_ssl", False))
     use_tls = bool(smtp_cfg.get("smtp_use_tls", True))
-    user = smtp_cfg.get("smtp_user", "").strip()
     pwd = smtp_cfg.get("smtp_password", "").strip()
 
     if not server_host:
