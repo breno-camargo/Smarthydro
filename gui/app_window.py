@@ -26,9 +26,19 @@ class AppHidrometrosWindow:
     def __init__(self, root):
         self.root = root
         self.root.title("CompaSSS — Medição de Água Praça Pamplona")
-        self.root.geometry("640x600")
-        self.root.minsize(600, 580)
+        self.root.resizable(False, False)
         self.root.configure(bg=COLOR_BG_LIGHT)
+
+        # Centralizar a janela no monitor com proporções fixas ideais
+        try:
+            self.root.update_idletasks()
+            s_w = self.root.winfo_screenwidth()
+            s_h = self.root.winfo_screenheight()
+            pos_x = max(0, (s_w - 640) // 2)
+            pos_y = max(0, (s_h - 600) // 2)
+            self.root.geometry(f"640x600+{pos_x}+{pos_y}")
+        except Exception:
+            self.root.geometry("640x600")
 
         self._set_window_icon()
 
