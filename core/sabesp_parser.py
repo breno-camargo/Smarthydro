@@ -170,67 +170,88 @@ def search_sabesp_in_email(config: dict, destination_dir: str = None) -> tuple[b
     try:
         mail = imaplib.IMAP4_SSL(imap_srv, 993, timeout=12)
         mail.login(user, pwd)
-        mail.select("INBOX")
 
-        # Busca os últimos 25 e-mails da caixa de entrada
-        typ, data = mail.search(None, "ALL")
-        if typ != "OK" or not data[0]:
-            mail.logout()
-            return False, "Nenhum e-mail encontrado na caixa de entrada.", None
+        # Prioriza subpastas como Praça Pamplona e depois a INBOX principal
+        folders_to_check = []
+        try:
+            typ_l, folders = mail.list()
+            if typ_l == "OK" and folders:
+                for f in folders:
+                    f_str = f.decode("latin1", errors="ignore")
+                    if "pamplona" in f_str.lower() and "enviados" not in f_str.lower() and "sent" not in f_str.lower():
+                        folder_name = f_str.split(' "." ')[-1].strip()
+                        if folder_name not in folders_to_check:
+                            folders_to_check.append(folder_name)
+        except Exception:
+            pass
 
-        msg_ids = data[0].split()
-        recent_ids = msg_ids[-25:]  # Olha as últimas 25 mensagens
-        recent_ids.reverse()
+        if "INBOX" not in folders_to_check and '"INBOX"' not in folders_to_check:
+            folders_to_check.append("INBOX")
 
-        for m_id in recent_ids:
-            typ_f, m_data = mail.fetch(m_id, "(RFC822)")
-            if typ_f != "OK" or not m_data or not m_data[0]:
+        for folder in folders_to_check:
+            try:
+                typ_sel, _ = mail.select(folder)
+                if typ_sel != "OK":
+                    continue
+            except Exception:
                 continue
 
-            raw_email = m_data[0][1]
-            msg = email.message_from_bytes(raw_email)
+            typ, data = mail.search(None, "ALL")
+            if typ != "OK" or not data[0]:
+                continue
 
-            subject = ""
-            for part, enc in decode_header(msg.get("Subject", "")):
-                if isinstance(part, bytes):
-                    subject += part.decode(enc or "utf-8", errors="ignore")
-                else:
-                    subject += str(part)
+            msg_ids = data[0].split()
+            recent_ids = msg_ids[-30:]  # Olha as últimas 30 mensagens da pasta
+            recent_ids.reverse()
 
-            sender = msg.get("From", "")
-            is_candidate = any(k in subject.lower() for k in ["sabesp", "agua", "água", "fatura", "conta", "pamplona"]) or \
-                           any(k in sender.lower() for k in ["sabesp", "zangari", "pamplona"])
-
-            # Percorre os anexos
-            for part in msg.walk():
-                if part.get_content_maintype() == "multipart":
-                    continue
-                if part.get("Content-Disposition") is None:
+            for m_id in recent_ids:
+                typ_f, m_data = mail.fetch(m_id, "(RFC822)")
+                if typ_f != "OK" or not m_data or not m_data[0]:
                     continue
 
-                filename = part.get_filename()
-                if not filename:
-                    continue
+                raw_email = m_data[0][1]
+                msg = email.message_from_bytes(raw_email)
 
-                fn_clean = ""
-                for p, enc in decode_header(filename):
-                    if isinstance(p, bytes):
-                        fn_clean += p.decode(enc or "utf-8", errors="ignore")
+                subject = ""
+                for part, enc in decode_header(msg.get("Subject", "")):
+                    if isinstance(part, bytes):
+                        subject += part.decode(enc or "utf-8", errors="ignore")
                     else:
-                        fn_clean += str(p)
+                        subject += str(part)
 
-                if fn_clean.lower().endswith(".pdf"):
-                    # Se for candidato ou o nome do anexo sugerir sabesp/fatura/agua
-                    if is_candidate or any(k in fn_clean.lower() for k in ["sabesp", "fatura", "conta", "agua"]):
-                        pdf_path = os.path.join(destination_dir, fn_clean)
-                        with open(pdf_path, "wb") as f_out:
-                            f_out.write(part.get_payload(decode=True))
+                sender = msg.get("From", "")
+                is_candidate = any(k in subject.lower() for k in ["sabesp", "agua", "água", "fatura", "conta", "insumos", "pamplona"]) or \
+                               any(k in sender.lower() for k in ["sabesp", "zangari", "pamplona", "joyce"])
 
-                        # Valida se realmente é Sabesp
-                        ok, _, _ = parse_sabesp_pdf(pdf_path)
-                        if ok:
-                            mail.logout()
-                            return True, f"Fatura encontrada no e-mail de {sender} (Assunto: {subject[:40]}...)", pdf_path
+                # Percorre os anexos
+                for part in msg.walk():
+                    if part.get_content_maintype() == "multipart":
+                        continue
+                    if part.get("Content-Disposition") is None:
+                        continue
+
+                    filename = part.get_filename()
+                    if not filename:
+                        continue
+
+                    fn_clean = ""
+                    for p, enc in decode_header(filename):
+                        if isinstance(p, bytes):
+                            fn_clean += p.decode(enc or "utf-8", errors="ignore")
+                        else:
+                            fn_clean += str(p)
+
+                    if fn_clean.lower().endswith(".pdf"):
+                        if is_candidate or any(k in fn_clean.lower() for k in ["sabesp", "fatura", "conta", "agua"]):
+                            pdf_path = os.path.join(destination_dir, fn_clean)
+                            with open(pdf_path, "wb") as f_out:
+                                f_out.write(part.get_payload(decode=True))
+
+                            # Valida se realmente é Sabesp
+                            ok, _, _ = parse_sabesp_pdf(pdf_path)
+                            if ok:
+                                mail.logout()
+                                return True, f"Fatura encontrada no e-mail de {sender} ({subject[:45]}...)", pdf_path
 
         mail.logout()
         return False, "Nenhuma fatura da Sabesp em PDF foi encontrada nos e-mails recentes.", None
