@@ -3,6 +3,7 @@
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue?style=for-the-badge&logo=python&logoColor=white)
 ![SQL Server](https://img.shields.io/badge/Microsoft%20SQL%20Server-2019%2B-CC292B?style=for-the-badge&logo=microsoftsqlserver&logoColor=white)
 ![Schneider Electric](https://img.shields.io/badge/Schneider%20Electric-EcoStruxure%20EBO-3DCD58?style=for-the-badge)
+![WhatsApp](https://img.shields.io/badge/WhatsApp-CallMeBot%20API-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)
 ![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20%7C%20Server-0078D6?style=for-the-badge&logo=windows)
 ![Status](https://img.shields.io/badge/Status-Produção%20(v2.3)-brightgreen?style=for-the-badge)
 [![CI](https://github.com/breno-camargo/Smarthydro/actions/workflows/ci.yml/badge.svg)](https://github.com/breno-camargo/Smarthydro/actions/workflows/ci.yml)
@@ -66,9 +67,9 @@ O **SmartHydro** foi desenvolvido para:
 - **Tabela com Análise de Tendência:** Comparativo mês a mês com indicador de variação volumétrica e percentual.
 - **Exportação Executiva em Excel:** Geração de planilha anual formatada com gráficos para apresentações e reuniões de condomínio.
 
-### 📲 Notificações em Tempo Real (Webhooks)
-- Notificação automática do resumo da medição para canais de equipe de manutenção e engenharia predial.
-- Suporte nativo a **Microsoft Teams** (MessageCards), **Discord** (Embeds coloridos), **Slack** (Blocks), **Telegram** (Bot API) e **Webhooks Genéricos** (JSON POST para gateways de WhatsApp ou automações n8n/Node-RED).
+### 📲 Notificações em Tempo Real (WhatsApp & Webhooks)
+- Notificação instantânea do resumo executivo da medição (período, consumo m³, faturamento R$, status de auditoria e operador) direto no **WhatsApp** do gestor técnico via API gratuita (CallMeBot).
+- Suporte corporativo a canais de equipe de manutenção e engenharia predial: **Microsoft Teams** (MessageCards), **Discord** (Embeds coloridos), **Slack** (Blocks), **Telegram** (Bot API) e **Webhooks Genéricos** (JSON POST para gateways ou automações n8n/Node-RED).
 - Disparo imediato pós-geração e disparo automático durante rotinas silenciosas do Agendador do Windows todo dia 29.
 
 ### 💾 Central de Backup & Restauração Completa
