@@ -8,6 +8,7 @@ from dateutil.relativedelta import relativedelta
 from core.config_manager import load_config, get_base_dir, format_report_filename, get_report_output_folder
 from core.database import fetch_hidrometros_data, test_db_connection
 from core.report_generator import generate_excel_report
+from core.anomaly_detector import detect_anomalies
 
 def setup_cli_logging():
     log_file = os.path.join(get_base_dir(), "execucao.log")
@@ -94,7 +95,15 @@ def execute_extraction(dt_inicio, dt_fim, valor_m3=None, output_path=None, confi
     if progress_callback:
         progress_callback(100, f"Relatório gerado com sucesso: {os.path.basename(result_path)}")
 
-    return result_path, warnings
+    anomalies = []
+    try:
+        anomalies = detect_anomalies(df)
+        if anomalies:
+            logging.info(f"Auditoria interna: {len(anomalies)} suspeita(s) de anomalia/vazamento encontrada(s).")
+    except Exception as ex_anom:
+        logging.warning(f"Erro ao processar auditoria de anomalias: {ex_anom}")
+
+    return result_path, warnings, anomalies
 
 def run_cli():
     setup_cli_logging()
@@ -126,7 +135,7 @@ def run_cli():
         dt_ini, dt_fim, _, _ = get_billing_cycle_dates(cycle_type)
         val = args.valor or float(config.get("default_m3_price", 63.68))
         try:
-            out_file, warnings = execute_extraction(dt_ini, dt_fim, val, args.saida, config, sort_by_consumption=sort_by_consumption)
+            out_file, warnings, _ = execute_extraction(dt_ini, dt_fim, val, args.saida, config, sort_by_consumption=sort_by_consumption)
             logging.info(f"[SUCESSO] Relatório gerado: {out_file}")
             if warnings:
                 for w in warnings:
@@ -153,7 +162,7 @@ def run_cli():
         dt_fim = parse_date(args.fim, is_end=True)
         val = args.valor or float(config.get("default_m3_price", 63.68))
         try:
-            out_file, warnings = execute_extraction(dt_ini, dt_fim, val, args.saida, config, sort_by_consumption=sort_by_consumption)
+            out_file, warnings, _ = execute_extraction(dt_ini, dt_fim, val, args.saida, config, sort_by_consumption=sort_by_consumption)
             logging.info(f"[SUCESSO] Relatório gerado: {out_file}")
             if warnings:
                 for w in warnings:

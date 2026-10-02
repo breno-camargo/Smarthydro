@@ -13,6 +13,7 @@ from core.report_generator import open_template_in_excel
 from cli.runner import execute_extraction
 from gui.settings_dialog import SettingsDialog
 from gui.email_dialog import SendEmailDialog
+from gui.anomaly_dialog import AnomalyDialog
 
 # Cores institucionais CompaSSS
 COLOR_PRIMARY = "#3D6B24"       # Verde escuro institucional
@@ -615,18 +616,18 @@ class AppHidrometrosWindow:
             def prog_cb(pct, msg):
                 self.root.after(0, lambda: self._update_progress(pct, msg))
 
-            final_file, warnings = execute_extraction(
+            final_file, warnings, anomalies = execute_extraction(
                 d_ini, d_fim, v_m3, output_path, self.config,
                 sort_by_consumption=sort_by_consumption,
                 progress_callback=prog_cb
             )
-            self.root.after(0, lambda: self._on_success(final_file, warnings))
+            self.root.after(0, lambda: self._on_success(final_file, warnings, anomalies))
         except PermissionError as pe:
             self.root.after(0, lambda: self._on_error(str(pe)))
         except Exception as e:
             self.root.after(0, lambda: self._on_error(str(e)))
 
-    def _on_success(self, final_file, warnings=None):
+    def _on_success(self, final_file, warnings=None, anomalies=None):
         self.prog_bar["value"] = 100
         self.btn_gerar.config(state=tk.NORMAL)
 
@@ -646,6 +647,23 @@ class AppHidrometrosWindow:
                 f"O relatório foi gerado, porém com os seguintes avisos:\n\n{warning_text}",
                 parent=self.root
             )
+
+        # Auditoria interna: alertar apenas se houver salas suspeitas
+        if anomalies:
+            try:
+                p_str = f"{self.cal_inicio.get_date().strftime('%d/%m/%Y')} a {self.cal_fim.get_date().strftime('%d/%m/%Y')}"
+            except Exception:
+                p_str = ""
+
+            resp_anom = messagebox.askyesno(
+                "🔍 Auditoria de Consumo — Alertas",
+                f"Relatório gerado com sucesso!\n\n"
+                f"⚠️ O detector encontrou {len(anomalies)} sala(s) com consumo atípico ou suspeita de vazamento.\n\n"
+                f"Deseja conferir a lista de suspeitas agora?",
+                parent=self.root
+            )
+            if resp_anom:
+                AnomalyDialog(self.root, anomalies, p_str)
 
         if self.var_open_excel.get():
             try:
