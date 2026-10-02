@@ -374,17 +374,18 @@ def extract_report_summary(xlsx_path):
     else:
         summary["ano"] = str(datetime.now().year)
 
-    # 2. Ler cabeçalho e totais com openpyxl
+    # 2. Ler cabeçalho e totais com openpyxl usando iter_rows em passagem única ultra-rápida (20ms)
     try:
         import openpyxl
         wb = openpyxl.load_workbook(xlsx_path, data_only=True, read_only=True)
         ws = wb.active
+        rows = list(ws.iter_rows(values_only=True))
+        wb.close()
 
-        # Linhas de cabeçalho (1 a 6)
-        for r in range(1, 7):
-            try:
-                row_vals = [ws.cell(r, c).value for c in range(1, 10)]
-            except Exception:
+        # Linhas de cabeçalho (1 a 7)
+        for r_idx in range(min(7, len(rows))):
+            row_vals = rows[r_idx]
+            if not row_vals:
                 continue
 
             for idx, val in enumerate(row_vals):
@@ -411,61 +412,47 @@ def extract_report_summary(xlsx_path):
                         if m_rooms:
                             summary["qtd_salas"] = m_rooms.group(1)
 
-        # Totais gerais no final da planilha
-        max_r = ws.max_row or 350
-        total_row_idx = None
-        for r in range(max_r, max(7, max_r - 25), -1):
-            try:
-                cell_a = ws.cell(r, 1).value
-            except Exception:
+        # Salas e Totais em passagem única sequencial
+        calc_m3 = 0.0
+        calc_rs = 0.0
+        rooms_count = 0
+
+        for r_idx in range(7, len(rows)):
+            row = rows[r_idx]
+            if not row or len(row) < 3:
                 continue
-            if cell_a and "TOTAL GERAL" in str(cell_a).upper():
-                total_row_idx = r
-                t_m3 = ws.cell(r, 2).value
-                t_rs = ws.cell(r, 3).value
-                if isinstance(t_m3, (int, float)):
-                    summary["total_m3"] = format_br_number(t_m3)
-                if isinstance(t_rs, (int, float)):
-                    summary["total_valor"] = format_br_currency(t_rs)
+            c_a, c_b, c_c = row[0], row[1], row[2]
+
+            if c_a and "TOTAL GERAL" in str(c_a).upper():
+                if isinstance(c_b, (int, float)):
+                    summary["total_m3"] = format_br_number(c_b)
+                if isinstance(c_c, (int, float)):
+                    summary["total_valor"] = format_br_currency(c_c)
                 break
 
+            if c_a and not str(c_a).upper().startswith("TOTAL"):
+                rooms_count += 1
+                if isinstance(c_b, (int, float)):
+                    calc_m3 += float(c_b)
+                if isinstance(c_c, (int, float)):
+                    calc_rs += float(c_c)
+
         # Se as células de total forem fórmulas do Excel (=SUM(...)) que ainda não foram
-        # avaliadas pelo Excel Desktop (data_only=True retorna None), calcula a soma diretamente das salas!
-        if summary["total_m3"] == "0,00" or summary["total_valor"] == "0,00":
-            end_r = total_row_idx if total_row_idx else max_r
-            calc_m3 = 0.0
-            calc_rs = 0.0
-            rooms_count = 0
-            for r in range(8, end_r):
-                try:
-                    c_name = ws.cell(r, 1).value
-                    val_m = ws.cell(r, 2).value
-                    val_r = ws.cell(r, 3).value
-                except Exception:
-                    continue
+        # avaliadas pelo Excel Desktop, calcula a soma diretamente das salas!
+        if summary["total_m3"] == "0,00" and calc_m3 > 0:
+            summary["total_m3"] = format_br_number(calc_m3)
+        if summary["total_valor"] == "0,00" and calc_rs > 0:
+            summary["total_valor"] = format_br_currency(calc_rs)
+        elif summary["total_valor"] == "0,00" and calc_m3 > 0:
+            try:
+                v_m3_float = float(summary["valor_m3"].replace(".", "").replace(",", "."))
+                summary["total_valor"] = format_br_currency(calc_m3 * v_m3_float)
+            except Exception:
+                pass
 
-                if c_name and not str(c_name).upper().startswith("TOTAL"):
-                    rooms_count += 1
-                    if isinstance(val_m, (int, float)):
-                        calc_m3 += float(val_m)
-                    if isinstance(val_r, (int, float)):
-                        calc_rs += float(val_r)
+        if rooms_count > 0:
+            summary["qtd_salas"] = str(rooms_count)
 
-            if calc_m3 > 0:
-                summary["total_m3"] = format_br_number(calc_m3)
-            if calc_rs > 0:
-                summary["total_valor"] = format_br_currency(calc_rs)
-            elif calc_m3 > 0:
-                try:
-                    v_m3_float = float(summary["valor_m3"].replace(".", "").replace(",", "."))
-                    summary["total_valor"] = format_br_currency(calc_m3 * v_m3_float)
-                except Exception:
-                    pass
-
-            if rooms_count > 0:
-                summary["qtd_salas"] = str(rooms_count)
-
-        wb.close()
     except Exception as e:
         logger.warning(f"Erro ao extrair metadados de {xlsx_path}: {e}")
 
