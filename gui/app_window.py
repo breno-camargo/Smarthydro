@@ -142,11 +142,11 @@ class AppHidrometrosWindow:
         # ─── PARÂMETROS DE EXTRAÇÃO (CARD PRINCIPAL) ───
         frame_card = ttk.LabelFrame(main_container, text="  Parâmetros do Relatório  ", padding="16 14 16 14")
         frame_card.pack(fill=tk.X, pady=(0, 14))
-        frame_card.columnconfigure(1, weight=1)
+        frame_card.columnconfigure(2, weight=1)
 
         # Data Inicial com Mini Calendário DateEntry
         lbl_ini = ttk.Label(frame_card, text="Data Inicial:", font=("Segoe UI", 9, "bold"))
-        lbl_ini.grid(row=0, column=0, sticky=tk.W, pady=8)
+        lbl_ini.grid(row=0, column=0, sticky=tk.W, pady=6)
 
         self.cal_inicio = DateEntry(
             frame_card, width=14, font=("Segoe UI", 9),
@@ -155,11 +155,11 @@ class AppHidrometrosWindow:
             selectbackground=COLOR_ACCENT, selectforeground="black",
             date_pattern="dd/mm/yyyy", locale="pt_BR", borderwidth=1
         )
-        self.cal_inicio.grid(row=0, column=1, sticky=tk.W, pady=8, padx=(10, 0))
+        self.cal_inicio.grid(row=0, column=1, sticky=tk.W, pady=6, padx=(10, 0))
 
         # Data Final com Mini Calendário DateEntry
         lbl_fim = ttk.Label(frame_card, text="Data Final:", font=("Segoe UI", 9, "bold"))
-        lbl_fim.grid(row=1, column=0, sticky=tk.W, pady=8)
+        lbl_fim.grid(row=1, column=0, sticky=tk.W, pady=6)
 
         self.cal_fim = DateEntry(
             frame_card, width=14, font=("Segoe UI", 9),
@@ -168,28 +168,49 @@ class AppHidrometrosWindow:
             selectbackground=COLOR_ACCENT, selectforeground="black",
             date_pattern="dd/mm/yyyy", locale="pt_BR", borderwidth=1
         )
-        self.cal_fim.grid(row=1, column=1, sticky=tk.W, pady=8, padx=(10, 0))
-
-        # Botão rápido para preencher o ciclo fechado (dia 29 ao dia 28)
-        btn_ciclo = ttk.Button(
-            frame_card, text="⚡ Preencher Ciclo Atual", command=self._apply_closed_cycle
-        )
-        btn_ciclo.grid(row=0, column=2, rowspan=2, padx=(18, 0), pady=8, sticky=tk.W)
+        self.cal_fim.grid(row=1, column=1, sticky=tk.W, pady=6, padx=(10, 0))
 
         # Valor do m³ (R$)
         lbl_val = ttk.Label(frame_card, text="Valor do m³ (R$):", font=("Segoe UI", 9, "bold"))
-        lbl_val.grid(row=2, column=0, sticky=tk.W, pady=8)
+        lbl_val.grid(row=2, column=0, sticky=tk.W, pady=6)
 
         self.ent_valor = ttk.Entry(frame_card, font=("Segoe UI", 9), width=16)
         self.ent_valor.insert(0, str(self.config.get("default_m3_price", "63.68")))
-        self.ent_valor.grid(row=2, column=1, sticky=tk.W, pady=8, padx=(10, 0))
+        self.ent_valor.grid(row=2, column=1, sticky=tk.W, pady=6, padx=(10, 0))
 
-        # Pasta de Saída
+        # ─── LADO DIREITO: BOTÃO DO CICLO + OPÇÕES INTEGRADAS ───
+        frame_right = tk.Frame(frame_card, bg=COLOR_BG_LIGHT)
+        frame_right.grid(row=0, column=2, rowspan=3, sticky=tk.NW, padx=(26, 0), pady=(2, 6))
+
+        btn_ciclo = ttk.Button(
+            frame_right, text="⚡ Preencher Ciclo Atual", command=self._apply_closed_cycle
+        )
+        btn_ciclo.pack(anchor=tk.W, pady=(0, 6))
+
+        self.var_sort_desc = tk.BooleanVar(value=self.config.get("sort_by_consumption", True))
+        chk_sort = ttk.Checkbutton(
+            frame_right,
+            text="Ordenar por maior consumo",
+            variable=self.var_sort_desc,
+            command=self._update_sort_pref
+        )
+        chk_sort.pack(anchor=tk.W, pady=(0, 4))
+
+        self.var_open_excel = tk.BooleanVar(value=self.config.get("open_excel_after_generation", True))
+        chk_open = ttk.Checkbutton(
+            frame_right,
+            text="Abrir planilha no Excel após gerar",
+            variable=self.var_open_excel,
+            command=self._update_open_excel_pref
+        )
+        chk_open.pack(anchor=tk.W)
+
+        # ─── LINHA INFERIOR: PASTA DE SAÍDA (EXPANDE POR TODA A LARGURA) ───
         lbl_dir = ttk.Label(frame_card, text="Salvar em:", font=("Segoe UI", 9, "bold"))
-        lbl_dir.grid(row=3, column=0, sticky=tk.W, pady=8)
+        lbl_dir.grid(row=3, column=0, sticky=tk.W, pady=(10, 4))
 
         frame_out = tk.Frame(frame_card, bg=COLOR_BG_LIGHT)
-        frame_out.grid(row=3, column=1, sticky=tk.EW, pady=8, padx=(10, 0))
+        frame_out.grid(row=3, column=1, columnspan=2, sticky=tk.EW, pady=(10, 4), padx=(10, 0))
 
         self.lbl_pasta = ttk.Entry(frame_out, font=("Segoe UI", 8))
         self.lbl_pasta.insert(0, self.config.get("output_directory", ""))
@@ -197,26 +218,6 @@ class AppHidrometrosWindow:
 
         btn_browse = ttk.Button(frame_out, text="Alterar...", width=9, command=self._browse_output_dir)
         btn_browse.pack(side=tk.LEFT, padx=(6, 0))
-
-        # Opção: Abrir planilha automaticamente
-        self.var_open_excel = tk.BooleanVar(value=self.config.get("open_excel_after_generation", True))
-        chk_open = ttk.Checkbutton(
-            main_container,
-            text="Abrir planilha no Excel automaticamente após a geração",
-            variable=self.var_open_excel,
-            command=self._update_open_excel_pref
-        )
-        chk_open.pack(anchor=tk.W, pady=(0, 4))
-
-        # Opção: Ordenar por maior consumo
-        self.var_sort_desc = tk.BooleanVar(value=self.config.get("sort_by_consumption", True))
-        chk_sort = ttk.Checkbutton(
-            main_container,
-            text="Ordenar da sala de maior consumo para a de menor consumo",
-            variable=self.var_sort_desc,
-            command=self._update_sort_pref
-        )
-        chk_sort.pack(anchor=tk.W, pady=(0, 6))
 
         # ─── BOTÕES DE AÇÃO INFERIORES (DOCK NO BOTTOM PRIMEIRO PARA NÃO SER CORTADO) ───
         frame_actions = tk.Frame(main_container, bg=COLOR_BG_LIGHT)
