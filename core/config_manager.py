@@ -57,8 +57,9 @@ def format_report_filename(reference_date):
 
 def get_report_year_month(reference_date):
     """
-    Retorna uma tupla (ano_str, mes_nome) com base na data de referência.
-    Ex: ('2026', 'Setembro')
+    Retorna uma tupla (ano_str, pasta_mes) com base na data de referência.
+    Padrão solicitado: '10.26' (Mês.Ano com 2 dígitos cada) para ordenação cronológica correta.
+    Ex: ('2026', '10.26')
     """
     try:
         if isinstance(reference_date, str):
@@ -69,28 +70,30 @@ def get_report_year_month(reference_date):
         else:
             year = reference_date.year
             month = reference_date.month
-        mes_nome = MESES_PT[month - 1]
-        return str(year), mes_nome
+        year_short = str(year)[-2:]
+        folder_name = f"{month:02d}.{year_short}"
+        return str(year), folder_name
     except Exception:
-        return str(datetime.now().year), "Medicao"
+        now = datetime.now()
+        return str(now.year), f"{now.month:02d}.{str(now.year)[-2:]}"
 
 
 def get_report_output_folder(base_out_dir, reference_date):
     """
     Retorna o caminho da subpasta organizada por Ano/Mês dentro da pasta de relatórios.
     Cria a pasta automaticamente se não existir.
-    Ex: C:\...\Relatorios\2026\Setembro
+    Ex: C:\...\Relatorios\2026\10.26
     """
-    year, mes_nome = get_report_year_month(reference_date)
-    target_dir = os.path.join(base_out_dir, year, mes_nome)
+    year, folder_name = get_report_year_month(reference_date)
+    target_dir = os.path.join(base_out_dir, year, folder_name)
     os.makedirs(target_dir, exist_ok=True)
     return target_dir
 
 
 def organize_loose_reports(base_out_dir):
     """
-    Organiza arquivos soltos na raiz da pasta Relatorios, movendo-os
-    para suas respectivas subpastas Ano/Mês.
+    Organiza arquivos soltos na raiz e migra pastas antigas com nome de mês por extenso
+    (ex: 2026\Outubro -> 2026\10.26) para manter a ordem cronológica correta no Windows Explorer.
     """
     import shutil
     import re
@@ -98,20 +101,47 @@ def organize_loose_reports(base_out_dir):
         return
 
     try:
+        # 1. Migrar pastas antigas que usavam nome de mês em texto (ex: 2026\Outubro -> 2026\10.26)
+        for year_item in os.listdir(base_out_dir):
+            year_path = os.path.join(base_out_dir, year_item)
+            if os.path.isdir(year_path) and re.match(r'^\d{4}$', year_item):
+                year_short = year_item[-2:]
+                for sub in os.listdir(year_path):
+                    sub_path = os.path.join(year_path, sub)
+                    if os.path.isdir(sub_path):
+                        for idx, m_nome in enumerate(MESES_PT, 1):
+                            if sub.lower() == m_nome.lower():
+                                new_sub_name = f"{idx:02d}.{year_short}"
+                                new_sub_path = os.path.join(year_path, new_sub_name)
+                                os.makedirs(new_sub_path, exist_ok=True)
+                                for f in os.listdir(sub_path):
+                                    src_f = os.path.join(sub_path, f)
+                                    dst_f = os.path.join(new_sub_path, f)
+                                    if not os.path.exists(dst_f):
+                                        shutil.move(src_f, dst_f)
+                                    elif os.path.abspath(src_f) != os.path.abspath(dst_f):
+                                        try:
+                                            os.remove(src_f)
+                                        except Exception:
+                                            pass
+                                try:
+                                    os.rmdir(sub_path)
+                                except Exception:
+                                    pass
+                                break
+
+        # 2. Organizar arquivos soltos na raiz da pasta base
         for item in os.listdir(base_out_dir):
             item_path = os.path.join(base_out_dir, item)
-            # Apenas arquivos na raiz da pasta que não sejam temporários do Excel (~$)
             if os.path.isfile(item_path) and not item.startswith("~$"):
                 item_lower = item.lower()
                 if item_lower.endswith(".xlsx") or item_lower.endswith(".pdf"):
-                    # Descobrir o mês pelo nome do arquivo
-                    found_month = None
-                    for m in MESES_PT:
+                    found_month_idx = None
+                    for idx, m in enumerate(MESES_PT, 1):
                         if m.lower() in item_lower:
-                            found_month = m
+                            found_month_idx = idx
                             break
 
-                    # Descobrir o ano pelo nome ou pela data de modificação
                     year_match = re.search(r'\b(202\d)\b', item)
                     if year_match:
                         found_year = year_match.group(1)
@@ -119,8 +149,10 @@ def organize_loose_reports(base_out_dir):
                         mtime = os.path.getmtime(item_path)
                         found_year = str(datetime.fromtimestamp(mtime).year)
 
-                    if found_month:
-                        target_folder = os.path.join(base_out_dir, found_year, found_month)
+                    if found_month_idx:
+                        year_short = found_year[-2:]
+                        folder_name = f"{found_month_idx:02d}.{year_short}"
+                        target_folder = os.path.join(base_out_dir, found_year, folder_name)
                         os.makedirs(target_folder, exist_ok=True)
                         dest_path = os.path.join(target_folder, item)
                         if os.path.abspath(item_path) != os.path.abspath(dest_path):
@@ -132,7 +164,7 @@ def organize_loose_reports(base_out_dir):
                                 except Exception:
                                     pass
     except Exception as e:
-        logging.warning(f"Erro ao organizar relatórios soltos em {base_out_dir}: {e}")
+        logging.warning(f"Erro ao organizar relatórios em {base_out_dir}: {e}")
 
 
 
