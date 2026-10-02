@@ -51,8 +51,8 @@ class SettingsDialog(tk.Toplevel):
             except Exception:
                 pass
 
-        # Centralizar perfeitamente sobre a janela principal (570x530 sobre 640x600 = 35px simétrico)
-        center_modal(self, parent, 570, 530)
+        # Centralizar perfeitamente sobre a janela principal (580x560 sobre 640x600 = 30px horizontal, 20px vertical)
+        center_modal(self, parent, 580, 560)
 
     def _configure_notebook_style(self):
         self.style = ttk.Style(self)
@@ -64,41 +64,42 @@ class SettingsDialog(tk.Toplevel):
         )
 
     def _build_ui(self):
-        container = ttk.Frame(self, padding="14 10 14 10")
+        container = ttk.Frame(self, padding="14 8 14 10")
         container.pack(fill=tk.BOTH, expand=True)
 
-        self.notebook = ttk.Notebook(container, style="Settings.TNotebook")
-        self.notebook.pack(fill=tk.BOTH, expand=True, pady=(0, 8))
-
-        # ─── ABA 1: BANCO DE DADOS & EXCEL ───
-        tab_db = ttk.Frame(self.notebook, padding="14 10 14 10")
-        self.notebook.add(tab_db, text=" 🏢 Banco & Relatórios ")
-        self._build_tab_db(tab_db)
-
-        # ─── ABA 2: E-MAIL & UOL PRO ───
-        tab_email = ttk.Frame(self.notebook, padding="14 10 14 10")
-        self.notebook.add(tab_email, text=" ✉ E-mail & UOL Pro ")
-        self._build_tab_email(tab_email)
-
-        # ─── ABA 3: DESENVOLVEDOR ───
-        tab_dev = ttk.Frame(self.notebook, padding="14 10 14 10")
-        self.notebook.add(tab_dev, text=" 💻 Desenvolvedor ")
-        self._build_tab_dev(tab_dev)
-
-        # ─── BOTÕES DE AÇÃO INFERIORES ───
+        # ─── BOTÕES DE AÇÃO INFERIORES (Fixos no rodapé com prioridade total de espaço) ───
         frame_btns = tk.Frame(container, bg=COLOR_BG_LIGHT)
-        frame_btns.pack(fill=tk.X, pady=(2, 0))
+        frame_btns.pack(side=tk.BOTTOM, fill=tk.X, pady=(8, 0))
 
         btn_save = tk.Button(
             frame_btns, text="Salvar Alterações", command=self._save_and_close,
             bg=COLOR_PRIMARY, fg="white", activebackground=COLOR_PRIMARY_HOVER,
             activeforeground="white", font=("Segoe UI", 9, "bold"),
-            relief="flat", padx=16, pady=5, cursor="hand2", takefocus=False
+            relief="flat", padx=18, pady=6, cursor="hand2", takefocus=False
         )
         btn_save.pack(side=tk.RIGHT, padx=(8, 0))
 
         btn_cancel = ttk.Button(frame_btns, text="Cancelar", command=self.destroy, takefocus=False)
         btn_cancel.pack(side=tk.RIGHT)
+
+        # ─── NOTEBOOK DAS ABAS (Preenche todo o espaço acima do rodapé) ───
+        self.notebook = ttk.Notebook(container, style="Settings.TNotebook")
+        self.notebook.pack(fill=tk.BOTH, expand=True)
+
+        # ─── ABA 1: BANCO DE DADOS & EXCEL ───
+        tab_db = ttk.Frame(self.notebook, padding="14 8 14 8")
+        self.notebook.add(tab_db, text=" 🏢 Banco & Relatórios ")
+        self._build_tab_db(tab_db)
+
+        # ─── ABA 2: E-MAIL & UOL PRO ───
+        tab_email = ttk.Frame(self.notebook, padding="14 8 14 8")
+        self.notebook.add(tab_email, text=" ✉ E-mail & UOL Pro ")
+        self._build_tab_email(tab_email)
+
+        # ─── ABA 3: DESENVOLVEDOR ───
+        tab_dev = ttk.Frame(self.notebook, padding="14 8 14 8")
+        self.notebook.add(tab_dev, text=" 💻 Desenvolvedor ")
+        self._build_tab_dev(tab_dev)
 
     def _build_tab_db(self, parent):
         parent.columnconfigure(1, weight=1)
@@ -108,22 +109,22 @@ class SettingsDialog(tk.Toplevel):
             parent, text="Conexão ao SQL Server (StruxureWare)",
             font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
         )
-        lbl_sec_db.grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 4))
+        lbl_sec_db.grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 2))
 
-        ttk.Label(parent, text="Servidor/Instância:").grid(row=1, column=0, sticky=tk.W, pady=3)
+        ttk.Label(parent, text="Servidor/Instância:").grid(row=1, column=0, sticky=tk.W, pady=2)
         self.ent_server = ttk.Entry(parent, width=36)
-        self.ent_server.grid(row=1, column=1, sticky=tk.EW, pady=3)
+        self.ent_server.grid(row=1, column=1, sticky=tk.EW, pady=2)
 
-        ttk.Label(parent, text="Banco de Dados:").grid(row=2, column=0, sticky=tk.W, pady=3)
+        ttk.Label(parent, text="Banco de Dados:").grid(row=2, column=0, sticky=tk.W, pady=2)
         self.ent_database = ttk.Entry(parent, width=36)
-        self.ent_database.grid(row=2, column=1, sticky=tk.EW, pady=3)
+        self.ent_database.grid(row=2, column=1, sticky=tk.EW, pady=2)
 
-        ttk.Label(parent, text="Driver ODBC:").grid(row=3, column=0, sticky=tk.W, pady=3)
+        ttk.Label(parent, text="Driver ODBC:").grid(row=3, column=0, sticky=tk.W, pady=2)
         drivers = get_available_odbc_drivers()
         if not drivers:
             drivers = ["ODBC Driver 17 for SQL Server", "SQL Server"]
         self.cmb_driver = ttk.Combobox(parent, values=drivers, state="readonly", width=34)
-        self.cmb_driver.grid(row=3, column=1, sticky=tk.EW, pady=3)
+        self.cmb_driver.grid(row=3, column=1, sticky=tk.EW, pady=2)
 
         # Autenticação
         self.var_trusted = tk.BooleanVar(value=True)
@@ -131,7 +132,7 @@ class SettingsDialog(tk.Toplevel):
             parent, text="Usar Autenticação Integrada do Windows (Trusted)",
             variable=self.var_trusted, command=self._toggle_auth
         )
-        self.chk_trusted.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=4)
+        self.chk_trusted.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=(2, 1))
 
         self.lbl_trusted_hint = tk.Label(
             parent,
@@ -142,33 +143,33 @@ class SettingsDialog(tk.Toplevel):
         )
 
         self.frame_auth = ttk.Frame(parent)
-        self.frame_auth.grid(row=5, column=0, columnspan=2, sticky=tk.EW, pady=2)
+        self.frame_auth.grid(row=5, column=0, columnspan=2, sticky=tk.EW, pady=1)
 
-        ttk.Label(self.frame_auth, text="Usuário:").grid(row=0, column=0, sticky=tk.W, pady=2)
+        ttk.Label(self.frame_auth, text="Usuário:").grid(row=0, column=0, sticky=tk.W, pady=1)
         self.ent_user = ttk.Entry(self.frame_auth, width=15)
-        self.ent_user.grid(row=0, column=1, sticky=tk.W, padx=4, pady=2)
+        self.ent_user.grid(row=0, column=1, sticky=tk.W, padx=4, pady=1)
 
-        ttk.Label(self.frame_auth, text="Senha:").grid(row=0, column=2, sticky=tk.W, padx=(12, 0), pady=2)
+        ttk.Label(self.frame_auth, text="Senha:").grid(row=0, column=2, sticky=tk.W, padx=(12, 0), pady=1)
         self.ent_pass = ttk.Entry(self.frame_auth, width=15, show="*")
-        self.ent_pass.grid(row=0, column=3, sticky=tk.W, padx=4, pady=2)
+        self.ent_pass.grid(row=0, column=3, sticky=tk.W, padx=4, pady=1)
 
         btn_test_db = ttk.Button(parent, text="🔌 Testar Conexão SQL", command=self._test_connection)
-        btn_test_db.grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=(3, 6))
+        btn_test_db.grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=(2, 4))
 
         # Separador 1
         sep1 = tk.Frame(parent, height=1, bg=COLOR_ACCENT)
-        sep1.grid(row=7, column=0, columnspan=2, sticky=tk.EW, pady=4)
+        sep1.grid(row=7, column=0, columnspan=2, sticky=tk.EW, pady=3)
 
         # ─── SEÇÃO 2: PASTA PADRÃO & MODELO EXCEL ───
         lbl_sec_rep = tk.Label(
             parent, text="Pasta Padrão & Modelo Excel",
             font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
         )
-        lbl_sec_rep.grid(row=8, column=0, columnspan=2, sticky=tk.W, pady=(0, 4))
+        lbl_sec_rep.grid(row=8, column=0, columnspan=2, sticky=tk.W, pady=(0, 2))
 
-        ttk.Label(parent, text="Pasta de Saída:").grid(row=9, column=0, sticky=tk.W, pady=3)
+        ttk.Label(parent, text="Pasta de Saída:").grid(row=9, column=0, sticky=tk.W, pady=2)
         frame_dir = ttk.Frame(parent)
-        frame_dir.grid(row=9, column=1, sticky=tk.EW, pady=3)
+        frame_dir.grid(row=9, column=1, sticky=tk.EW, pady=2)
         self.ent_dir = ttk.Entry(frame_dir, width=24)
         self.ent_dir.pack(side=tk.LEFT, fill=tk.X, expand=True)
         ttk.Button(frame_dir, text="Alterar...", command=self._browse_dir, width=9).pack(side=tk.LEFT, padx=(4, 0))
@@ -177,39 +178,39 @@ class SettingsDialog(tk.Toplevel):
             parent, text="✏ Abrir Modelo no Excel para Edição (modelo_relatorio.xlsx)",
             command=self._edit_template_action
         )
-        btn_edit_model.grid(row=10, column=0, columnspan=2, sticky=tk.W, pady=(4, 6))
+        btn_edit_model.grid(row=10, column=0, columnspan=2, sticky=tk.W, pady=(2, 4))
 
         # Separador 2
         sep2 = tk.Frame(parent, height=1, bg=COLOR_ACCENT)
-        sep2.grid(row=11, column=0, columnspan=2, sticky=tk.EW, pady=4)
+        sep2.grid(row=11, column=0, columnspan=2, sticky=tk.EW, pady=3)
 
         # ─── SEÇÃO 3: PREFERÊNCIAS DO RELATÓRIO ───
         lbl_sec_pref = tk.Label(
             parent, text="Preferências Gerais do Relatório",
             font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
         )
-        lbl_sec_pref.grid(row=12, column=0, columnspan=2, sticky=tk.W, pady=(0, 4))
+        lbl_sec_pref.grid(row=12, column=0, columnspan=2, sticky=tk.W, pady=(0, 2))
 
         self.var_open_excel = tk.BooleanVar(value=True)
         self.chk_open_excel = ttk.Checkbutton(
             parent, text="Abrir planilha no Microsoft Excel automaticamente após geração",
             variable=self.var_open_excel
         )
-        self.chk_open_excel.grid(row=13, column=0, columnspan=2, sticky=tk.W, pady=2)
+        self.chk_open_excel.grid(row=13, column=0, columnspan=2, sticky=tk.W, pady=1)
 
         self.var_sort_consumption = tk.BooleanVar(value=True)
         self.chk_sort_consumption = ttk.Checkbutton(
             parent, text="Ordenar unidades por maior consumo no relatório (ranking decrescente)",
             variable=self.var_sort_consumption
         )
-        self.chk_sort_consumption.grid(row=14, column=0, columnspan=2, sticky=tk.W, pady=2)
+        self.chk_sort_consumption.grid(row=14, column=0, columnspan=2, sticky=tk.W, pady=1)
 
         btn_scheduler = ttk.Button(
             parent,
             text="⏰ Configurar Agendamento Automático no Windows (Executar dia 29 silencioso)",
             command=self._open_scheduler
         )
-        btn_scheduler.grid(row=15, column=0, columnspan=2, sticky=tk.W, pady=(6, 2))
+        btn_scheduler.grid(row=15, column=0, columnspan=2, sticky=tk.W, pady=(3, 0))
 
     def _build_tab_email(self, parent):
         parent.columnconfigure(1, weight=1)
