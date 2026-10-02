@@ -687,12 +687,6 @@ class AppHidrometrosWindow:
             if resp_anom:
                 AnomalyDialog(self.root, anomalies, p_str)
 
-        if self.var_open_excel.get():
-            try:
-                os.startfile(final_file)
-            except Exception as e:
-                messagebox.showwarning("Aviso", f"Relatório gerado em:\n{final_file}\n\nNão foi possível abrir o Excel automaticamente: {e}", parent=self.root)
-
         # Oferecer envio imediato por e-mail para fluxo contínuo
         pdf_line = f"\n• PDF: {os.path.basename(pdf_file)}" if has_pdf else ""
         resp_email = messagebox.askyesno(
@@ -704,19 +698,27 @@ class AppHidrometrosWindow:
             default=messagebox.YES
         )
         if resp_email:
+            # Foco 100% no e-mail: o Excel não é aberto para não disputar a tela nem roubar foco
             self._send_email_action(final_file, pdf_file if has_pdf else None)
-        elif not self.var_open_excel.get():
-            folder_dir = os.path.dirname(final_file)
-            resp_folder = messagebox.askyesno(
-                "Abrir Pasta",
-                f"Relatório salvo em:\n{folder_dir}\n\nDeseja abrir a pasta agora?",
-                parent=self.root
-            )
-            if resp_folder:
+        else:
+            # Usuário optou por não enviar e-mail agora: abre o Excel se a opção estiver marcada
+            if self.var_open_excel.get():
                 try:
-                    os.startfile(folder_dir)
-                except Exception:
-                    pass
+                    os.startfile(final_file)
+                except Exception as e:
+                    messagebox.showwarning("Aviso", f"Relatório gerado em:\n{final_file}\n\nNão foi possível abrir o Excel automaticamente: {e}", parent=self.root)
+            else:
+                folder_dir = os.path.dirname(final_file)
+                resp_folder = messagebox.askyesno(
+                    "Abrir Pasta",
+                    f"Relatório salvo em:\n{folder_dir}\n\nDeseja abrir a pasta agora?",
+                    parent=self.root
+                )
+                if resp_folder:
+                    try:
+                        os.startfile(folder_dir)
+                    except Exception:
+                        pass
 
     def _on_error(self, err_msg):
         self.prog_bar["value"] = 0
