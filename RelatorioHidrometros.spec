@@ -12,9 +12,10 @@ a = Analysis(
         ('logo.jpeg', '.'),
         ('logo_final.png', '.'),
         ('gui_logo.png', '.'),
-        ('modelo_relatorio.xlsx', '.')
+        ('modelo_relatorio.xlsx', '.'),
+        ('modelo_email.html', '.')
     ],
-    hiddenimports=['babel.numbers', 'win32com', 'win32com.client', 'pythoncom', 'pywintypes'],
+    hiddenimports=['babel.numbers', 'win32com', 'win32com.client', 'pythoncom', 'pywintypes', 'email', 'smtplib'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

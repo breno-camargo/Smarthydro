@@ -17,6 +17,14 @@ DEFAULT_CONFIG = {
     "open_excel_after_generation": True,
     "sort_by_consumption": True,
     "odbc_driver": "ODBC Driver 17 for SQL Server",
+    "email_recipients": "",
+    "email_send_mode": "outlook",
+    "smtp_server": "smtps.uhserver.com",
+    "smtp_port": 587,
+    "smtp_use_tls": True,
+    "smtp_use_ssl": False,
+    "smtp_user": "",
+    "smtp_password": "",
     "recent_reports": []
 }
 
@@ -203,8 +211,9 @@ def load_config():
     else:
         save_config(config)
 
-    # Decodificar senha ofuscada para uso em memória
+    # Decodificar senhas ofuscadas para uso em memória
     config["db_password"] = _decode_password(config.get("db_password", ""))
+    config["smtp_password"] = _decode_password(config.get("smtp_password", ""))
 
     # Garantir que a pasta de saída padrão exista
     out_dir = config.get("output_directory")
@@ -217,15 +226,19 @@ def load_config():
     return config
 
 def save_config(new_config):
-    """Salva o dicionário de configurações no arquivo config.json (ofuscando a senha)."""
+    """Salva o dicionário de configurações no arquivo config.json (ofuscando senhas)."""
     cfg_path = get_config_path()
     try:
         # Criar cópia para não modificar o dict em memória
         config_to_save = new_config.copy()
-        # Ofuscar senha antes de gravar no disco
+        # Ofuscar senhas antes de gravar no disco
         raw_pwd = config_to_save.get("db_password", "")
         if raw_pwd and not raw_pwd.startswith("b64:"):
             config_to_save["db_password"] = _encode_password(raw_pwd)
+
+        raw_smtp_pwd = config_to_save.get("smtp_password", "")
+        if raw_smtp_pwd and not raw_smtp_pwd.startswith("b64:"):
+            config_to_save["smtp_password"] = _encode_password(raw_smtp_pwd)
 
         with open(cfg_path, "w", encoding="utf-8") as f:
             json.dump(config_to_save, f, indent=2, ensure_ascii=False)

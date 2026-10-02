@@ -12,6 +12,7 @@ from core.database import test_db_connection
 from core.report_generator import open_template_in_excel
 from cli.runner import execute_extraction
 from gui.settings_dialog import SettingsDialog
+from gui.email_dialog import SendEmailDialog
 
 # Cores institucionais CompaSSS
 COLOR_PRIMARY = "#3D6B24"       # Verde escuro institucional
@@ -378,11 +379,20 @@ class AppHidrometrosWindow:
 
             # Empacotar botões de ação à direita na ordem visual correta:
             # No Tkinter, side=tk.RIGHT empacota da direita para a esquerda:
-            # 1º pack: PDF (fica na extrema direita)
-            # 2º pack: Excel (fica no meio)
-            # 3º pack: Excluir (fica à esquerda do botão Excel!)
+            # 1º pack: E-mail (fica na ponta direita)
+            # 2º pack: PDF (ao lado do E-mail, se existir)
+            # 3º pack: Excel (ao lado esquerdo do PDF)
+            # 4º pack: Excluir (ao lado esquerdo do Excel!)
+            # Ordem visual da esquerda para a direita: [Excluir] [Excel] [PDF] [E-mail]
             pdf_p = item.get("pdf_path", "")
             has_pdf = item.get("has_pdf") and os.path.exists(pdf_p)
+
+            btn_email = ttk.Button(
+                row_frame, text="E-mail", width=6,
+                command=lambda x=f_path, p=pdf_p: self._send_email_action(x, p),
+                style="History.TButton"
+            )
+            btn_email.pack(side=tk.RIGHT, padx=(4, 0))
 
             if has_pdf:
                 btn_pdf = ttk.Button(
@@ -441,6 +451,18 @@ class AppHidrometrosWindow:
             os.startfile(path)
         except Exception as e:
             messagebox.showerror("Erro ao Abrir", f"Não foi possível abrir o arquivo:\n{e}", parent=self.root)
+
+    def _send_email_action(self, xlsx_path, pdf_path=None):
+        """Abre o diálogo de envio de e-mail para o relatório selecionado."""
+        if not os.path.exists(xlsx_path):
+            messagebox.showwarning(
+                "Arquivo Não Encontrado",
+                f"O arquivo não foi localizado:\n{xlsx_path}\n\nEle pode ter sido movido ou excluído.",
+                parent=self.root
+            )
+            self._refresh_history()
+            return
+        SendEmailDialog(self.root, xlsx_path, pdf_path)
 
     def _delete_specific_file(self, xlsx_path, pdf_path=None):
         """Solicita confirmação e exclui o relatório (Excel e PDF associado) com segurança."""

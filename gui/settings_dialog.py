@@ -1,9 +1,12 @@
 import os
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
+
 from core.config_manager import load_config, save_config
 from core.database import get_available_odbc_drivers, test_db_connection
 from core.report_generator import open_template_in_excel
+from core.email_sender import test_smtp_connection, get_email_template_path
+from gui.email_template_dialog import EmailTemplateDialog
 
 COLOR_PRIMARY = "#3D6B24"
 COLOR_PRIMARY_HOVER = "#2D501A"
@@ -15,9 +18,9 @@ COLOR_TEXT_MUTED = "#55664C"
 class SettingsDialog(tk.Toplevel):
     def __init__(self, parent, on_save_callback=None):
         super().__init__(parent)
-        self.title("Configurações do Sistema e Conexão")
-        self.geometry("540x490")
-        self.minsize(520, 460)
+        self.title("Configurações do Sistema — CompaSSS")
+        self.geometry("560x540")
+        self.minsize(530, 500)
         self.configure(bg=COLOR_BG_LIGHT)
         self.transient(parent)
         self.grab_set()
@@ -29,113 +32,208 @@ class SettingsDialog(tk.Toplevel):
         self._load_values()
 
     def _build_ui(self):
-        container = ttk.Frame(self, padding="20 16 20 16")
+        container = ttk.Frame(self, padding="16 12 16 12")
         container.pack(fill=tk.BOTH, expand=True)
 
-        # ─── SEÇÃO 1: CONEXÃO AO SQL SERVER ───
-        lbl_sec_db = tk.Label(
-            container, text="Conexão ao SQL Server (StruxureWare)",
-            font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
-        )
-        lbl_sec_db.grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 6))
+        self.notebook = ttk.Notebook(container)
+        self.notebook.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
 
-        ttk.Label(container, text="Servidor/Instância:").grid(row=1, column=0, sticky=tk.W, pady=4)
-        self.ent_server = ttk.Entry(container, width=38)
-        self.ent_server.grid(row=1, column=1, sticky=tk.EW, pady=4)
+        # ─── ABA 1: BANCO DE DADOS & EXCEL ───
+        tab_db = ttk.Frame(self.notebook, padding="14 12 14 12")
+        self.notebook.add(tab_db, text=" 🏢 Banco & Relatórios ")
+        self._build_tab_db(tab_db)
 
-        ttk.Label(container, text="Banco de Dados:").grid(row=2, column=0, sticky=tk.W, pady=4)
-        self.ent_database = ttk.Entry(container, width=38)
-        self.ent_database.grid(row=2, column=1, sticky=tk.EW, pady=4)
-
-        ttk.Label(container, text="Driver ODBC:").grid(row=3, column=0, sticky=tk.W, pady=4)
-        drivers = get_available_odbc_drivers()
-        if not drivers:
-            drivers = ["ODBC Driver 17 for SQL Server", "SQL Server"]
-        self.cmb_driver = ttk.Combobox(container, values=drivers, state="readonly", width=36)
-        self.cmb_driver.grid(row=3, column=1, sticky=tk.EW, pady=4)
-
-        # Autenticação
-        self.var_trusted = tk.BooleanVar(value=True)
-        self.chk_trusted = ttk.Checkbutton(
-            container, text="Usar Autenticação Integrada do Windows (Trusted)", 
-            variable=self.var_trusted, command=self._toggle_auth
-        )
-        self.chk_trusted.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=5)
-
-        self.frame_auth = ttk.Frame(container)
-        self.frame_auth.grid(row=5, column=0, columnspan=2, sticky=tk.EW, pady=2)
-
-        ttk.Label(self.frame_auth, text="Usuário SQL:").grid(row=0, column=0, sticky=tk.W, pady=2)
-        self.ent_user = ttk.Entry(self.frame_auth, width=16)
-        self.ent_user.grid(row=0, column=1, sticky=tk.W, padx=5, pady=2)
-
-        ttk.Label(self.frame_auth, text="Senha:").grid(row=0, column=2, sticky=tk.W, padx=(10, 0), pady=2)
-        self.ent_pass = ttk.Entry(self.frame_auth, width=16, show="*")
-        self.ent_pass.grid(row=0, column=3, sticky=tk.W, padx=5, pady=2)
-
-        # Separador 1
-        sep1 = tk.Frame(container, height=1, bg=COLOR_ACCENT)
-        sep1.grid(row=6, column=0, columnspan=2, sticky=tk.EW, pady=10)
-
-        # ─── SEÇÃO 2: PREFERÊNCIAS DE RELATÓRIO ───
-        lbl_sec_rep = tk.Label(
-            container, text="Preferências de Relatório",
-            font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
-        )
-        lbl_sec_rep.grid(row=7, column=0, columnspan=2, sticky=tk.W, pady=(0, 6))
-
-        ttk.Label(container, text="Pasta Padrão de Saída:").grid(row=8, column=0, sticky=tk.W, pady=4)
-        frame_dir = ttk.Frame(container)
-        frame_dir.grid(row=8, column=1, sticky=tk.EW, pady=4)
-        self.ent_dir = ttk.Entry(frame_dir, width=28)
-        self.ent_dir.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        ttk.Button(frame_dir, text="Alterar...", command=self._browse_dir, width=10).pack(side=tk.LEFT, padx=(5, 0))
-
-        # Separador 2
-        sep2 = tk.Frame(container, height=1, bg=COLOR_ACCENT)
-        sep2.grid(row=9, column=0, columnspan=2, sticky=tk.EW, pady=10)
-
-        # ─── SEÇÃO 3: MODELO DO RELATÓRIO EXCEL ───
-        lbl_sec_tmpl = tk.Label(
-            container, text="Personalização do Modelo Excel (Layout & Logo)",
-            font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
-        )
-        lbl_sec_tmpl.grid(row=10, column=0, columnspan=2, sticky=tk.W, pady=(0, 4))
-
-        lbl_tmpl_desc = tk.Label(
-            container,
-            text="Abra o arquivo base no Excel para trocar o logotipo, ajustar cores, cabeçalhos\nou fontes. Os relatórios gerados seguirão o modelo salvo.",
-            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT, justify=tk.LEFT
-        )
-        lbl_tmpl_desc.grid(row=11, column=0, columnspan=2, sticky=tk.W, pady=(0, 6))
-
-        btn_edit_model = ttk.Button(
-            container, text="✏ Abrir Modelo no Excel para Edição",
-            command=self._edit_template_action
-        )
-        btn_edit_model.grid(row=12, column=0, columnspan=2, sticky=tk.W, pady=(0, 8))
-
-        # Separador 3
-        sep3 = tk.Frame(container, height=1, bg=COLOR_ACCENT)
-        sep3.grid(row=13, column=0, columnspan=2, sticky=tk.EW, pady=10)
+        # ─── ABA 2: E-MAIL & UOL PRO ───
+        tab_email = ttk.Frame(self.notebook, padding="14 12 14 12")
+        self.notebook.add(tab_email, text=" ✉ E-mail & UOL Pro ")
+        self._build_tab_email(tab_email)
 
         # ─── BOTÕES DE AÇÃO INFERIORES ───
         frame_btns = tk.Frame(container, bg=COLOR_BG_LIGHT)
-        frame_btns.grid(row=14, column=0, columnspan=2, sticky=tk.EW, pady=(6, 0))
-
-        btn_test = ttk.Button(frame_btns, text="🔌 Testar Conexão", command=self._test_connection)
-        btn_test.pack(side=tk.LEFT)
+        frame_btns.pack(fill=tk.X, pady=(4, 0))
 
         btn_save = tk.Button(
             frame_btns, text="Salvar Alterações", command=self._save_and_close,
             bg=COLOR_PRIMARY, fg="white", activebackground=COLOR_PRIMARY_HOVER,
             activeforeground="white", font=("Segoe UI", 9, "bold"),
-            relief="flat", padx=14, pady=5, cursor="hand2"
+            relief="flat", padx=16, pady=5, cursor="hand2"
         )
         btn_save.pack(side=tk.RIGHT, padx=(8, 0))
 
         btn_cancel = ttk.Button(frame_btns, text="Cancelar", command=self.destroy)
         btn_cancel.pack(side=tk.RIGHT)
+
+    def _build_tab_db(self, parent):
+        parent.columnconfigure(1, weight=1)
+
+        # ─── SEÇÃO 1: CONEXÃO AO SQL SERVER ───
+        lbl_sec_db = tk.Label(
+            parent, text="Conexão ao SQL Server (StruxureWare)",
+            font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
+        )
+        lbl_sec_db.grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 6))
+
+        ttk.Label(parent, text="Servidor/Instância:").grid(row=1, column=0, sticky=tk.W, pady=4)
+        self.ent_server = ttk.Entry(parent, width=36)
+        self.ent_server.grid(row=1, column=1, sticky=tk.EW, pady=4)
+
+        ttk.Label(parent, text="Banco de Dados:").grid(row=2, column=0, sticky=tk.W, pady=4)
+        self.ent_database = ttk.Entry(parent, width=36)
+        self.ent_database.grid(row=2, column=1, sticky=tk.EW, pady=4)
+
+        ttk.Label(parent, text="Driver ODBC:").grid(row=3, column=0, sticky=tk.W, pady=4)
+        drivers = get_available_odbc_drivers()
+        if not drivers:
+            drivers = ["ODBC Driver 17 for SQL Server", "SQL Server"]
+        self.cmb_driver = ttk.Combobox(parent, values=drivers, state="readonly", width=34)
+        self.cmb_driver.grid(row=3, column=1, sticky=tk.EW, pady=4)
+
+        # Autenticação
+        self.var_trusted = tk.BooleanVar(value=True)
+        self.chk_trusted = ttk.Checkbutton(
+            parent, text="Usar Autenticação Integrada do Windows (Trusted)",
+            variable=self.var_trusted, command=self._toggle_auth
+        )
+        self.chk_trusted.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=5)
+
+        self.frame_auth = ttk.Frame(parent)
+        self.frame_auth.grid(row=5, column=0, columnspan=2, sticky=tk.EW, pady=2)
+
+        ttk.Label(self.frame_auth, text="Usuário:").grid(row=0, column=0, sticky=tk.W, pady=2)
+        self.ent_user = ttk.Entry(self.frame_auth, width=14)
+        self.ent_user.grid(row=0, column=1, sticky=tk.W, padx=4, pady=2)
+
+        ttk.Label(self.frame_auth, text="Senha:").grid(row=0, column=2, sticky=tk.W, padx=(10, 0), pady=2)
+        self.ent_pass = ttk.Entry(self.frame_auth, width=14, show="*")
+        self.ent_pass.grid(row=0, column=3, sticky=tk.W, padx=4, pady=2)
+
+        btn_test_db = ttk.Button(parent, text="🔌 Testar Conexão SQL", command=self._test_connection)
+        btn_test_db.grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=(4, 8))
+
+        # Separador 1
+        sep1 = tk.Frame(parent, height=1, bg=COLOR_ACCENT)
+        sep1.grid(row=7, column=0, columnspan=2, sticky=tk.EW, pady=6)
+
+        # ─── SEÇÃO 2: PREFERÊNCIAS DE RELATÓRIO ───
+        lbl_sec_rep = tk.Label(
+            parent, text="Pasta Padrão & Modelo Excel",
+            font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
+        )
+        lbl_sec_rep.grid(row=8, column=0, columnspan=2, sticky=tk.W, pady=(0, 6))
+
+        ttk.Label(parent, text="Pasta de Saída:").grid(row=9, column=0, sticky=tk.W, pady=4)
+        frame_dir = ttk.Frame(parent)
+        frame_dir.grid(row=9, column=1, sticky=tk.EW, pady=4)
+        self.ent_dir = ttk.Entry(frame_dir, width=24)
+        self.ent_dir.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        ttk.Button(frame_dir, text="Alterar...", command=self._browse_dir, width=9).pack(side=tk.LEFT, padx=(4, 0))
+
+        btn_edit_model = ttk.Button(
+            parent, text="✏ Abrir Modelo no Excel para Edição (modelo_relatorio.xlsx)",
+            command=self._edit_template_action
+        )
+        btn_edit_model.grid(row=10, column=0, columnspan=2, sticky=tk.W, pady=(8, 0))
+
+    def _build_tab_email(self, parent):
+        parent.columnconfigure(1, weight=1)
+
+        # ─── SEÇÃO 1: DESTINATÁRIOS E MÉTODO ───
+        lbl_sec_em = tk.Label(
+            parent, text="Destinatários Padrão & Método de Envio",
+            font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
+        )
+        lbl_sec_em.grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 6))
+
+        ttk.Label(parent, text="Destinatários (Para):").grid(row=1, column=0, sticky=tk.W, pady=4)
+        self.ent_recipients = ttk.Entry(parent, width=36)
+        self.ent_recipients.grid(row=1, column=1, sticky=tk.EW, pady=4)
+
+        lbl_hint_to = tk.Label(
+            parent, text="Separe múltiplos e-mails por ponto-e-vírgula (;)",
+            font=("Segoe UI", 8, "italic"), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT
+        )
+        lbl_hint_to.grid(row=2, column=1, sticky=tk.W, pady=(0, 6))
+
+        ttk.Label(parent, text="Método de Envio:").grid(row=3, column=0, sticky=tk.W, pady=4)
+        self.cmb_send_mode = ttk.Combobox(
+            parent,
+            values=["Microsoft Outlook (Recomendado)", "Envio Direto via SMTP (UOL Pro)"],
+            state="readonly", width=34
+        )
+        self.cmb_send_mode.grid(row=3, column=1, sticky=tk.EW, pady=4)
+
+        # Separador
+        sep_e1 = tk.Frame(parent, height=1, bg=COLOR_ACCENT)
+        sep_e1.grid(row=4, column=0, columnspan=2, sticky=tk.EW, pady=8)
+
+        # ─── SEÇÃO 2: SERVIDOR SMTP (UOL PRO) ───
+        lbl_sec_smtp = tk.Label(
+            parent, text="Configurações SMTP (UOL Pro / uhserver)",
+            font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
+        )
+        lbl_sec_smtp.grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(0, 6))
+
+        ttk.Label(parent, text="Servidor SMTP:").grid(row=6, column=0, sticky=tk.W, pady=3)
+        self.ent_smtp_host = ttk.Entry(parent, width=36)
+        self.ent_smtp_host.grid(row=6, column=1, sticky=tk.EW, pady=3)
+
+        frame_port = ttk.Frame(parent)
+        frame_port.grid(row=7, column=1, sticky=tk.W, pady=3)
+
+        ttk.Label(parent, text="Porta SMTP:").grid(row=7, column=0, sticky=tk.W, pady=3)
+        self.ent_smtp_port = ttk.Entry(frame_port, width=8)
+        self.ent_smtp_port.pack(side=tk.LEFT)
+
+        self.var_smtp_tls = tk.BooleanVar(value=True)
+        self.chk_smtp_tls = ttk.Checkbutton(frame_port, text="STARTTLS", variable=self.var_smtp_tls)
+        self.chk_smtp_tls.pack(side=tk.LEFT, padx=(12, 0))
+
+        ttk.Label(parent, text="E-mail / Usuário:").grid(row=8, column=0, sticky=tk.W, pady=3)
+        self.ent_smtp_user = ttk.Entry(parent, width=36)
+        self.ent_smtp_user.grid(row=8, column=1, sticky=tk.EW, pady=3)
+
+        ttk.Label(parent, text="Senha do E-mail:").grid(row=9, column=0, sticky=tk.W, pady=3)
+        self.ent_smtp_pass = ttk.Entry(parent, width=36, show="*")
+        self.ent_smtp_pass.grid(row=9, column=1, sticky=tk.EW, pady=3)
+
+        btn_test_smtp = ttk.Button(parent, text="🔌 Testar Conexão SMTP", command=self._test_smtp)
+        btn_test_smtp.grid(row=10, column=0, columnspan=2, sticky=tk.W, pady=(6, 8))
+
+        # Separador
+        sep_e2 = tk.Frame(parent, height=1, bg=COLOR_ACCENT)
+        sep_e2.grid(row=11, column=0, columnspan=2, sticky=tk.EW, pady=6)
+
+        # ─── SEÇÃO 3: MODELO DE E-MAIL ───
+        lbl_sec_tmpl_e = tk.Label(
+            parent, text="Personalização do Modelo de E-mail",
+            font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
+        )
+        lbl_sec_tmpl_e.grid(row=12, column=0, columnspan=2, sticky=tk.W, pady=(0, 4))
+
+        frame_tmpl_btns = ttk.Frame(parent)
+        frame_tmpl_btns.grid(row=13, column=0, columnspan=2, sticky=tk.W, pady=(2, 0))
+
+        btn_edit_email_tmpl = ttk.Button(
+            frame_tmpl_btns, text="✏ Personalizar Modelo de E-mail (Tags & Texto)",
+            command=self._open_email_template_editor
+        )
+        btn_edit_email_tmpl.pack(side=tk.LEFT, padx=(0, 8))
+
+        btn_open_tmpl_file = ttk.Button(
+            frame_tmpl_btns, text="📂 Abrir no Bloco de Notas",
+            command=self._open_template_in_notepad
+        )
+        btn_open_tmpl_file.pack(side=tk.LEFT)
+
+    def _open_email_template_editor(self):
+        EmailTemplateDialog(self)
+
+    def _open_template_in_notepad(self):
+        path = get_email_template_path()
+        try:
+            os.system(f'notepad.exe "{path}"')
+        except Exception as e:
+            messagebox.showerror("Erro", f"Não foi possível abrir o arquivo:\n{e}", parent=self)
 
     def _edit_template_action(self):
         try:
@@ -159,9 +257,10 @@ class SettingsDialog(tk.Toplevel):
         self.ent_pass.config(state=state)
 
     def _load_values(self):
+        # Banco
         self.ent_server.insert(0, self.config.get("server", "WELLCARE-PC\\SQLEXPRESS"))
         self.ent_database.insert(0, self.config.get("database", "StruxureWareReportsDB"))
-        
+
         driver = self.config.get("odbc_driver", "ODBC Driver 17 for SQL Server")
         if driver in self.cmb_driver["values"]:
             self.cmb_driver.set(driver)
@@ -176,6 +275,21 @@ class SettingsDialog(tk.Toplevel):
 
         self.ent_dir.insert(0, self.config.get("output_directory", ""))
 
+        # E-mail
+        self.ent_recipients.insert(0, self.config.get("email_recipients", ""))
+
+        send_mode = self.config.get("email_send_mode", "outlook")
+        if send_mode == "smtp":
+            self.cmb_send_mode.current(1)
+        else:
+            self.cmb_send_mode.current(0)
+
+        self.ent_smtp_host.insert(0, self.config.get("smtp_server", "smtps.uhserver.com"))
+        self.ent_smtp_port.insert(0, str(self.config.get("smtp_port", 587)))
+        self.var_smtp_tls.set(self.config.get("smtp_use_tls", True))
+        self.ent_smtp_user.insert(0, self.config.get("smtp_user", ""))
+        self.ent_smtp_pass.insert(0, self.config.get("smtp_password", ""))
+
     def _browse_dir(self):
         selected = filedialog.askdirectory(initialdir=self.ent_dir.get() or os.path.expanduser("~"))
         if selected:
@@ -183,6 +297,13 @@ class SettingsDialog(tk.Toplevel):
             self.ent_dir.insert(0, os.path.abspath(selected))
 
     def _get_current_inputs_config(self):
+        mode_val = "smtp" if "SMTP" in self.cmb_send_mode.get() else "outlook"
+
+        try:
+            port_val = int(self.ent_smtp_port.get().strip())
+        except ValueError:
+            port_val = 587
+
         return {
             "server": self.ent_server.get().strip(),
             "database": self.ent_database.get().strip(),
@@ -194,7 +315,16 @@ class SettingsDialog(tk.Toplevel):
             "billing_cycle_type": self.config.get("billing_cycle_type", "ciclo_29_28"),
             "default_m3_price": self.config.get("default_m3_price", 63.68),
             "open_excel_after_generation": self.config.get("open_excel_after_generation", True),
-            "sort_by_consumption": self.config.get("sort_by_consumption", True)
+            "sort_by_consumption": self.config.get("sort_by_consumption", True),
+            # E-mail
+            "email_recipients": self.ent_recipients.get().strip(),
+            "email_send_mode": mode_val,
+            "smtp_server": self.ent_smtp_host.get().strip(),
+            "smtp_port": port_val,
+            "smtp_use_tls": self.var_smtp_tls.get(),
+            "smtp_use_ssl": False,
+            "smtp_user": self.ent_smtp_user.get().strip(),
+            "smtp_password": self.ent_smtp_pass.get().strip(),
         }
 
     def _test_connection(self):
@@ -204,6 +334,14 @@ class SettingsDialog(tk.Toplevel):
             messagebox.showinfo("Sucesso na Conexão", msg, parent=self)
         else:
             messagebox.showerror("Erro de Conexão", msg, parent=self)
+
+    def _test_smtp(self):
+        temp_cfg = self._get_current_inputs_config()
+        ok, msg = test_smtp_connection(temp_cfg)
+        if ok:
+            messagebox.showinfo("Sucesso no SMTP", msg, parent=self)
+        else:
+            messagebox.showerror("Erro no SMTP", msg, parent=self)
 
     def _save_and_close(self):
         new_cfg = self._get_current_inputs_config()
