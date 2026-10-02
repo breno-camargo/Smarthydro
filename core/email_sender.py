@@ -445,10 +445,10 @@ def render_email(subject_template, body_template, context):
     return rendered_subject, rendered_body
 
 
-def build_mime_message(to_addrs, subject, html_body, attachment_paths, from_addr=None, is_unsent_draft=False):
+def build_mime_message(to_addrs, subject, html_body, attachment_paths, cc_addrs=None, from_addr=None, is_unsent_draft=False):
     """
     Constrói um objeto MIMEMultipart completo compatível com RFC 2822,
-    com suporte a múltiplos anexos codificados em UTF-8 e cabeçalho de rascunho.
+    com suporte a múltiplos anexos codificados em UTF-8, cópia (Cc) e cabeçalho de rascunho.
     """
     msg = MIMEMultipart("mixed")
     if is_unsent_draft:
@@ -458,6 +458,8 @@ def build_mime_message(to_addrs, subject, html_body, attachment_paths, from_addr
     if from_addr:
         msg["From"] = from_addr
     msg["To"] = ", ".join(to_addrs)
+    if cc_addrs:
+        msg["Cc"] = ", ".join(cc_addrs)
     msg["Date"] = formatdate(localtime=True)
     msg["Message-ID"] = make_msgid()
 
@@ -495,15 +497,13 @@ def build_mime_message(to_addrs, subject, html_body, attachment_paths, from_addr
     return msg
 
 
-def open_in_outlook(to_addrs, subject, html_body, attachment_paths):
+def open_in_outlook(to_addrs, subject, html_body, attachment_paths, cc_addrs=None):
     """
-    Abre o e-mail diretamente no Microsoft Outlook com rascunho preenchido
-    e os anexos (Excel e PDF) já inclusos.
+    Abre o e-mail diretamente no Microsoft Outlook com rascunho preenchido,
+    destinatário principal (gerente), pessoas em cópia (Cc) e os anexos (Excel e PDF).
     Tenta primeiro via Outlook COM; se não for possível, utiliza arquivo EML nativo.
     """
     # 1. Tentar criar arquivo .eml com X-Unsent: 1 e abrir nativamente no Outlook
-    # Esta abordagem é 100% à prova de falhas com Outlook clássico e New Outlook,
-    # não exige permissões de segurança COM e abre a tela de edição com botão 'Enviar'.
     import tempfile
     try:
         temp_dir = tempfile.gettempdir()
@@ -516,6 +516,7 @@ def open_in_outlook(to_addrs, subject, html_body, attachment_paths):
             subject=subject,
             html_body=html_body,
             attachment_paths=attachment_paths,
+            cc_addrs=cc_addrs,
             is_unsent_draft=True
         )
 
@@ -535,6 +536,8 @@ def open_in_outlook(to_addrs, subject, html_body, attachment_paths):
         outlook = win32com.client.Dispatch("Outlook.Application")
         mail = outlook.CreateItem(0)
         mail.To = "; ".join(to_addrs)
+        if cc_addrs:
+            mail.CC = "; ".join(cc_addrs)
         mail.Subject = subject
         mail.HTMLBody = html_body
 
@@ -557,9 +560,10 @@ def get_effective_smtp_host(host, user):
     return h or "smtps.uhserver.com"
 
 
-def send_email_smtp(smtp_cfg, to_addrs, subject, html_body, attachment_paths):
+def send_email_smtp(smtp_cfg, to_addrs, subject, html_body, attachment_paths, cc_addrs=None):
     """
-    Envia o e-mail diretamente via servidor SMTP (ex: UOL Pro - smtps.uhserver.com / smtps.uol.com.br).
+    Envia o e-mail diretamente via servidor SMTP (ex: UOL Pro - smtps.uhserver.com / smtps.uol.com.br)
+    para o destinatário principal e cópias (Cc).
     """
     raw_host = smtp_cfg.get("smtp_server", "").strip()
     user = smtp_cfg.get("smtp_user", "").strip()
@@ -582,9 +586,13 @@ def send_email_smtp(smtp_cfg, to_addrs, subject, html_body, attachment_paths):
         subject=subject,
         html_body=html_body,
         attachment_paths=attachment_paths,
+        cc_addrs=cc_addrs,
         from_addr=from_addr,
         is_unsent_draft=False
     )
+
+    # Lista total de envelopes para entrega
+    all_recipients = list(to_addrs) + list(cc_addrs or [])
 
     try:
         if use_ssl or port == 465:
@@ -599,9 +607,10 @@ def send_email_smtp(smtp_cfg, to_addrs, subject, html_body, attachment_paths):
         if user and pwd:
             server.login(user, pwd)
 
-        server.sendmail(from_addr, to_addrs, msg.as_string())
+        server.sendmail(from_addr, all_recipients, msg.as_string())
         server.quit()
-        return True, f"E-mail enviado com sucesso para {len(to_addrs)} destinatário(s)!"
+        cc_count_txt = f" e {len(cc_addrs)} em cópia" if cc_addrs else ""
+        return True, f"E-mail enviado com sucesso para {len(to_addrs)} destinatário(s){cc_count_txt}!"
     except smtplib.SMTPAuthenticationError:
         return False, "Erro de autenticação SMTP: Usuário ou senha do e-mail incorretos."
     except smtplib.SMTPConnectError as ce:

@@ -69,14 +69,23 @@ class SendEmailDialog(tk.Toplevel):
         lbl_info.pack(anchor=tk.W, pady=(0, 12))
 
         # ─── DESTINATÁRIOS ───
-        lbl_to = ttk.Label(container, text="Destinatários (Para):", font=("Segoe UI", 9, "bold"))
+        lbl_to = ttk.Label(container, text="Para (Gerente):", font=("Segoe UI", 9, "bold"))
         lbl_to.pack(anchor=tk.W, pady=(0, 2))
 
         self.ent_to = ttk.Entry(container, font=("Segoe UI", 9))
-        self.ent_to.pack(fill=tk.X, pady=(0, 2))
+        self.ent_to.pack(fill=tk.X, pady=(0, 4))
         def_recipients = self.config.get("email_recipients", "")
         if def_recipients:
             self.ent_to.insert(0, def_recipients)
+
+        lbl_cc = ttk.Label(container, text="Em Cópia (Cc):", font=("Segoe UI", 9, "bold"))
+        lbl_cc.pack(anchor=tk.W, pady=(4, 2))
+
+        self.ent_cc = ttk.Entry(container, font=("Segoe UI", 9))
+        self.ent_cc.pack(fill=tk.X, pady=(0, 2))
+        def_cc = self.config.get("email_cc", "")
+        if def_cc:
+            self.ent_cc.insert(0, def_cc)
 
         lbl_to_hint = tk.Label(
             container, text="Separe múltiplos e-mails por ponto-e-vírgula (;) ou vírgula (,)",
@@ -196,11 +205,14 @@ class SendEmailDialog(tk.Toplevel):
 
     def _start_send(self):
         raw_to = self.ent_to.get().strip()
+        raw_cc = self.ent_cc.get().strip()
         recipients = parse_recipients(raw_to)
+        cc_recipients = parse_recipients(raw_cc)
+
         if not recipients:
             messagebox.showerror(
                 "Destinatário Obrigatório",
-                "Por favor, informe ao menos um endereço de e-mail válido para envio.",
+                "Por favor, informe ao menos um endereço de e-mail no campo 'Para (Gerente)'.",
                 parent=self
             )
             return
@@ -224,6 +236,7 @@ class SendEmailDialog(tk.Toplevel):
 
         # Salvar destinatários e modo no config para as próximas vezes
         self.config["email_recipients"] = raw_to
+        self.config["email_cc"] = raw_cc
         self.config["email_send_mode"] = mode
         save_config(self.config)
 
@@ -234,15 +247,15 @@ class SendEmailDialog(tk.Toplevel):
 
         threading.Thread(
             target=self._send_worker,
-            args=(recipients, subject, self.rendered_body, attachments, mode),
+            args=(recipients, cc_recipients, subject, self.rendered_body, attachments, mode),
             daemon=True
         ).start()
 
-    def _send_worker(self, recipients, subject, body, attachments, mode):
+    def _send_worker(self, recipients, cc_recipients, subject, body, attachments, mode):
         if mode == "outlook":
-            ok, msg = open_in_outlook(recipients, subject, body, attachments)
+            ok, msg = open_in_outlook(recipients, subject, body, attachments, cc_addrs=cc_recipients)
         else:
-            ok, msg = send_email_smtp(self.config, recipients, subject, body, attachments)
+            ok, msg = send_email_smtp(self.config, recipients, subject, body, attachments, cc_addrs=cc_recipients)
 
         def _ui_done():
             self.prog_bar.stop()

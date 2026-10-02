@@ -18,6 +18,7 @@ DEFAULT_CONFIG = {
     "sort_by_consumption": True,
     "odbc_driver": "ODBC Driver 17 for SQL Server",
     "email_recipients": "",
+    "email_cc": "",
     "email_send_mode": "outlook",
     "smtp_server": "smtps.uhserver.com",
     "smtp_port": 587,

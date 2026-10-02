@@ -144,43 +144,47 @@ class SettingsDialog(tk.Toplevel):
         )
         lbl_sec_em.grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 6))
 
-        ttk.Label(parent, text="E-mail do Cliente (Para):").grid(row=1, column=0, sticky=tk.W, pady=4)
+        ttk.Label(parent, text="E-mail da Gerente (Para):").grid(row=1, column=0, sticky=tk.W, pady=4)
         self.ent_recipients = ttk.Entry(parent, width=36)
         self.ent_recipients.grid(row=1, column=1, sticky=tk.EW, pady=4)
 
+        ttk.Label(parent, text="Em Cópia Padrão (Cc):").grid(row=2, column=0, sticky=tk.W, pady=4)
+        self.ent_cc = ttk.Entry(parent, width=36)
+        self.ent_cc.grid(row=2, column=1, sticky=tk.EW, pady=4)
+
         lbl_hint_to = tk.Label(
-            parent, text="E-mail de quem recebe o relatório (separe vários com ';')",
+            parent, text="Separe múltiplos e-mails por ponto-e-vírgula (;)",
             font=("Segoe UI", 8, "italic"), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT
         )
-        lbl_hint_to.grid(row=2, column=1, sticky=tk.W, pady=(0, 6))
+        lbl_hint_to.grid(row=3, column=1, sticky=tk.W, pady=(0, 6))
 
-        ttk.Label(parent, text="Método de Envio:").grid(row=3, column=0, sticky=tk.W, pady=4)
+        ttk.Label(parent, text="Método de Envio:").grid(row=4, column=0, sticky=tk.W, pady=4)
         self.cmb_send_mode = ttk.Combobox(
             parent,
             values=["Envio Direto via SMTP (UOL Pro)", "Microsoft Outlook"],
             state="readonly", width=34
         )
-        self.cmb_send_mode.grid(row=3, column=1, sticky=tk.EW, pady=4)
+        self.cmb_send_mode.grid(row=4, column=1, sticky=tk.EW, pady=4)
 
         # Separador
         sep_e1 = tk.Frame(parent, height=1, bg=COLOR_ACCENT)
-        sep_e1.grid(row=4, column=0, columnspan=2, sticky=tk.EW, pady=8)
+        sep_e1.grid(row=5, column=0, columnspan=2, sticky=tk.EW, pady=8)
 
         # ─── SEÇÃO 2: SERVIDOR SMTP (UOL PRO) ───
         lbl_sec_smtp = tk.Label(
             parent, text="Sua Conta de E-mail (UOL Pro / Remetente)",
             font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
         )
-        lbl_sec_smtp.grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(0, 6))
+        lbl_sec_smtp.grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=(0, 6))
 
-        ttk.Label(parent, text="Servidor SMTP:").grid(row=6, column=0, sticky=tk.W, pady=3)
+        ttk.Label(parent, text="Servidor SMTP:").grid(row=7, column=0, sticky=tk.W, pady=3)
         self.ent_smtp_host = ttk.Entry(parent, width=36)
-        self.ent_smtp_host.grid(row=6, column=1, sticky=tk.EW, pady=3)
+        self.ent_smtp_host.grid(row=7, column=1, sticky=tk.EW, pady=3)
 
         frame_port = ttk.Frame(parent)
-        frame_port.grid(row=7, column=1, sticky=tk.W, pady=3)
+        frame_port.grid(row=8, column=1, sticky=tk.W, pady=3)
 
-        ttk.Label(parent, text="Porta SMTP:").grid(row=7, column=0, sticky=tk.W, pady=3)
+        ttk.Label(parent, text="Porta SMTP:").grid(row=8, column=0, sticky=tk.W, pady=3)
         self.ent_smtp_port = ttk.Entry(frame_port, width=8)
         self.ent_smtp_port.pack(side=tk.LEFT)
 
@@ -188,30 +192,30 @@ class SettingsDialog(tk.Toplevel):
         self.chk_smtp_tls = ttk.Checkbutton(frame_port, text="STARTTLS (recomendado)", variable=self.var_smtp_tls)
         self.chk_smtp_tls.pack(side=tk.LEFT, padx=(12, 0))
 
-        ttk.Label(parent, text="Seu E-mail (Remetente):").grid(row=8, column=0, sticky=tk.W, pady=3)
+        ttk.Label(parent, text="Seu E-mail (Remetente):").grid(row=9, column=0, sticky=tk.W, pady=3)
         self.ent_smtp_user = ttk.Entry(parent, width=36)
-        self.ent_smtp_user.grid(row=8, column=1, sticky=tk.EW, pady=3)
+        self.ent_smtp_user.grid(row=9, column=1, sticky=tk.EW, pady=3)
 
-        ttk.Label(parent, text="Senha do seu E-mail:").grid(row=9, column=0, sticky=tk.W, pady=3)
+        ttk.Label(parent, text="Senha do seu E-mail:").grid(row=10, column=0, sticky=tk.W, pady=3)
         self.ent_smtp_pass = ttk.Entry(parent, width=36, show="*")
-        self.ent_smtp_pass.grid(row=9, column=1, sticky=tk.EW, pady=3)
+        self.ent_smtp_pass.grid(row=10, column=1, sticky=tk.EW, pady=3)
 
         btn_test_smtp = ttk.Button(parent, text="🔌 Testar Conexão com seu E-mail", command=self._test_smtp)
-        btn_test_smtp.grid(row=10, column=0, columnspan=2, sticky=tk.W, pady=(6, 8))
+        btn_test_smtp.grid(row=11, column=0, columnspan=2, sticky=tk.W, pady=(6, 8))
 
         # Separador
         sep_e2 = tk.Frame(parent, height=1, bg=COLOR_ACCENT)
-        sep_e2.grid(row=11, column=0, columnspan=2, sticky=tk.EW, pady=6)
+        sep_e2.grid(row=12, column=0, columnspan=2, sticky=tk.EW, pady=6)
 
         # ─── SEÇÃO 3: MODELO DE E-MAIL ───
         lbl_sec_tmpl_e = tk.Label(
             parent, text="Personalização do Modelo de E-mail",
             font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
         )
-        lbl_sec_tmpl_e.grid(row=12, column=0, columnspan=2, sticky=tk.W, pady=(0, 4))
+        lbl_sec_tmpl_e.grid(row=13, column=0, columnspan=2, sticky=tk.W, pady=(0, 4))
 
         frame_tmpl_btns = ttk.Frame(parent)
-        frame_tmpl_btns.grid(row=13, column=0, columnspan=2, sticky=tk.W, pady=(2, 0))
+        frame_tmpl_btns.grid(row=14, column=0, columnspan=2, sticky=tk.W, pady=(2, 0))
 
         btn_edit_email_tmpl = ttk.Button(
             frame_tmpl_btns, text="✏ Personalizar Modelo de E-mail (Tags & Texto)",
@@ -277,12 +281,13 @@ class SettingsDialog(tk.Toplevel):
 
         # E-mail
         self.ent_recipients.insert(0, self.config.get("email_recipients", ""))
+        self.ent_cc.insert(0, self.config.get("email_cc", ""))
 
         send_mode = self.config.get("email_send_mode", "outlook")
         if send_mode == "smtp":
-            self.cmb_send_mode.current(1)
+            self.cmb_send_mode.current(0)  # "Envio Direto via SMTP (UOL Pro)" é o 1º item agora
         else:
-            self.cmb_send_mode.current(0)
+            self.cmb_send_mode.current(1)  # "Microsoft Outlook" é o 2º item
 
         self.ent_smtp_host.insert(0, self.config.get("smtp_server", "smtps.uhserver.com"))
         self.ent_smtp_port.insert(0, str(self.config.get("smtp_port", 587)))
@@ -318,6 +323,7 @@ class SettingsDialog(tk.Toplevel):
             "sort_by_consumption": self.config.get("sort_by_consumption", True),
             # E-mail
             "email_recipients": self.ent_recipients.get().strip(),
+            "email_cc": self.ent_cc.get().strip(),
             "email_send_mode": mode_val,
             "smtp_server": self.ent_smtp_host.get().strip(),
             "smtp_port": port_val,
