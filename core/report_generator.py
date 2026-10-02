@@ -698,6 +698,7 @@ def generate_excel_from_template(template_path, df, dt_inicio_str, dt_fim_str, v
 def export_to_pdf(excel_path, pdf_path=None):
     """
     Converte uma planilha Excel (.xlsx) para PDF com fidelidade total usando o Microsoft Excel via COM.
+    Exclui a aba 'Gráficos' da impressão pois não renderiza bem em PDF.
     Retorna o caminho do PDF gerado ou None se o Excel não estiver disponível ou ocorrer erro.
     """
     if not excel_path or not os.path.exists(excel_path):
@@ -719,8 +720,26 @@ def export_to_pdf(excel_path, pdf_path=None):
         excel.DisplayAlerts = False
         try:
             wb = excel.Workbooks.Open(abs_excel)
-            # 0 = xlTypePDF
-            wb.ExportAsFixedFormat(0, abs_pdf)
+
+            # Selecionar apenas as abas que NÃO são "Gráficos" para exportar
+            sheets_to_print = []
+            for i in range(1, wb.Sheets.Count + 1):
+                sheet_name = wb.Sheets(i).Name
+                if sheet_name.lower() not in ("gráficos", "graficos"):
+                    sheets_to_print.append(wb.Sheets(i).Name)
+
+            if sheets_to_print:
+                # Selecionar múltiplas abas para impressão
+                wb.Sheets(sheets_to_print[0]).Select()
+                if len(sheets_to_print) > 1:
+                    for sname in sheets_to_print[1:]:
+                        wb.Sheets(sname).Select(False)  # False = adicionar à seleção
+                # Exportar apenas as abas selecionadas (xlFixedFormatType = 0 = PDF)
+                wb.ActiveSheet.ExportAsFixedFormat(0, abs_pdf)
+            else:
+                # Fallback: exportar tudo
+                wb.ExportAsFixedFormat(0, abs_pdf)
+
             wb.Close(False)
             logging.info(f"PDF gerado com sucesso em: {abs_pdf}")
             return abs_pdf
