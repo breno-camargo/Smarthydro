@@ -8,7 +8,7 @@ from tkinter import ttk, messagebox
 from core.config_manager import load_config, save_config
 from core.email_sender import (
     load_email_template, extract_report_summary, render_email,
-    parse_recipients, open_in_outlook, send_email_smtp, prepare_html_for_preview
+    parse_recipients, send_email_smtp, prepare_html_for_preview
 )
 from gui.email_template_dialog import EmailTemplateDialog
 
@@ -23,8 +23,8 @@ class SendEmailDialog(tk.Toplevel):
     def __init__(self, parent, xlsx_path, pdf_path=None):
         super().__init__(parent)
         self.title("Enviar Relatório por E-mail — CompaSSS")
-        self.geometry("580x600")
-        self.minsize(540, 560)
+        self.geometry("580x520")
+        self.minsize(540, 470)
         self.configure(bg=COLOR_BG_LIGHT)
         self.transient(parent)
         self.grab_set()
@@ -126,28 +126,7 @@ class SendEmailDialog(tk.Toplevel):
         )
         chk_pdf.pack(anchor=tk.W, pady=2)
 
-        # ─── MODO DE ENVIO ───
-        frame_mode = ttk.LabelFrame(container, text=" Método de Envio ", padding="10 8 10 8")
-        frame_mode.pack(fill=tk.X, pady=(0, 12))
 
-        saved_mode = self.config.get("email_send_mode", "outlook")
-        self.var_mode = tk.StringVar(value=saved_mode)
-
-        rb_outlook = ttk.Radiobutton(
-            frame_mode,
-            text="Microsoft Outlook (Abre a mensagem com os anexos pronta para enviar)",
-            variable=self.var_mode,
-            value="outlook"
-        )
-        rb_outlook.pack(anchor=tk.W, pady=2)
-
-        rb_smtp = ttk.Radiobutton(
-            frame_mode,
-            text="Envio Direto via Servidor (SMTP / UOL Pro configurado)",
-            variable=self.var_mode,
-            value="smtp"
-        )
-        rb_smtp.pack(anchor=tk.W, pady=2)
 
         # ─── BARRA DE STATUS / PROGRESSO ───
         self.lbl_status = tk.Label(
@@ -233,30 +212,26 @@ class SendEmailDialog(tk.Toplevel):
             )
 
         subject = self.ent_subj.get().strip() or self.rendered_subj
-        mode = self.var_mode.get()
 
-        # Salvar destinatários e modo no config para as próximas vezes
+        # Salvar destinatários no config para as próximas vezes
         self.config["email_recipients"] = raw_to
         self.config["email_cc"] = raw_cc
-        self.config["email_send_mode"] = mode
+        self.config["email_send_mode"] = "smtp"
         save_config(self.config)
 
         # Iniciar envio em thread secundária
         self.btn_send.config(state=tk.DISABLED)
         self.prog_bar.start(10)
-        self.lbl_status.config(text="Processando envio...")
+        self.lbl_status.config(text="Enviando e-mail via UOL Pro...")
 
         threading.Thread(
             target=self._send_worker,
-            args=(recipients, cc_recipients, subject, self.rendered_body, attachments, mode),
+            args=(recipients, cc_recipients, subject, self.rendered_body, attachments),
             daemon=True
         ).start()
 
-    def _send_worker(self, recipients, cc_recipients, subject, body, attachments, mode):
-        if mode == "outlook":
-            ok, msg = open_in_outlook(recipients, subject, body, attachments, cc_addrs=cc_recipients)
-        else:
-            ok, msg = send_email_smtp(self.config, recipients, subject, body, attachments, cc_addrs=cc_recipients)
+    def _send_worker(self, recipients, cc_recipients, subject, body, attachments):
+        ok, msg = send_email_smtp(self.config, recipients, subject, body, attachments, cc_addrs=cc_recipients)
 
         def _ui_done():
             self.prog_bar.stop()

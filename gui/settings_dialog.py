@@ -158,13 +158,7 @@ class SettingsDialog(tk.Toplevel):
         )
         lbl_hint_to.grid(row=3, column=1, sticky=tk.W, pady=(0, 6))
 
-        ttk.Label(parent, text="Método de Envio:").grid(row=4, column=0, sticky=tk.W, pady=4)
-        self.cmb_send_mode = ttk.Combobox(
-            parent,
-            values=["Envio Direto via SMTP (UOL Pro)", "Microsoft Outlook"],
-            state="readonly", width=34
-        )
-        self.cmb_send_mode.grid(row=4, column=1, sticky=tk.EW, pady=4)
+
 
         # Separador
         sep_e1 = tk.Frame(parent, height=1, bg=COLOR_ACCENT)
@@ -283,15 +277,9 @@ class SettingsDialog(tk.Toplevel):
         self.ent_recipients.insert(0, self.config.get("email_recipients", ""))
         self.ent_cc.insert(0, self.config.get("email_cc", ""))
 
-        send_mode = self.config.get("email_send_mode", "outlook")
-        if send_mode == "smtp":
-            self.cmb_send_mode.current(0)  # "Envio Direto via SMTP (UOL Pro)" é o 1º item agora
-        else:
-            self.cmb_send_mode.current(1)  # "Microsoft Outlook" é o 2º item
-
         self.ent_smtp_host.insert(0, self.config.get("smtp_server", "smtps.uhserver.com"))
-        self.ent_smtp_port.insert(0, str(self.config.get("smtp_port", 587)))
-        self.var_smtp_tls.set(self.config.get("smtp_use_tls", True))
+        self.ent_smtp_port.insert(0, str(self.config.get("smtp_port", 465)))
+        self.var_smtp_tls.set(self.config.get("smtp_use_tls", False))
         self.ent_smtp_user.insert(0, self.config.get("smtp_user", ""))
         self.ent_smtp_pass.insert(0, self.config.get("smtp_password", ""))
 
@@ -302,12 +290,12 @@ class SettingsDialog(tk.Toplevel):
             self.ent_dir.insert(0, os.path.abspath(selected))
 
     def _get_current_inputs_config(self):
-        mode_val = "smtp" if "SMTP" in self.cmb_send_mode.get() else "outlook"
+        mode_val = "smtp"
 
         try:
             port_val = int(self.ent_smtp_port.get().strip())
         except ValueError:
-            port_val = 587
+            port_val = 465
 
         return {
             "server": self.ent_server.get().strip(),
