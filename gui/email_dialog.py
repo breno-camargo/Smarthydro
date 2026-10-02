@@ -23,8 +23,8 @@ class SendEmailDialog(tk.Toplevel):
     def __init__(self, parent, xlsx_path, pdf_path=None):
         super().__init__(parent)
         self.title("Enviar Relatório por E-mail — CompaSSS")
-        self.geometry("580x650")
-        self.minsize(540, 600)
+        self.geometry("580x600")
+        self.minsize(540, 560)
         self.configure(bg=COLOR_BG_LIGHT)
         self.transient(parent)
         self.grab_set()
