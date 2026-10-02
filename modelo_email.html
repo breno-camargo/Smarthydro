@@ -2,175 +2,75 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Rateio de Água - {MES}/{ANO} - Condomínio Praça Pamplona</title>
+  <title>Relatório de insumos - {MES}/{ANO} - Praça Pamplona - CompaSSS</title>
   <style>
     body {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      background-color: #F6F9F2;
+      font-family: 'Segoe UI', Calibri, Arial, sans-serif;
       color: #1B2A12;
       margin: 0;
       padding: 20px;
-    }
-    .container {
-      max-width: 650px;
-      margin: 0 auto;
-      background-color: #FFFFFF;
-      border: 1px solid #D5E5C9;
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    }
-    .header {
-      background: linear-gradient(135deg, #3D6B24 0%, #2D501A 100%);
-      color: #FFFFFF;
-      padding: 24px 28px;
-      text-align: left;
-    }
-    .header h1 {
-      margin: 0;
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-    }
-    .header p {
-      margin: 6px 0 0 0;
-      font-size: 13px;
-      color: #D2E7C4;
-    }
-    .content {
-      padding: 26px 28px;
       font-size: 14px;
       line-height: 1.6;
+      background-color: #FFFFFF;
     }
-    .greeting {
-      font-size: 15px;
-      margin-bottom: 16px;
+    .email-body {
+      max-width: 640px;
     }
-    .summary-box {
-      background-color: #F6F9F2;
-      border: 1px solid #90C671;
-      border-radius: 6px;
-      padding: 16px 20px;
-      margin: 20px 0;
+    p {
+      margin: 0 0 12px 0;
     }
-    .summary-title {
-      font-size: 14px;
+    .signature {
+      margin-top: 28px;
+      padding-top: 16px;
+      border-top: 1px solid #D5E5C9;
+    }
+    .sig-name {
       font-weight: 700;
-      color: #3D6B24;
-      margin-bottom: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .summary-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    .summary-table td {
-      padding: 6px 0;
       font-size: 14px;
-      vertical-align: top;
-    }
-    .summary-table td.label {
-      color: #55664C;
-      font-weight: 600;
-      width: 45%;
-    }
-    .summary-table td.val {
       color: #1B2A12;
-      font-weight: 700;
-      text-align: right;
+      margin-bottom: 2px;
     }
-    .highlight-val {
+    .sig-details {
+      font-size: 12px;
+      color: #55664C;
+      line-height: 1.5;
+    }
+    .sig-details a {
       color: #3D6B24;
-      font-size: 16px;
+      text-decoration: none;
     }
-    .attachments-box {
-      background-color: #FAFCF8;
-      border-left: 4px solid #3D6B24;
-      padding: 12px 16px;
-      margin: 20px 0;
-      font-size: 13px;
-      color: #44553B;
+    .sig-details a:hover {
+      text-decoration: underline;
     }
-    .attachments-box ul {
-      margin: 6px 0 0 0;
-      padding-left: 20px;
+    .sig-logo {
+      margin-top: 12px;
     }
-    .attachments-box li {
-      margin-bottom: 4px;
-    }
-    .footer {
-      background-color: #EDF3E7;
-      padding: 16px 28px;
-      text-align: center;
-      font-size: 11px;
-      color: #6C7E61;
-      border-top: 1px solid #E0EBD8;
+    .sig-logo img {
+      height: 45px;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>CompaSSS — Medição de Hidrômetros</h1>
-      <p>Condomínio Praça Pamplona • Telemetria StruxureWare EBO</p>
-    </div>
-    <div class="content">
-      <div class="greeting">Prezados,</div>
-      <p>
-        Segue em anexo o relatório oficial consolidado de medição e rateio de consumo de água referente ao período de <strong>{PERIODO}</strong> (competência <strong>{MES}/{ANO}</strong>).
-      </p>
+  <div class="email-body">
+    <p>Prezados, boa tarde!</p>
 
-      <div class="summary-box">
-        <div class="summary-title">📊 Resumo Geral da Medição</div>
-        <table class="summary-table">
-          <tr>
-            <td class="label">Mês de Referência:</td>
-            <td class="val">{MES} de {ANO}</td>
-          </tr>
-          <tr>
-            <td class="label">Período de Apuração:</td>
-            <td class="val">{PERIODO}</td>
-          </tr>
-          <tr>
-            <td class="label">Consumo Total Medido:</td>
-            <td class="val highlight-val">{TOTAL_M3} m³</td>
-          </tr>
-          <tr>
-            <td class="label">Tarifa do Metro Cúbico:</td>
-            <td class="val">R$ {VALOR_M3}</td>
-          </tr>
-          <tr>
-            <td class="label">Valor Total Rateado:</td>
-            <td class="val highlight-val">R$ {TOTAL_VALOR}</td>
-          </tr>
-          <tr>
-            <td class="label">Unidades Registradas:</td>
-            <td class="val">{QTD_SALAS} salas/medidores</td>
-          </tr>
-        </table>
+    <p>Segue em anexo relatório do mês de {MES}.</p>
+
+    <p>Quaisquer dúvidas estamos à disposição!</p>
+
+    <div class="signature">
+      <div class="sig-name">Breno Camargo</div>
+      <div class="sig-details">
+        +55 11 99012 7316<br>
+        <a href="mailto:breno.camargo@compasss.com.br">breno.camargo@compasss.com.br</a><br>
+        <a href="https://www.compasss.com.br">www.compasss.com.br</a><br>
+        <br>
+        RJ – Praia de Botafogo, 300 – Mezanino – Botafogo – CEP: 20031-040<br>
+        SP – Alameda Santos, 2477 – 11º Andar – Jardim Paulista – CEP: 01419-101
       </div>
-
-      <div class="attachments-box">
-        <strong>📎 Arquivos Anexos nesta Mensagem:</strong>
-        <ul>
-          <li><strong>Planilha Completa (Excel .xlsx):</strong> Contém o rateio detalhado sala a sala, leituras anteriores, atuais, consumo e histórico de 11 meses.</li>
-          <li><strong>Relatório Oficial (PDF):</strong> Versão formatada pronta para impressão, apresentação ou arquivamento.</li>
-        </ul>
+      <div class="sig-logo">
+        <img src="https://compasss.com.br/wp-content/uploads/2023/10/Logo-CompaSSS-Positivo.png" alt="CompaSSS" style="height: 45px;">
       </div>
-
-      <p>
-        Permanecemos à disposição para quaisquer esclarecimentos.
-      </p>
-
-      <p style="margin-top: 24px; color: #55664C;">
-        Atenciosamente,<br>
-        <strong>Administração Predial / Equipe de Automação</strong><br>
-        Condomínio Praça Pamplona
-      </p>
-    </div>
-    <div class="footer">
-      Relatório gerado automaticamente em {DATA_EMISSAO} pelo sistema CompaSSS Smarthydro.
     </div>
   </div>
 </body>
