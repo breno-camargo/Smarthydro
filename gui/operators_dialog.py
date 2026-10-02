@@ -31,44 +31,44 @@ class OperatorsDialog(tk.Toplevel):
 
         self._build_ui()
         self._load_operators_list()
-        center_modal(self, parent, 660, 520)
+        center_modal(self, parent, 580, 525)
 
     def _build_ui(self):
-        main_box = ttk.Frame(self, padding="18 16 18 16")
+        main_box = ttk.Frame(self, padding="12 10 12 10")
         main_box.pack(fill=tk.BOTH, expand=True)
 
         # ─── HEADER ───
         lbl_head = tk.Label(
             main_box,
             text="👤 Perfis de Operador & Assinaturas de E-mail",
-            font=("Segoe UI", 12, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
+            font=("Segoe UI", 11, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
         )
         lbl_head.pack(anchor=tk.W, pady=(0, 2))
 
         lbl_desc = tk.Label(
             main_box,
-            text="Cadastre os técnicos/operadores que utilizam o sistema. Cada perfil possui seu próprio e-mail e assinatura corporativa.",
-            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT, wraplength=620, justify=tk.LEFT
+            text="Cadastre os operadores que utilizam o sistema. Cada perfil possui seu próprio e-mail e assinatura corporativa.",
+            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT, wraplength=540, justify=tk.LEFT
         )
-        lbl_desc.pack(anchor=tk.W, pady=(0, 10))
+        lbl_desc.pack(anchor=tk.W, pady=(0, 8))
 
         # ─── TABELA DE OPERADORES ───
         frame_table = tk.Frame(main_box, bg=COLOR_BG_LIGHT)
-        frame_table.pack(fill=tk.BOTH, expand=True, pady=(0, 8))
+        frame_table.pack(fill=tk.BOTH, expand=True, pady=(0, 6))
 
         columns = ("padrao", "nome", "cargo", "email", "telefone")
-        self.tree = ttk.Treeview(frame_table, columns=columns, show="headings", height=5, selectmode="browse")
+        self.tree = ttk.Treeview(frame_table, columns=columns, show="headings", height=4, selectmode="browse")
         self.tree.heading("padrao", text="Status")
         self.tree.heading("nome", text="Nome Completo")
         self.tree.heading("cargo", text="Cargo / Função")
         self.tree.heading("email", text="E-mail de Envio")
         self.tree.heading("telefone", text="Telefone / Ramal")
 
-        self.tree.column("padrao", width=75, anchor=tk.CENTER)
-        self.tree.column("nome", width=140, anchor=tk.W)
-        self.tree.column("cargo", width=140, anchor=tk.W)
-        self.tree.column("email", width=160, anchor=tk.W)
-        self.tree.column("telefone", width=105, anchor=tk.W)
+        self.tree.column("padrao", width=65, anchor=tk.CENTER)
+        self.tree.column("nome", width=120, anchor=tk.W)
+        self.tree.column("cargo", width=115, anchor=tk.W)
+        self.tree.column("email", width=145, anchor=tk.W)
+        self.tree.column("telefone", width=95, anchor=tk.W)
 
         sb = ttk.Scrollbar(frame_table, orient=tk.VERTICAL, command=self.tree.yview)
         self.tree.configure(yscrollcommand=sb.set)
@@ -79,7 +79,7 @@ class OperatorsDialog(tk.Toplevel):
 
         # Botões de ação da tabela
         frame_tbtns = tk.Frame(main_box, bg=COLOR_BG_LIGHT)
-        frame_tbtns.pack(fill=tk.X, pady=(0, 10))
+        frame_tbtns.pack(fill=tk.X, pady=(0, 8))
 
         btn_new = ttk.Button(frame_tbtns, text="➕ Novo Operador", command=self._start_new_operator)
         btn_new.pack(side=tk.LEFT, padx=(0, 6))
@@ -91,39 +91,39 @@ class OperatorsDialog(tk.Toplevel):
         self.btn_delete.pack(side=tk.LEFT)
 
         # ─── FORMULÁRIO DE EDIÇÃO / CADASTRO ───
-        self.frame_form = ttk.LabelFrame(main_box, text="  Dados do Operador Selecionado  ", padding="12 10 12 10")
-        self.frame_form.pack(fill=tk.X, pady=(0, 10))
+        self.frame_form = ttk.LabelFrame(main_box, text="  Dados do Operador Selecionado  ", padding="10 8 10 8")
+        self.frame_form.pack(fill=tk.X, pady=(0, 8))
 
         # Grid 2 colunas
         lbl_n = ttk.Label(self.frame_form, text="Nome Completo:", font=("Segoe UI", 9, "bold"))
         lbl_n.grid(row=0, column=0, sticky=tk.W, pady=3)
-        self.ent_nome = ttk.Entry(self.frame_form, font=("Segoe UI", 9), width=28)
-        self.ent_nome.grid(row=0, column=1, sticky=tk.W, pady=3, padx=(6, 16))
+        self.ent_nome = ttk.Entry(self.frame_form, font=("Segoe UI", 9), width=21)
+        self.ent_nome.grid(row=0, column=1, sticky=tk.W, pady=3, padx=(4, 12))
 
         lbl_c = ttk.Label(self.frame_form, text="Cargo / Função:", font=("Segoe UI", 9, "bold"))
         lbl_c.grid(row=0, column=2, sticky=tk.W, pady=3)
-        self.ent_cargo = ttk.Entry(self.frame_form, font=("Segoe UI", 9), width=28)
-        self.ent_cargo.grid(row=0, column=3, sticky=tk.W, pady=3, padx=(6, 0))
+        self.ent_cargo = ttk.Entry(self.frame_form, font=("Segoe UI", 9), width=21)
+        self.ent_cargo.grid(row=0, column=3, sticky=tk.W, pady=3, padx=(4, 0))
 
         lbl_e = ttk.Label(self.frame_form, text="E-mail Pessoal/Corp:", font=("Segoe UI", 9, "bold"))
         lbl_e.grid(row=1, column=0, sticky=tk.W, pady=3)
-        self.ent_email = ttk.Entry(self.frame_form, font=("Segoe UI", 9), width=28)
-        self.ent_email.grid(row=1, column=1, sticky=tk.W, pady=3, padx=(6, 16))
+        self.ent_email = ttk.Entry(self.frame_form, font=("Segoe UI", 9), width=21)
+        self.ent_email.grid(row=1, column=1, sticky=tk.W, pady=3, padx=(4, 12))
 
         lbl_t = ttk.Label(self.frame_form, text="Telefone / Contato:", font=("Segoe UI", 9, "bold"))
         lbl_t.grid(row=1, column=2, sticky=tk.W, pady=3)
-        self.ent_tel = ttk.Entry(self.frame_form, font=("Segoe UI", 9), width=28)
-        self.ent_tel.grid(row=1, column=3, sticky=tk.W, pady=3, padx=(6, 0))
+        self.ent_tel = ttk.Entry(self.frame_form, font=("Segoe UI", 9), width=21)
+        self.ent_tel.grid(row=1, column=3, sticky=tk.W, pady=3, padx=(4, 0))
 
         lbl_u = ttk.Label(self.frame_form, text="Usuário SMTP:", font=("Segoe UI", 9))
         lbl_u.grid(row=2, column=0, sticky=tk.W, pady=3)
-        self.ent_smtp_user = ttk.Entry(self.frame_form, font=("Segoe UI", 9), width=28)
-        self.ent_smtp_user.grid(row=2, column=1, sticky=tk.W, pady=3, padx=(6, 16))
+        self.ent_smtp_user = ttk.Entry(self.frame_form, font=("Segoe UI", 9), width=21)
+        self.ent_smtp_user.grid(row=2, column=1, sticky=tk.W, pady=3, padx=(4, 12))
 
         lbl_p = ttk.Label(self.frame_form, text="Senha SMTP:", font=("Segoe UI", 9))
         lbl_p.grid(row=2, column=2, sticky=tk.W, pady=3)
-        self.ent_smtp_pwd = ttk.Entry(self.frame_form, font=("Segoe UI", 9), width=28, show="●")
-        self.ent_smtp_pwd.grid(row=2, column=3, sticky=tk.W, pady=3, padx=(6, 0))
+        self.ent_smtp_pwd = ttk.Entry(self.frame_form, font=("Segoe UI", 9), width=21, show="●")
+        self.ent_smtp_pwd.grid(row=2, column=3, sticky=tk.W, pady=3, padx=(4, 0))
 
         self.var_default = tk.BooleanVar(value=False)
         self.chk_def = ttk.Checkbutton(
@@ -131,10 +131,10 @@ class OperatorsDialog(tk.Toplevel):
             text="Operador Padrão (usado em agendamentos automáticos e inicialização)",
             variable=self.var_default
         )
-        self.chk_def.grid(row=3, column=0, columnspan=4, sticky=tk.W, pady=(6, 6))
+        self.chk_def.grid(row=3, column=0, columnspan=4, sticky=tk.W, pady=(4, 4))
 
         frame_fbtns = tk.Frame(self.frame_form, bg=COLOR_BG_LIGHT)
-        frame_fbtns.grid(row=4, column=0, columnspan=4, sticky=tk.E, pady=(4, 0))
+        frame_fbtns.grid(row=4, column=0, columnspan=4, sticky=tk.E, pady=(2, 0))
 
         self.btn_save_op = tk.Button(
             frame_fbtns,
@@ -142,7 +142,7 @@ class OperatorsDialog(tk.Toplevel):
             command=self._save_operator_form,
             bg=COLOR_PRIMARY, fg="white", activebackground=COLOR_PRIMARY_HOVER,
             activeforeground="white", font=("Segoe UI", 9, "bold"),
-            relief="flat", padx=12, pady=4, cursor="hand2"
+            relief="flat", padx=12, pady=3, cursor="hand2"
         )
         self.btn_save_op.pack(side=tk.RIGHT)
 

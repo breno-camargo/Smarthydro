@@ -18,7 +18,7 @@ from gui.email_dialog import SendEmailDialog
 from gui.anomaly_dialog import AnomalyDialog
 from gui.operators_dialog import OperatorsDialog
 from gui.history_dialog import AnnualHistoryDialog
-from gui.ui_helpers import apply_window_icon
+from gui.ui_helpers import apply_window_icon, create_tooltip
 
 # Cores institucionais CompaSSS
 COLOR_PRIMARY = "#3D6B24"       # Verde escuro institucional
@@ -105,8 +105,32 @@ class AppHidrometrosWindow:
             lbl_logo = tk.Label(frame_top, image=self.logo_img, bg=COLOR_BG_LIGHT)
             lbl_logo.pack(side=tk.LEFT, padx=(0, 14))
 
+        # Botões de Ação no canto superior direito (empacotados primeiro à direita para garantir espaço)
+        frame_top_btns = tk.Frame(frame_top, bg=COLOR_BG_LIGHT)
+        frame_top_btns.pack(side=tk.RIGHT, anchor=tk.NE, pady=2)
+
+        btn_settings = tk.Button(
+            frame_top_btns, text="⚙️", command=self._open_settings,
+            font=("Segoe UI Emoji", 11), bg="#EBF3E6", fg=COLOR_PRIMARY,
+            activebackground=COLOR_ACCENT, activeforeground=COLOR_PRIMARY,
+            relief="flat", bd=1, highlightbackground=COLOR_ACCENT, highlightthickness=1,
+            width=3, pady=2, cursor="hand2"
+        )
+        btn_settings.pack(side=tk.RIGHT, padx=(5, 0))
+        create_tooltip(btn_settings, "Configurações do Sistema")
+
+        btn_history = tk.Button(
+            frame_top_btns, text="📈", command=self._open_annual_history,
+            font=("Segoe UI Emoji", 11), bg="#EBF3E6", fg=COLOR_PRIMARY,
+            activebackground=COLOR_ACCENT, activeforeground=COLOR_PRIMARY,
+            relief="flat", bd=1, highlightbackground=COLOR_ACCENT, highlightthickness=1,
+            width=3, pady=2, cursor="hand2"
+        )
+        btn_history.pack(side=tk.RIGHT)
+        create_tooltip(btn_history, "Histórico Anual de Telemetria (12 Meses)")
+
         title_box = tk.Frame(frame_top, bg=COLOR_BG_LIGHT)
-        title_box.pack(side=tk.LEFT, fill=tk.Y)
+        title_box.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         lbl_title = tk.Label(title_box, text="Medição de Hidrômetros", font=("Segoe UI", 14, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT)
         lbl_title.pack(anchor=tk.W)
@@ -130,16 +154,7 @@ class AppHidrometrosWindow:
             activebackground=COLOR_ACCENT, relief="flat", padx=6, pady=1, cursor="hand2"
         )
         btn_manage_ops.pack(side=tk.LEFT)
-
-        # Botões de Ação no canto superior direito
-        frame_top_btns = tk.Frame(frame_top, bg=COLOR_BG_LIGHT)
-        frame_top_btns.pack(side=tk.RIGHT, anchor=tk.NE, pady=2)
-
-        btn_settings = ttk.Button(frame_top_btns, text="⚙ Configurações", command=self._open_settings, style="Secondary.TButton")
-        btn_settings.pack(side=tk.RIGHT, padx=(6, 0))
-
-        btn_history = ttk.Button(frame_top_btns, text="📈 Histórico Anual", command=self._open_annual_history, style="Secondary.TButton")
-        btn_history.pack(side=tk.RIGHT)
+        create_tooltip(btn_manage_ops, "Gerenciar perfis de operadores e assinaturas de e-mail")
 
         # Linha divisória verde suave
         div = tk.Frame(main_container, height=2, bg=COLOR_ACCENT)

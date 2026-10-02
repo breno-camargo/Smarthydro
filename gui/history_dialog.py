@@ -32,20 +32,20 @@ class AnnualHistoryDialog(tk.Toplevel):
         self.tooltip_window = None
 
         self._build_ui()
-        center_modal(self, parent, 820, 650)
+        center_modal(self, parent, 610, 580)
         self._load_data_async()
 
     def _build_ui(self):
-        self.main_box = ttk.Frame(self, padding="16 12 16 12")
+        self.main_box = ttk.Frame(self, padding="12 10 12 10")
         self.main_box.pack(fill=tk.BOTH, expand=True)
 
         # ─── HEADER ───
         frame_head = tk.Frame(self.main_box, bg=COLOR_BG_LIGHT)
-        frame_head.pack(fill=tk.X, pady=(0, 8))
+        frame_head.pack(fill=tk.X, pady=(0, 6))
 
         lbl_title = tk.Label(
             frame_head, text="📈 Histórico Anual de Consumo de Água (12 Meses)",
-            font=("Segoe UI", 12, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
+            font=("Segoe UI", 11, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
         )
         lbl_title.pack(anchor=tk.W)
 
@@ -57,30 +57,30 @@ class AnnualHistoryDialog(tk.Toplevel):
 
         # ─── CARDS DE KPIS ───
         self.frame_kpis = tk.Frame(self.main_box, bg=COLOR_BG_LIGHT)
-        self.frame_kpis.pack(fill=tk.X, pady=(0, 10))
+        self.frame_kpis.pack(fill=tk.X, pady=(0, 8))
 
-        self.card_total = self._create_kpi_card(self.frame_kpis, "💧 Consumo Anual", "Carregando...", "Soma dos 12 ciclos")
-        self.card_total.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 6))
+        self.card_total = self._create_kpi_card(self.frame_kpis, "💧 Consumo Anual", "Carregando...", "Soma 12 ciclos")
+        self.card_total.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 4))
 
         self.card_fat = self._create_kpi_card(self.frame_kpis, "💰 Faturamento Anual", "Carregando...", "Tarifa base")
-        self.card_fat.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=3)
+        self.card_fat.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=2)
 
-        self.card_media = self._create_kpi_card(self.frame_kpis, "📊 Média Mensal", "Carregando...", "Consumo médio/mês")
-        self.card_media.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=3)
+        self.card_media = self._create_kpi_card(self.frame_kpis, "📊 Média Mensal", "Carregando...", "Média/mês")
+        self.card_media.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=2)
 
-        self.card_pico = self._create_kpi_card(self.frame_kpis, "⚡ Mês de Pico", "Carregando...", "Maior medição do ano")
-        self.card_pico.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(6, 0))
+        self.card_pico = self._create_kpi_card(self.frame_kpis, "⚡ Mês de Pico", "Carregando...", "Maior medição")
+        self.card_pico.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(4, 0))
 
         # ─── GRÁFICO VISUAL (CANVAS) ───
         frame_chart_box = tk.LabelFrame(
             self.main_box, text="  Evolução Visual do Consumo Mensal (m³)  ",
             bg=COLOR_BG_LIGHT, fg=COLOR_PRIMARY, font=("Segoe UI", 9, "bold"),
-            padx=8, pady=6
+            padx=6, pady=4
         )
-        frame_chart_box.pack(fill=tk.X, pady=(0, 10))
+        frame_chart_box.pack(fill=tk.X, pady=(0, 8))
 
-        self.canvas_w = 770
-        self.canvas_h = 160
+        self.canvas_w = 560
+        self.canvas_h = 135
         self.canvas = tk.Canvas(
             frame_chart_box, width=self.canvas_w, height=self.canvas_h,
             bg="#FFFFFF", highlightthickness=1, highlightbackground=COLOR_CARD_BORDER
@@ -91,12 +91,12 @@ class AnnualHistoryDialog(tk.Toplevel):
         frame_table_box = tk.LabelFrame(
             self.main_box, text="  Detalhamento dos Ciclos de Faturamento  ",
             bg=COLOR_BG_LIGHT, fg=COLOR_PRIMARY, font=("Segoe UI", 9, "bold"),
-            padx=8, pady=6
+            padx=6, pady=4
         )
-        frame_table_box.pack(fill=tk.BOTH, expand=True, pady=(0, 8))
+        frame_table_box.pack(fill=tk.BOTH, expand=True, pady=(0, 6))
 
         columns = ("mes", "periodo", "consumo", "diff_m3", "diff_pct", "faturamento")
-        self.tree = ttk.Treeview(frame_table_box, columns=columns, show="headings", height=5)
+        self.tree = ttk.Treeview(frame_table_box, columns=columns, show="headings", height=4)
         self.tree.heading("mes", text="Mês / Ano")
         self.tree.heading("periodo", text="Período de Medição")
         self.tree.heading("consumo", text="Consumo (m³)")
@@ -104,12 +104,12 @@ class AnnualHistoryDialog(tk.Toplevel):
         self.tree.heading("diff_pct", text="Variação (%)")
         self.tree.heading("faturamento", text="Valor Faturado (R$)")
 
-        self.tree.column("mes", width=90, anchor=tk.CENTER)
-        self.tree.column("periodo", width=180, anchor=tk.CENTER)
-        self.tree.column("consumo", width=110, anchor=tk.E)
-        self.tree.column("diff_m3", width=105, anchor=tk.E)
-        self.tree.column("diff_pct", width=95, anchor=tk.E)
-        self.tree.column("faturamento", width=140, anchor=tk.E)
+        self.tree.column("mes", width=65, anchor=tk.CENTER)
+        self.tree.column("periodo", width=155, anchor=tk.CENTER)
+        self.tree.column("consumo", width=80, anchor=tk.E)
+        self.tree.column("diff_m3", width=75, anchor=tk.E)
+        self.tree.column("diff_pct", width=65, anchor=tk.E)
+        self.tree.column("faturamento", width=95, anchor=tk.E)
 
         # Tags visuais de alta/baixa
         self.tree.tag_configure("up", foreground="#C9302C")
@@ -139,12 +139,12 @@ class AnnualHistoryDialog(tk.Toplevel):
         btn_close.pack(side=tk.RIGHT)
 
         self.btn_export = tk.Button(
-            frame_foot, text="📥 Exportar para Excel (.xlsx)", command=self._export_excel,
+            frame_foot, text="📥 Exportar Excel (.xlsx)", command=self._export_excel,
             bg=COLOR_PRIMARY, fg="white", activebackground=COLOR_PRIMARY_HOVER,
             activeforeground="white", font=("Segoe UI", 9, "bold"), relief="flat",
-            padx=12, pady=4, cursor="hand2", state=tk.DISABLED
+            padx=10, pady=3, cursor="hand2", state=tk.DISABLED
         )
-        self.btn_export.pack(side=tk.RIGHT, padx=(0, 8))
+        self.btn_export.pack(side=tk.RIGHT, padx=(0, 6))
 
         btn_refresh = ttk.Button(frame_foot, text="🔄 Atualizar", command=self._load_data_async)
         btn_refresh.pack(side=tk.LEFT)
@@ -153,13 +153,13 @@ class AnnualHistoryDialog(tk.Toplevel):
         card = tk.Frame(
             parent, bg=COLOR_CARD_BG,
             highlightbackground=COLOR_CARD_BORDER, highlightthickness=1,
-            padx=10, pady=8
+            padx=6, pady=5
         )
         lbl_t = tk.Label(card, text=title, font=("Segoe UI", 8, "bold"), fg=COLOR_TEXT_MUTED, bg=COLOR_CARD_BG)
         lbl_t.pack(anchor=tk.W)
 
-        lbl_v = tk.Label(card, text=val, font=("Segoe UI", 12, "bold"), fg=COLOR_PRIMARY, bg=COLOR_CARD_BG)
-        lbl_v.pack(anchor=tk.W, pady=(2, 1))
+        lbl_v = tk.Label(card, text=val, font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_CARD_BG)
+        lbl_v.pack(anchor=tk.W, pady=(1, 1))
 
         lbl_s = tk.Label(card, text=sub, font=("Segoe UI", 7), fg=COLOR_TEXT_MUTED, bg=COLOR_CARD_BG)
         lbl_s.pack(anchor=tk.W)
@@ -254,10 +254,10 @@ class AnnualHistoryDialog(tk.Toplevel):
         w = self.canvas.winfo_width() or self.canvas_w
         h = self.canvas.winfo_height() or self.canvas_h
 
-        pad_left = 45
-        pad_right = 20
-        pad_top = 26
-        pad_bottom = 26
+        pad_left = 38
+        pad_right = 16
+        pad_top = 20
+        pad_bottom = 22
 
         chart_w = w - pad_left - pad_right
         chart_h = h - pad_top - pad_bottom
@@ -283,7 +283,7 @@ class AnnualHistoryDialog(tk.Toplevel):
         # Desenhar Barras
         n = len(months)
         slot_w = chart_w / n
-        bar_w = slot_w * 0.62
+        bar_w = slot_w * 0.58
 
         pico_val = kpis.get("pico_m3", 0)
 
