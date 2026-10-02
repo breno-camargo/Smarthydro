@@ -131,12 +131,9 @@ class AppHidrometrosWindow:
         lbl_sub = tk.Label(title_box, text="Condomínio Praça Pamplona  •  StruxureWare EBO", font=("Segoe UI", 9), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT)
         lbl_sub.pack(anchor=tk.W)
 
-        # Botões de Configurações e Desenvolvedor no canto superior direito
+        # Botão de Configurações no canto superior direito
         btn_settings = ttk.Button(frame_top, text="⚙ Configurações", command=self._open_settings, style="Secondary.TButton")
         btn_settings.pack(side=tk.RIGHT, anchor=tk.NE, pady=4)
-
-        btn_about = ttk.Button(frame_top, text="👨‍💻 Desenvolvedor", command=self._open_about, style="Secondary.TButton")
-        btn_about.pack(side=tk.RIGHT, anchor=tk.NE, pady=4, padx=(0, 6))
 
         # Linha divisória verde suave
         div = tk.Frame(main_container, height=2, bg=COLOR_ACCENT)
@@ -266,18 +263,6 @@ class AppHidrometrosWindow:
         self.prog_bar.pack(fill=tk.X, side=tk.BOTTOM, pady=(0, 4))
         self.prog_bar["value"] = 0
 
-        # Rodapé com créditos de desenvolvimento (clicável)
-        lbl_credits = tk.Label(
-            main_container,
-            text="Desenvolvido por Breno Camargo  •  CompaSSS Automação",
-            font=("Segoe UI", 7),
-            fg="#7E9672",
-            bg=COLOR_BG_LIGHT,
-            cursor="hand2"
-        )
-        lbl_credits.pack(side=tk.BOTTOM, pady=(0, 2))
-        lbl_credits.bind("<Button-1>", lambda e: self._open_about())
-
         # ─── HISTÓRICO DE RELATÓRIOS RECENTES (COMPACTO) ───
         self.frame_history_card = ttk.LabelFrame(main_container, text="  Últimos Relatórios Gerados  ", padding="12 8 12 8")
         self.frame_history_card.pack(fill=tk.X, side=tk.TOP, pady=(6, 12))
@@ -362,10 +347,6 @@ class AppHidrometrosWindow:
 
     def _open_settings(self):
         SettingsDialog(self.root, on_save_callback=self._on_settings_saved)
-
-    def _open_about(self):
-        """Abre diretamente a aba com informações de autoria e créditos do desenvolvedor."""
-        SettingsDialog(self.root, on_save_callback=self._on_settings_saved, initial_tab=2)
 
     def _on_settings_saved(self, new_cfg):
         self.config = new_cfg
