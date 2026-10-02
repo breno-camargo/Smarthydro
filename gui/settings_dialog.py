@@ -14,6 +14,7 @@ from core.email_sender import (
     render_email, prepare_html_for_preview, DEFAULT_SUBJECT_TEMPLATE
 )
 from gui.email_template_dialog import EmailTemplateDialog
+from gui.scheduler_dialog import SchedulerDialog
 from gui.ui_helpers import apply_window_icon, center_modal
 
 COLOR_PRIMARY = "#3D6B24"
@@ -202,6 +203,13 @@ class SettingsDialog(tk.Toplevel):
             variable=self.var_sort_consumption
         )
         self.chk_sort_consumption.grid(row=14, column=0, columnspan=2, sticky=tk.W, pady=2)
+
+        btn_scheduler = ttk.Button(
+            parent,
+            text="⏰ Configurar Agendamento Automático no Windows (Executar dia 29 silencioso)",
+            command=self._open_scheduler
+        )
+        btn_scheduler.grid(row=15, column=0, columnspan=2, sticky=tk.W, pady=(6, 2))
 
     def _build_tab_email(self, parent):
         parent.columnconfigure(1, weight=1)
@@ -399,13 +407,23 @@ class SettingsDialog(tk.Toplevel):
 
         btn_copy_email = tk.Button(
             frame_actions,
-            text="📋 Copiar E-mail de Contato",
+            text="📋 Copiar E-mail",
             command=self._copy_dev_email,
             bg="#EBF3E6", fg=COLOR_PRIMARY, activebackground=COLOR_ACCENT,
-            font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=5,
+            font=("Segoe UI", 9, "bold"), relief="flat", padx=10, pady=5,
             cursor="hand2", takefocus=False
         )
-        btn_copy_email.pack(side=tk.LEFT)
+        btn_copy_email.pack(side=tk.LEFT, padx=(0, 8))
+
+        btn_shortcut = tk.Button(
+            frame_actions,
+            text="🖥️ Criar Atalho na Área de Trabalho",
+            command=self._create_desktop_shortcut_action,
+            bg="#EBF3E6", fg=COLOR_PRIMARY, activebackground=COLOR_ACCENT,
+            font=("Segoe UI", 9, "bold"), relief="flat", padx=10, pady=5,
+            cursor="hand2", takefocus=False
+        )
+        btn_shortcut.pack(side=tk.LEFT)
 
         lbl_badge = tk.Label(
             card,
@@ -466,6 +484,48 @@ class SettingsDialog(tk.Toplevel):
 
     def _open_email_template_editor(self):
         EmailTemplateDialog(self)
+
+    def _open_scheduler(self):
+        SchedulerDialog(self)
+
+    def _create_desktop_shortcut_action(self):
+        try:
+            import win32com.client
+            shell = win32com.client.Dispatch("WScript.Shell")
+            desktop = shell.SpecialFolders("Desktop")
+            shortcut_path = os.path.join(desktop, "SmartHydro - CompaSSS.lnk")
+            lnk = shell.CreateShortCut(shortcut_path)
+
+            exe_cand = [
+                os.path.join(os.path.dirname(os.path.dirname(__file__)), "dist", "RelatorioHidrometros.exe"),
+                os.path.join(os.getcwd(), "dist", "RelatorioHidrometros.exe"),
+                os.path.join(os.getcwd(), "RelatorioHidrometros.exe"),
+            ]
+            exe_target = exe_cand[0]
+            for c in exe_cand:
+                if os.path.exists(c):
+                    exe_target = c
+                    break
+
+            lnk.TargetPath = os.path.abspath(exe_target)
+            lnk.WorkingDirectory = os.path.dirname(os.path.abspath(exe_target))
+            ico_cand = [
+                os.path.join(os.path.dirname(os.path.dirname(__file__)), "app_icon.ico"),
+                os.path.join(os.getcwd(), "app_icon.ico"),
+            ]
+            for ic in ico_cand:
+                if os.path.exists(ic):
+                    lnk.IconLocation = os.path.abspath(ic) + ",0"
+                    break
+            lnk.Description = "SmartHydro - Medição de Água Praça Pamplona (CompaSSS)"
+            lnk.save()
+            messagebox.showinfo(
+                "Atalho Criado",
+                f"O atalho 'SmartHydro - CompaSSS' foi criado com sucesso na sua Área de Trabalho!\n\nArquivo:\n{shortcut_path}",
+                parent=self
+            )
+        except Exception as e:
+            messagebox.showerror("Erro ao Criar Atalho", f"Não foi possível criar o atalho:\n{e}", parent=self)
 
     def _preview_email_action(self):
         try:
