@@ -6,7 +6,7 @@ from tkinter import ttk, messagebox
 
 from core.email_sender import (
     load_email_template, save_email_template, get_email_template_path,
-    DEFAULT_HTML_BODY, DEFAULT_SUBJECT_TEMPLATE, render_email
+    DEFAULT_HTML_BODY, DEFAULT_SUBJECT_TEMPLATE, render_email, prepare_html_for_preview
 )
 
 COLOR_PRIMARY = "#3D6B24"
@@ -199,11 +199,12 @@ class EmailTemplateDialog(tk.Toplevel):
         }
 
         r_subj, r_body = render_email(subject, content, mock_context)
+        preview_body = prepare_html_for_preview(r_body)
 
         try:
             temp_path = os.path.join(tempfile.gettempdir(), "previa_modelo_email.html")
             with open(temp_path, "w", encoding="utf-8") as f:
-                f.write(r_body)
+                f.write(preview_body)
             webbrowser.open(f"file:///{temp_path}")
         except Exception as e:
             messagebox.showerror("Erro na Prévia", f"Falha ao gerar prévia: {e}", parent=self)

@@ -8,7 +8,7 @@ from tkinter import ttk, messagebox
 from core.config_manager import load_config, save_config
 from core.email_sender import (
     load_email_template, extract_report_summary, render_email,
-    parse_recipients, open_in_outlook, send_email_smtp
+    parse_recipients, open_in_outlook, send_email_smtp, prepare_html_for_preview
 )
 from gui.email_template_dialog import EmailTemplateDialog
 
@@ -184,8 +184,9 @@ class SendEmailDialog(tk.Toplevel):
         """Abre no navegador uma prévia exata do e-mail com os dados preenchidos."""
         try:
             temp_path = os.path.join(tempfile.gettempdir(), "previa_envio_hidrometros.html")
+            preview_content = prepare_html_for_preview(self.rendered_body)
             with open(temp_path, "w", encoding="utf-8") as f:
-                f.write(self.rendered_body)
+                f.write(preview_content)
             webbrowser.open(f"file:///{temp_path}")
         except Exception as e:
             messagebox.showerror("Erro na Prévia", f"Não foi possível gerar a prévia:\n{e}", parent=self)

@@ -4,10 +4,12 @@ import re
 import smtplib
 import mimetypes
 import logging
+import base64
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
+from email.mime.image import MIMEImage
 from email.header import Header
 from email.utils import formatdate, make_msgid
 
@@ -189,7 +191,7 @@ DEFAULT_HTML_BODY = """<!DOCTYPE html>
           SP – Alameda Santos, 2477 – 11º Andar – Jardim Paulista – CEP: 01419-101
         </div>
         <div class="sig-logo">
-          <img src="https://compasss.com.br/wp-content/uploads/2023/10/Logo-CompaSSS-Positivo.png" alt="CompaSSS" style="height: 40px;">
+          <img src="cid:logo_compasss" alt="CompaSSS" style="height: 42px;">
         </div>
       </div>
     </div>
@@ -197,6 +199,67 @@ DEFAULT_HTML_BODY = """<!DOCTYPE html>
 </body>
 </html>
 """
+
+
+def get_logo_image_path():
+    """Localiza o ficheiro da logo CompaSSS (logo_final.png, excel_logo_0.png, etc.)."""
+    base = get_base_dir()
+    candidates = [
+        os.path.join(base, "logo_final.png"),
+        os.path.join(base, "excel_logo_0.png"),
+        os.path.join(base, "gui_logo.png"),
+        os.path.join(base, "logo_cropped.png"),
+        os.path.join(base, "logo.png"),
+    ]
+    if getattr(sys, 'frozen', False):
+        exe_dir = os.path.dirname(sys.executable)
+        candidates.insert(0, os.path.join(exe_dir, "logo_final.png"))
+        candidates.insert(1, os.path.join(exe_dir, "excel_logo_0.png"))
+        candidates.insert(2, os.path.join(exe_dir, "gui_logo.png"))
+    for cand in candidates:
+        if os.path.exists(cand):
+            return cand
+    return None
+
+
+def get_logo_base64():
+    """Retorna a string base64 da logo CompaSSS para prévia em navegadores."""
+    p = get_logo_image_path()
+    if p and os.path.exists(p):
+        try:
+            with open(p, "rb") as f:
+                return base64.b64encode(f.read()).decode("ascii")
+        except Exception as e:
+            logger.warning(f"Erro ao converter logo para base64: {e}")
+    return ""
+
+
+def prepare_html_for_preview(html_content):
+    """
+    Substitui referências 'cid:logo_compasss' (e URLs externas quebradas)
+    por Data URI Base64 da logo real para renderização perfeita em navegadores/prévias.
+    """
+    if not html_content:
+        return html_content
+
+    b64 = get_logo_base64()
+    if b64:
+        # Substitui cid:logo_compasss
+        res = re.sub(
+            r'src=["\']cid:logo_compasss["\']',
+            f'src="data:image/png;base64,{b64}"',
+            html_content,
+            flags=re.IGNORECASE
+        )
+        # Substitui também URL antiga ou externa se houver
+        res = re.sub(
+            r'src=["\']https?://[^"\']*logo[^"\']*["\']',
+            f'src="data:image/png;base64,{b64}"',
+            res,
+            flags=re.IGNORECASE
+        )
+        return res
+    return html_content
 
 
 def get_email_template_path():
@@ -470,10 +533,27 @@ def build_mime_message(to_addrs, subject, html_body, attachment_paths, cc_addrs=
     plain_text = re.sub(r"<[^>]+>", " ", html_body)
     plain_text = re.sub(r"\s+", " ", plain_text).strip()
 
-    body_part = MIMEMultipart("alternative")
-    body_part.attach(MIMEText(plain_text, "plain", "utf-8"))
-    body_part.attach(MIMEText(html_body, "html", "utf-8"))
-    msg.attach(body_part)
+    # Estrutura multipart/related para suportar imagem inline da logo (CID)
+    related_part = MIMEMultipart("related")
+    alt_part = MIMEMultipart("alternative")
+    alt_part.attach(MIMEText(plain_text, "plain", "utf-8"))
+    alt_part.attach(MIMEText(html_body, "html", "utf-8"))
+    related_part.attach(alt_part)
+
+    # Anexar a logo CompaSSS como imagem inline se referenciada no HTML
+    if "cid:logo_compasss" in html_body.lower():
+        logo_path = get_logo_image_path()
+        if logo_path and os.path.exists(logo_path):
+            try:
+                with open(logo_path, "rb") as f_img:
+                    img_part = MIMEImage(f_img.read(), _subtype="png")
+                img_part.add_header("Content-ID", "<logo_compasss>")
+                img_part.add_header("Content-Disposition", "inline", filename="logo_compasss.png")
+                related_part.attach(img_part)
+            except Exception as e:
+                logger.warning(f"Erro ao anexar logo inline: {e}")
+
+    msg.attach(related_part)
 
     # Anexar arquivos
     for file_path in attachment_paths:
@@ -546,6 +626,17 @@ def open_in_outlook(to_addrs, subject, html_body, attachment_paths, cc_addrs=Non
         for f_path in attachment_paths:
             if f_path and os.path.exists(f_path):
                 mail.Attachments.Add(os.path.abspath(f_path))
+
+        if "cid:logo_compasss" in html_body.lower():
+            logo_path = get_logo_image_path()
+            if logo_path and os.path.exists(logo_path):
+                try:
+                    att = mail.Attachments.Add(os.path.abspath(logo_path))
+                    att.PropertyAccessor.SetProperty(
+                        "http://schemas.microsoft.com/mapi/proptag/0x3712001F", "logo_compasss"
+                    )
+                except Exception as ex_cid:
+                    logger.warning(f"Erro ao configurar CID no Outlook COM: {ex_cid}")
 
         mail.Display()
         return True, "E-mail exibido no Microsoft Outlook!"
