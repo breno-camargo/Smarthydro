@@ -26,8 +26,8 @@ class AppHidrometrosWindow:
     def __init__(self, root):
         self.root = root
         self.root.title("CompaSSS — Medição de Água Praça Pamplona")
-        self.root.geometry("640x700")
-        self.root.minsize(600, 660)
+        self.root.geometry("640x600")
+        self.root.minsize(600, 580)
         self.root.configure(bg=COLOR_BG_LIGHT)
 
         self._set_window_icon()
