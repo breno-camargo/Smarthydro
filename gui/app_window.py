@@ -208,13 +208,13 @@ class AppHidrometrosWindow:
         frame_quick_btns.pack(anchor=tk.W, pady=(0, 6))
 
         btn_ciclo = ttk.Button(
-            frame_quick_btns, text="⚡ Ciclo Automático", command=self._apply_closed_cycle
+            frame_quick_btns, text="⚡ Ciclo 29 a 28", command=self._apply_closed_cycle
         )
         btn_ciclo.pack(side=tk.LEFT, padx=(0, 6))
 
         btn_sabesp = tk.Button(
             frame_quick_btns,
-            text="📄 Fatura Sabesp",
+            text="📩 Fatura Sabesp",
             command=self._open_sabesp_dialog,
             bg="#EBF3E6", fg=COLOR_PRIMARY, activebackground=COLOR_ACCENT,
             font=("Segoe UI", 8, "bold"), relief="flat", padx=8, pady=3, cursor="hand2"
@@ -285,22 +285,6 @@ class AppHidrometrosWindow:
             cursor="hand2"
         )
         self.btn_gerar.pack(side=tk.RIGHT)
-
-        # Botão Inteligente: Puxar Fatura do E-mail e Gerar
-        self.btn_puxar_email_gerar = tk.Button(
-            frame_actions,
-            text="📩 Puxar Fatura e Gerar",
-            command=self._sync_email_and_generate,
-            bg="#EBF3E6",
-            fg=COLOR_PRIMARY,
-            activebackground=COLOR_ACCENT,
-            font=("Segoe UI", 9, "bold"),
-            relief="flat",
-            padx=12,
-            pady=8,
-            cursor="hand2"
-        )
-        self.btn_puxar_email_gerar.pack(side=tk.RIGHT, padx=(0, 8))
 
         # ─── BARRA DE PROGRESSO E STATUS (DOCK NO BOTTOM) ───
         self.lbl_status = tk.Label(
@@ -382,7 +366,12 @@ class AppHidrometrosWindow:
     def _open_sabesp_dialog(self):
         """Abre o diálogo inteligente de importação e leitura de fatura da Sabesp."""
         from gui.sabesp_dialog import SabespImportDialog
-        SabespImportDialog(self.root, self.config, on_apply_callback=self._apply_sabesp_data)
+        SabespImportDialog(
+            self.root,
+            self.config,
+            on_apply_callback=self._apply_sabesp_data,
+            on_generate_callback=self._start_processing
+        )
 
     def _apply_sabesp_data(self, data: dict, selected_rate: float):
         """Aplica as datas e a tarifa da fatura Sabesp diretamente nos campos da interface."""
@@ -404,7 +393,7 @@ class AppHidrometrosWindow:
             cons_sab = data.get("consumo_sabesp_m3", 0.0)
             tot_fat = data.get("valor_total_fatura", 0.0)
             self.lbl_status.config(
-                text=f"✔ Fatura Sabesp ({data.get('arquivo_origem', 'PDF')}): {ini_str} a {fim_str} | R$ {selected_rate:.2f}/m³ (Volume Sabesp: {cons_sab:,.0f} m³ | Total: R$ {tot_fat:,.2f})",
+                text=f"✔ Fatura Sabesp ({data.get('arquivo_origem', 'PDF')}): {ini_str} a {fim_str} | R$ {selected_rate:.2f}/m³",
                 fg=COLOR_PRIMARY
             )
             messagebox.showinfo(
@@ -419,89 +408,6 @@ class AppHidrometrosWindow:
             )
         except Exception as e:
             messagebox.showwarning("Aviso", f"Erro ao aplicar dados da Sabesp: {e}", parent=self.root)
-
-    def _sync_email_and_generate(self):
-        """Busca a fatura da Sabesp no e-mail (Joyce/Yasmim), atualiza os parâmetros e gera o relatório automaticamente."""
-        self.lbl_status.config(
-            text="Conectando ao e-mail para localizar fatura recente da Sabesp...",
-            fg=COLOR_PRIMARY
-        )
-        self.btn_gerar.config(state=tk.DISABLED)
-        self.btn_puxar_email_gerar.config(state=tk.DISABLED)
-        self.prog_bar["value"] = 10
-
-        def _worker():
-            try:
-                from core.sabesp_parser import search_sabesp_in_email, parse_sabesp_pdf
-                ok_search, msg_search, pdf_path = search_sabesp_in_email(self.config)
-                if not ok_search or not pdf_path:
-                    self.root.after(0, lambda: self._on_sync_email_error(msg_search))
-                    return
-
-                ok_parse, msg_parse, data = parse_sabesp_pdf(pdf_path)
-                if not ok_parse or not data:
-                    self.root.after(0, lambda: self._on_sync_email_error(msg_parse))
-                    return
-
-                self.root.after(0, lambda: self._on_sync_email_ready(data))
-            except Exception as e:
-                self.root.after(0, lambda: self._on_sync_email_error(str(e)))
-
-        threading.Thread(target=_worker, daemon=True).start()
-
-    def _on_sync_email_error(self, err_msg):
-        self.btn_gerar.config(state=tk.NORMAL)
-        self.btn_puxar_email_gerar.config(state=tk.NORMAL)
-        self.prog_bar["value"] = 0
-        self.lbl_status.config(text="Fatura não encontrada no e-mail.", fg="red")
-        messagebox.showwarning(
-            "Fatura não Localizada no E-mail",
-            f"Não foi possível localizar uma fatura da Sabesp recente no e-mail:\n\n{err_msg}\n\n"
-            f"Você ainda pode preencher normalmente ou clicar em 'Fatura Sabesp' para selecionar um arquivo.",
-            parent=self.root
-        )
-
-    def _on_sync_email_ready(self, data: dict):
-        self.btn_gerar.config(state=tk.NORMAL)
-        self.btn_puxar_email_gerar.config(state=tk.NORMAL)
-        self.prog_bar["value"] = 0
-
-        # Aplica datas e tarifa da faixa
-        from datetime import datetime
-        ini_str = data.get("periodo_rateio_ini", "")
-        fim_str = data.get("periodo_rateio_fim", "")
-        rate = data.get("tarifa_faixa", 63.68)
-        tot_fat = data.get("valor_total_fatura", 0.0)
-        m3_sab = data.get("consumo_sabesp_m3", 0.0)
-
-        if ini_str:
-            d_ini = datetime.strptime(ini_str, "%d/%m/%Y")
-            self.cal_inicio.set_date(d_ini)
-        if fim_str:
-            d_fim = datetime.strptime(fim_str, "%d/%m/%Y")
-            self.cal_fim.set_date(d_fim)
-
-        self.ent_valor.delete(0, tk.END)
-        self.ent_valor.insert(0, f"{rate:.2f}")
-        self.sabesp_data = data
-
-        resp = messagebox.askyesno(
-            "Fatura Sabesp Localizada no E-mail",
-            f"✔ Fatura da Sabesp encontrada no seu e-mail!\n\n"
-            f"• Período das Salas: {ini_str} a {fim_str}\n"
-            f"• Tarifa Calculada: R$ {rate:.2f} / m³ (Faixa > 50 m³)\n"
-            f"• Fatura Sabesp: R$ {tot_fat:,.2f} ({m3_sab:,.1f} m³)\n\n"
-            f"Deseja iniciar a geração do relatório agora?",
-            parent=self.root,
-            default=messagebox.YES
-        )
-        if resp:
-            self._start_processing()
-        else:
-            self.lbl_status.config(
-                text=f"✔ Fatura Sabesp carregada: {ini_str} a {fim_str} (R$ {rate:.2f}/m³). Pronto para gerar.",
-                fg=COLOR_PRIMARY
-            )
 
     def _browse_output_dir(self):
         curr = self.lbl_pasta.get().strip() or os.path.expanduser("~")

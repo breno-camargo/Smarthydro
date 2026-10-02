@@ -33,6 +33,7 @@ execucao.log
 # Planilhas temporárias e relatórios gerados
 test_*.xlsx
 *.tmp
+temp_sabesp/
 
 # IDEs e editores
 .vscode/

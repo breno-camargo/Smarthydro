@@ -550,8 +550,9 @@ def render_email(subject_template, body_template, context, operator=None):
         "{{operador_telefone}}": op_tel,
     }
 
-    # Substituição case-insensitive
-    for key, val in mapping.items():
+    # Substituição case-insensitive (chaves mais longas primeiro para evitar conflito entre {{...}} e {...})
+    for key in sorted(mapping.keys(), key=len, reverse=True):
+        val = mapping[key]
         pattern = re.compile(re.escape(key), re.IGNORECASE)
         rendered_subject = pattern.sub(val, rendered_subject)
         rendered_body = pattern.sub(val, rendered_body)
