@@ -1,11 +1,12 @@
 """
 Módulo de Notificações via Webhook para SmartHydro.
-Suporta Microsoft Teams, Discord, Slack, Telegram e Webhook Genérico (WhatsApp gateways / JSON POST).
+Suporta WhatsApp (CallMeBot), Microsoft Teams, Discord, Slack, Telegram e Webhook Genérico (JSON POST).
 Utiliza apenas a biblioteca padrão (urllib) para total portabilidade sem dependências externas.
 """
 
 import json
 import logging
+import re
 import urllib.request
 import urllib.error
 import urllib.parse
@@ -14,12 +15,37 @@ from datetime import datetime
 from core.config_manager import load_config
 
 PLATFORMS = [
+    ("whatsapp", "WhatsApp (CallMeBot Grátis / Notificação Direta)"),
     ("teams", "Microsoft Teams (Incoming Webhook)"),
     ("discord", "Discord (Canal de Alertas)"),
     ("slack", "Slack (Incoming Webhook)"),
     ("telegram", "Telegram (Bot API)"),
-    ("generic", "Webhook Genérico / WhatsApp API (JSON POST)")
+    ("generic", "Webhook Genérico / WhatsApp Gateway (JSON POST)")
 ]
+
+
+def _make_http_get(url: str, timeout: int = 15) -> tuple[bool, str]:
+    """Realiza uma requisição HTTP GET segura usando urllib."""
+    headers = {
+        "User-Agent": "SmartHydro-Notifier/2.3 (CompaSSS Praça Pamplona)"
+    }
+    try:
+        req = urllib.request.Request(url, headers=headers, method="GET")
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            status = response.status
+            body = response.read().decode("utf-8", errors="ignore")
+            if 200 <= status < 300:
+                if "error" in body.lower():
+                    return False, f"CallMeBot retornou aviso: {body[:150]}"
+                return True, "Mensagem enviada para o WhatsApp com sucesso!"
+            return False, f"Resposta HTTP {status}: {body[:150]}"
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8", errors="ignore")[:150]
+        return False, f"Erro HTTP {e.code}: {e.reason} ({err_body})"
+    except urllib.error.URLError as e:
+        return False, f"Falha de conexão com serviço WhatsApp: {e.reason}"
+    except Exception as e:
+        return False, f"Erro inesperado: {e}"
 
 
 def _make_http_post(url: str, payload_dict: dict = None, custom_json_str: str = None, headers: dict = None, timeout: int = 12) -> tuple[bool, str]:
@@ -53,6 +79,32 @@ def _make_http_post(url: str, payload_dict: dict = None, custom_json_str: str = 
         return False, f"Falha de conexão: {e.reason}"
     except Exception as e:
         return False, f"Erro inesperado: {e}"
+
+
+def _format_whatsapp_message(summary: dict) -> str:
+    """Gera texto limpo e formatado com negritos e emojis para o WhatsApp."""
+    periodo = summary.get("periodo", "Período")
+    total_m3 = summary.get("total_m3", 0.0)
+    total_rs = summary.get("total_rs", 0.0)
+    operador = summary.get("operador", "Sistema Automático")
+    anomalias = summary.get("anomalias", [])
+    excel_file = summary.get("excel_file", "")
+
+    m3_fmt = f"{total_m3:,.1f} m³".replace(",", "X").replace(".", ",").replace("X", ".")
+    rs_fmt = f"R$ {total_rs:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    anom_txt = f"⚠️ {len(anomalias)} sala(s) sob suspeita" if anomalias else "✅ Nenhuma anomalia (Normal)"
+
+    return (
+        f"💧 *SmartHydro — Relatório de Água Concluído*\n"
+        f"🏢 *Condomínio Praça Pamplona*\n\n"
+        f"📅 *Período:* {periodo}\n"
+        f"💧 *Consumo Total:* {m3_fmt}\n"
+        f"💰 *Faturamento Estimado:* {rs_fmt}\n"
+        f"🔍 *Auditoria:* {anom_txt}\n"
+        f"👤 *Operador:* {operador}\n"
+        f"📄 *Planilha:* {excel_file}\n\n"
+        f"_Dados consolidados direto do Schneider StruxureWare EBO._"
+    )
 
 
 def _format_teams_card(summary: dict) -> dict:
@@ -193,8 +245,23 @@ def send_report_webhook(summary: dict, config: dict = None) -> tuple[bool, str]:
     if not config.get("webhook_enabled", False):
         return False, "Webhooks desativados nas configurações."
 
-    platform = config.get("webhook_platform", "teams").lower()
+    platform = config.get("webhook_platform", "whatsapp").lower()
     url = config.get("webhook_url", "").strip()
+
+    if platform == "whatsapp":
+        phone_raw = config.get("webhook_whatsapp_phone", "")
+        phone = re.sub(r"[^\d]", "", phone_raw)
+        apikey = config.get("webhook_whatsapp_apikey", "").strip()
+        if not phone or not apikey:
+            return False, "Número de WhatsApp ou Apikey do CallMeBot não configurados."
+
+        if len(phone) in (10, 11) and not phone.startswith("55"):
+            phone = "55" + phone
+
+        text = _format_whatsapp_message(summary)
+        encoded_text = urllib.parse.quote_plus(text)
+        callme_url = f"https://api.callmebot.com/whatsapp.php?phone={phone}&text={encoded_text}&apikey={apikey}"
+        return _make_http_get(callme_url)
 
     if platform == "telegram":
         token = config.get("webhook_telegram_token", "").strip()
@@ -226,8 +293,8 @@ def send_report_webhook(summary: dict, config: dict = None) -> tuple[bool, str]:
     return _make_http_post(url, payload)
 
 
-def send_test_webhook(platform: str, url: str, token: str = "", chat_id: str = "") -> tuple[bool, str]:
-    """Envia uma mensagem de teste para validar a conexão com o webhook."""
+def send_test_webhook(platform: str, url: str, token: str = "", chat_id: str = "", whatsapp_phone: str = "", whatsapp_apikey: str = "") -> tuple[bool, str]:
+    """Envia uma mensagem de teste para validar a conexão com o webhook ou WhatsApp."""
     platform = platform.lower()
     now_str = datetime.now().strftime("%d/%m/%Y às %H:%M:%S")
 
@@ -240,6 +307,23 @@ def send_test_webhook(platform: str, url: str, token: str = "", chat_id: str = "
         "operador": "Teste de Notificação CompaSSS",
         "excel_file": "Rateio_Agua_Teste.xlsx"
     }
+
+    if platform == "whatsapp":
+        phone = re.sub(r"[^\d]", "", whatsapp_phone)
+        apikey = whatsapp_apikey.strip()
+        if not phone or not apikey:
+            return False, "Informe o número de telefone (com DDD) e a Apikey do CallMeBot."
+
+        if len(phone) in (10, 11) and not phone.startswith("55"):
+            phone = "55" + phone
+
+        test_msg = (
+            f"🔔 *SmartHydro Praça Pamplona*\n\n"
+            f"Teste de notificação no WhatsApp realizado com sucesso em {now_str}!\n\n"
+            f"💧 Sistema conectado e pronto para enviar os fechamentos mensais."
+        )
+        callme_url = f"https://api.callmebot.com/whatsapp.php?phone={phone}&text={urllib.parse.quote_plus(test_msg)}&apikey={apikey}"
+        return _make_http_get(callme_url)
 
     if platform == "telegram":
         if not token or not chat_id:

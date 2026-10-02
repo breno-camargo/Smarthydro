@@ -465,24 +465,39 @@ class SettingsDialog(tk.Toplevel):
 
         ttk.Label(self.frame_wh_settings, text="Plataforma:").grid(row=0, column=0, sticky=tk.W, pady=3)
         self.wh_platform_names = [
+            "WhatsApp (CallMeBot Grátis / Notificação Direta)",
             "Microsoft Teams (Incoming Webhook)",
             "Discord (Canal de Alertas)",
             "Slack (Incoming Webhook)",
             "Telegram (Bot API)",
-            "Webhook Genérico / WhatsApp (JSON POST)"
+            "Webhook Genérico / WhatsApp API (JSON POST)"
         ]
-        self.wh_platform_keys = ["teams", "discord", "slack", "telegram", "generic"]
+        self.wh_platform_keys = ["whatsapp", "teams", "discord", "slack", "telegram", "generic"]
         self.cmb_wh_platform = ttk.Combobox(
             self.frame_wh_settings, values=self.wh_platform_names, state="readonly", width=34
         )
         self.cmb_wh_platform.grid(row=0, column=1, sticky=tk.EW, pady=3)
         self.cmb_wh_platform.bind("<<ComboboxSelected>>", self._on_wh_platform_change)
 
+        # Campos específicos para WhatsApp (CallMeBot)
+        self.lbl_wh_phone = ttk.Label(self.frame_wh_settings, text="Seu WhatsApp (com DDD):")
+        self.ent_wh_phone = ttk.Entry(self.frame_wh_settings, width=36)
+
+        self.lbl_wh_apikey = ttk.Label(self.frame_wh_settings, text="Chave API (ApiKey):")
+        self.ent_wh_apikey = ttk.Entry(self.frame_wh_settings, width=36)
+
+        self.btn_whatsapp_help = tk.Button(
+            self.frame_wh_settings,
+            text="📲 Como ativar e receber a chave grátis no WhatsApp (30 seg)",
+            command=self._open_callmebot_help,
+            bg="#EBF3E6", fg=COLOR_PRIMARY, activebackground=COLOR_ACCENT,
+            font=("Segoe UI", 8, "bold"), relief="flat", padx=8, pady=3,
+            cursor="hand2", takefocus=False
+        )
+
         # URL Webhook (para Teams, Discord, Slack, Genérico)
         self.lbl_wh_url = ttk.Label(self.frame_wh_settings, text="URL do Webhook:")
-        self.lbl_wh_url.grid(row=1, column=0, sticky=tk.W, pady=3)
         self.ent_wh_url = ttk.Entry(self.frame_wh_settings, width=36)
-        self.ent_wh_url.grid(row=1, column=1, sticky=tk.EW, pady=3)
 
         # Campos específicos para Telegram
         self.lbl_wh_tele_token = ttk.Label(self.frame_wh_settings, text="Token do Bot:")
@@ -497,14 +512,14 @@ class SettingsDialog(tk.Toplevel):
             self.frame_wh_settings, text="Disparar também em execuções automáticas do Agendador (dia 29)",
             variable=self.var_wh_scheduled
         )
-        chk_wh_sch.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=(6, 2))
+        chk_wh_sch.grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(6, 2))
 
         self.var_wh_anomalies = tk.BooleanVar(value=True)
         chk_wh_anom = ttk.Checkbutton(
-            self.frame_wh_settings, text="Destacar alertas de suspeita de vazamento / anomalia no card",
+            self.frame_wh_settings, text="Destacar alertas de suspeita de vazamento / anomalia na mensagem",
             variable=self.var_wh_anomalies
         )
-        chk_wh_anom.grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(0, 6))
+        chk_wh_anom.grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=(0, 6))
 
         # Botão de Teste
         frame_test_wh = tk.Frame(parent, bg=COLOR_BG_LIGHT)
@@ -520,44 +535,75 @@ class SettingsDialog(tk.Toplevel):
         )
         self.lbl_wh_test_status.pack(side=tk.LEFT)
 
+    def _open_callmebot_help(self):
+        url = "https://api.whatsapp.com/send?phone=34911061812&text=I%20allow%20callmebot%20to%20send%20me%20messages"
+        webbrowser.open(url)
+        messagebox.showinfo(
+            "Como Ativar no WhatsApp (Grátis)",
+            "Passo a passo rápido para receber no seu WhatsApp:\n\n"
+            "1. Uma janela do WhatsApp foi aberta com o bot oficial CallMeBot.\n"
+            "2. Envie a mensagem pré-digitada: 'I allow callmebot to send me messages'.\n"
+            "3. O bot responderá em segundos com sua Chave API (ApiKey: XXXXXX).\n"
+            "4. Digite seu número com DDD (ex: 11990127316) e a Chave recebida nesta tela.\n"
+            "5. Clique em '🔔 Enviar Mensagem de Teste' e pronto!\n\n"
+            "100% gratuito e sem necessidade de cadastro.",
+            parent=self
+        )
+
     def _on_wh_platform_change(self, event=None):
         idx = self.cmb_wh_platform.current()
-        key = self.wh_platform_keys[idx] if idx >= 0 else "teams"
-        if key == "telegram":
-            self.lbl_wh_url.grid_remove()
-            self.ent_wh_url.grid_remove()
+        key = self.wh_platform_keys[idx] if idx >= 0 else "whatsapp"
+
+        # Esconde todos os campos dinâmicos
+        self.lbl_wh_url.grid_remove()
+        self.ent_wh_url.grid_remove()
+        self.lbl_wh_tele_token.grid_remove()
+        self.ent_wh_tele_token.grid_remove()
+        self.lbl_wh_tele_chat.grid_remove()
+        self.ent_wh_tele_chat.grid_remove()
+        self.lbl_wh_phone.grid_remove()
+        self.ent_wh_phone.grid_remove()
+        self.lbl_wh_apikey.grid_remove()
+        self.ent_wh_apikey.grid_remove()
+        self.btn_whatsapp_help.grid_remove()
+
+        if key == "whatsapp":
+            self.lbl_wh_phone.grid(row=1, column=0, sticky=tk.W, pady=3)
+            self.ent_wh_phone.grid(row=1, column=1, sticky=tk.EW, pady=3)
+            self.lbl_wh_apikey.grid(row=2, column=0, sticky=tk.W, pady=3)
+            self.ent_wh_apikey.grid(row=2, column=1, sticky=tk.EW, pady=3)
+            self.btn_whatsapp_help.grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=(2, 4))
+        elif key == "telegram":
             self.lbl_wh_tele_token.grid(row=1, column=0, sticky=tk.W, pady=3)
             self.ent_wh_tele_token.grid(row=1, column=1, sticky=tk.EW, pady=3)
             self.lbl_wh_tele_chat.grid(row=2, column=0, sticky=tk.W, pady=3)
             self.ent_wh_tele_chat.grid(row=2, column=1, sticky=tk.EW, pady=3)
         else:
-            self.lbl_wh_tele_token.grid_remove()
-            self.ent_wh_tele_token.grid_remove()
-            self.lbl_wh_tele_chat.grid_remove()
-            self.ent_wh_tele_chat.grid_remove()
             self.lbl_wh_url.grid(row=1, column=0, sticky=tk.W, pady=3)
             self.ent_wh_url.grid(row=1, column=1, sticky=tk.EW, pady=3)
 
     def _test_webhook_action(self):
         idx = self.cmb_wh_platform.current()
-        platform = self.wh_platform_keys[idx] if idx >= 0 else "teams"
+        platform = self.wh_platform_keys[idx] if idx >= 0 else "whatsapp"
         url = self.ent_wh_url.get().strip()
         token = self.ent_wh_tele_token.get().strip()
         chat_id = self.ent_wh_tele_chat.get().strip()
+        wh_phone = self.ent_wh_phone.get().strip()
+        wh_apikey = self.ent_wh_apikey.get().strip()
 
         self.btn_test_webhook.config(state=tk.DISABLED)
-        self.lbl_wh_test_status.config(text="Enviando notificação de teste...")
+        self.lbl_wh_test_status.config(text="Enviando mensagem de teste...")
 
         def _worker():
             from core.webhook_notifier import send_test_webhook
-            ok, msg = send_test_webhook(platform, url, token, chat_id)
+            ok, msg = send_test_webhook(platform, url, token, chat_id, wh_phone, wh_apikey)
             def _ui():
                 self.btn_test_webhook.config(state=tk.NORMAL)
                 self.lbl_wh_test_status.config(text=msg)
                 if ok:
-                    messagebox.showinfo("Webhook OK", f"Notificação de teste enviada com sucesso!\n\n{msg}", parent=self)
+                    messagebox.showinfo("Notificação OK", f"Mensagem de teste enviada com sucesso!\n\n{msg}", parent=self)
                 else:
-                    messagebox.showerror("Falha no Webhook", f"Não foi possível enviar para o webhook:\n\n{msg}", parent=self)
+                    messagebox.showerror("Falha no Envio", f"Não foi possível enviar a mensagem:\n\n{msg}", parent=self)
             self.after(0, _ui)
 
         threading.Thread(target=_worker, daemon=True).start()
@@ -1005,6 +1051,10 @@ class SettingsDialog(tk.Toplevel):
             self.cmb_wh_platform.current(self.wh_platform_keys.index(curr_plat))
         else:
             self.cmb_wh_platform.current(0)
+        self.ent_wh_phone.delete(0, tk.END)
+        self.ent_wh_phone.insert(0, self.config.get("webhook_whatsapp_phone", ""))
+        self.ent_wh_apikey.delete(0, tk.END)
+        self.ent_wh_apikey.insert(0, self.config.get("webhook_whatsapp_apikey", ""))
         self.ent_wh_url.delete(0, tk.END)
         self.ent_wh_url.insert(0, self.config.get("webhook_url", ""))
         self.ent_wh_tele_token.delete(0, tk.END)
@@ -1028,7 +1078,7 @@ class SettingsDialog(tk.Toplevel):
             port_val = 465
 
         idx_plat = self.cmb_wh_platform.current()
-        wh_plat = self.wh_platform_keys[idx_plat] if idx_plat >= 0 else "teams"
+        wh_plat = self.wh_platform_keys[idx_plat] if idx_plat >= 0 else "whatsapp"
 
         updated_cfg = self.config.copy()
         updated_cfg.update({
@@ -1051,9 +1101,11 @@ class SettingsDialog(tk.Toplevel):
             "smtp_use_ssl": self.var_smtp_ssl.get(),
             "smtp_user": self.ent_smtp_user.get().strip(),
             "smtp_password": self.ent_smtp_pass.get().strip(),
-            # Webhook
+            # Webhook & WhatsApp
             "webhook_enabled": self.var_webhook_enabled.get(),
             "webhook_platform": wh_plat,
+            "webhook_whatsapp_phone": self.ent_wh_phone.get().strip(),
+            "webhook_whatsapp_apikey": self.ent_wh_apikey.get().strip(),
             "webhook_url": self.ent_wh_url.get().strip(),
             "webhook_telegram_token": self.ent_wh_tele_token.get().strip(),
             "webhook_telegram_chat_id": self.ent_wh_tele_chat.get().strip(),
