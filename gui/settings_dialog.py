@@ -22,8 +22,7 @@ class SettingsDialog(tk.Toplevel):
     def __init__(self, parent, on_save_callback=None, initial_tab=0):
         super().__init__(parent)
         self.title("Configurações do Sistema — CompaSSS")
-        self.geometry("560x540")
-        self.minsize(530, 500)
+        self.resizable(False, False)
         self.configure(bg=COLOR_BG_LIGHT)
         self.transient(parent)
         self.grab_set()
@@ -40,6 +39,22 @@ class SettingsDialog(tk.Toplevel):
                 self.notebook.select(self.initial_tab)
             except Exception:
                 pass
+
+        # Centralizar sobre a janela principal
+        self._center_on_parent(parent, 560, 540)
+
+    def _center_on_parent(self, parent, w, h):
+        self.update_idletasks()
+        try:
+            p_x = parent.winfo_rootx()
+            p_y = parent.winfo_rooty()
+            p_w = parent.winfo_width()
+            p_h = parent.winfo_height()
+            x = p_x + (p_w - w) // 2
+            y = p_y + (p_h - h) // 2
+            self.geometry(f"{w}x{h}+{max(0, x)}+{max(0, y)}")
+        except Exception:
+            self.geometry(f"{w}x{h}")
 
     def _build_ui(self):
         container = ttk.Frame(self, padding="16 12 16 12")

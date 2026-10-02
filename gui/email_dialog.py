@@ -22,8 +22,7 @@ class SendEmailDialog(tk.Toplevel):
     def __init__(self, parent, xlsx_path, pdf_path=None):
         super().__init__(parent)
         self.title("Enviar Relatório por E-mail — CompaSSS")
-        self.geometry("580x520")
-        self.minsize(540, 470)
+        self.resizable(False, False)
         self.configure(bg=COLOR_BG_LIGHT)
         self.transient(parent)
         self.grab_set()
@@ -43,6 +42,20 @@ class SendEmailDialog(tk.Toplevel):
         )
 
         self._build_ui()
+        self._center_on_parent(parent, 580, 520)
+
+    def _center_on_parent(self, parent, w, h):
+        self.update_idletasks()
+        try:
+            p_x = parent.winfo_rootx()
+            p_y = parent.winfo_rooty()
+            p_w = parent.winfo_width()
+            p_h = parent.winfo_height()
+            x = p_x + (p_w - w) // 2
+            y = p_y + (p_h - h) // 2
+            self.geometry(f"{w}x{h}+{max(0, x)}+{max(0, y)}")
+        except Exception:
+            self.geometry(f"{w}x{h}")
 
     def _build_ui(self):
         container = ttk.Frame(self, padding="18 16 18 16")

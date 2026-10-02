@@ -20,8 +20,6 @@ class EmailTemplateDialog(tk.Toplevel):
     def __init__(self, parent, on_save_callback=None):
         super().__init__(parent)
         self.title("Personalizar Modelo de E-mail — CompaSSS")
-        self.geometry("760x650")
-        self.minsize(700, 580)
         self.configure(bg=COLOR_BG_LIGHT)
         self.transient(parent)
         self.grab_set()
@@ -29,6 +27,20 @@ class EmailTemplateDialog(tk.Toplevel):
         self.on_save_callback = on_save_callback
         self._build_ui()
         self._load_template()
+        self._center_on_parent(parent, 760, 650)
+
+    def _center_on_parent(self, parent, w, h):
+        self.update_idletasks()
+        try:
+            p_x = parent.winfo_rootx()
+            p_y = parent.winfo_rooty()
+            p_w = parent.winfo_width()
+            p_h = parent.winfo_height()
+            x = p_x + (p_w - w) // 2
+            y = p_y + (p_h - h) // 2
+            self.geometry(f"{w}x{h}+{max(0, x)}+{max(0, y)}")
+        except Exception:
+            self.geometry(f"{w}x{h}")
 
     def _build_ui(self):
         container = ttk.Frame(self, padding="18 16 18 16")
