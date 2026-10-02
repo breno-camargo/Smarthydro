@@ -1,0 +1,37 @@
+name: CI & Code Quality
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-validate:
+    name: Lint & Syntax Validation
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Syntax & Compilation Check
+        run: |
+          python -m compileall -q core gui cli main.py
+
+      - name: Validate Configuration Template
+        shell: pwsh
+        run: |
+          Get-Content config.example.json | ConvertFrom-Json | Out-Null
+          Write-Host "config.example.json is valid JSON!"

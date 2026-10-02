@@ -5,6 +5,7 @@
 ![Schneider Electric](https://img.shields.io/badge/Schneider%20Electric-EcoStruxure%20EBO-3DCD58?style=for-the-badge)
 ![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20%7C%20Server-0078D6?style=for-the-badge&logo=windows)
 ![Status](https://img.shields.io/badge/Status-Produção%20(v2.1)-brightgreen?style=for-the-badge)
+[![CI](https://github.com/breno-camargo/Smarthydro/actions/workflows/ci.yml/badge.svg)](https://github.com/breno-camargo/Smarthydro/actions/workflows/ci.yml)
 
 Sistema corporativo desenvolvido para extração, cálculo, auditoria e geração automatizada de relatórios mensais de consumo predial de água, conectado diretamente ao banco de dados do **Schneider Electric EcoStruxure Building Operation (EBO)**.
 
