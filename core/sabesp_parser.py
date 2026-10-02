@@ -138,11 +138,27 @@ def parse_sabesp_pdf(pdf_path: str) -> tuple[bool, str, dict | None]:
     return True, "Fatura da Sabesp identificada e processada com sucesso!", data
 
 
-def search_sabesp_in_email(config: dict, destination_dir: str = None) -> tuple[bool, str, str | None]:
+MESES_NOMES = {
+    1: ["janeiro", "jan"],
+    2: ["fevereiro", "fev", "feb"],
+    3: ["março", "marco", "mar"],
+    4: ["abril", "abr", "apr"],
+    5: ["maio", "mai", "may"],
+    6: ["junho", "jun"],
+    7: ["julho", "jul"],
+    8: ["agosto", "ago", "aug"],
+    9: ["setembro", "set", "sep"],
+    10: ["outubro", "out", "oct"],
+    11: ["novembro", "nov"],
+    12: ["dezembro", "dez", "dec"],
+}
+
+
+def search_sabesp_in_email(config: dict, destination_dir: str = None, target_month: int = None, target_year: int = None) -> tuple[bool, str, str | None]:
     """
-    Conecta via IMAP SSL à caixa de entrada do operador e busca e-mails recentes
-    que contenham anexo em PDF de fatura da Sabesp.
-    Salva o PDF baixado em destination_dir e retorna (sucesso, mensagem, caminho_pdf).
+    Conecta via IMAP SSL à caixa de entrada do operador e busca faturas da Sabesp.
+    Se target_month for especificado (ex: 4 para Abril), localiza a fatura daquele mês específico.
+    Caso contrário, localiza a fatura mais recente enviada pela administração (Joyce / Yasmim / Zangari).
     """
     user = config.get("smtp_user", "").strip()
     pwd_raw = config.get("smtp_password", "").strip()
@@ -168,7 +184,7 @@ def search_sabesp_in_email(config: dict, destination_dir: str = None) -> tuple[b
     os.makedirs(destination_dir, exist_ok=True)
 
     try:
-        mail = imaplib.IMAP4_SSL(imap_srv, 993, timeout=12)
+        mail = imaplib.IMAP4_SSL(imap_srv, 993, timeout=15)
         mail.login(user, pwd)
 
         # Prioriza subpastas como Praça Pamplona e depois a INBOX principal
@@ -179,7 +195,8 @@ def search_sabesp_in_email(config: dict, destination_dir: str = None) -> tuple[b
                 for f in folders:
                     f_str = f.decode("latin1", errors="ignore")
                     if "pamplona" in f_str.lower() and "enviados" not in f_str.lower() and "sent" not in f_str.lower():
-                        folder_name = f_str.split(' "." ')[-1].strip()
+                        parts = f_str.split(' "." ')
+                        folder_name = parts[-1].strip() if len(parts) >= 2 else f_str.strip()
                         if folder_name not in folders_to_check:
                             folders_to_check.append(folder_name)
         except Exception:
@@ -188,9 +205,15 @@ def search_sabesp_in_email(config: dict, destination_dir: str = None) -> tuple[b
         if "INBOX" not in folders_to_check and '"INBOX"' not in folders_to_check:
             folders_to_check.append("INBOX")
 
+        keywords_month = []
+        if target_month and target_month in MESES_NOMES:
+            keywords_month = list(MESES_NOMES[target_month])
+            if target_year:
+                keywords_month.extend([f"{target_month:02d}/{target_year}", f"{target_month}/{target_year}"])
+
         for folder in folders_to_check:
             try:
-                typ_sel, _ = mail.select(folder)
+                typ_sel, _ = mail.select(folder, readonly=True)
                 if typ_sel != "OK":
                     continue
             except Exception:
@@ -200,61 +223,105 @@ def search_sabesp_in_email(config: dict, destination_dir: str = None) -> tuple[b
             if typ != "OK" or not data[0]:
                 continue
 
-            msg_ids = data[0].split()
-            recent_ids = msg_ids[-30:]  # Olha as últimas 30 mensagens da pasta
-            recent_ids.reverse()
+            ids = data[0].split()
+            if not ids:
+                continue
 
-            for m_id in recent_ids:
-                typ_f, m_data = mail.fetch(m_id, "(RFC822)")
+            # Busca cabeçalhos em lote (alta performance: ~1-2 segundos)
+            range_str = f"1:{len(ids)}"
+            typ_h, fetch_res = mail.fetch(range_str, "(BODY[HEADER.FIELDS (SUBJECT FROM DATE)])")
+            if typ_h != "OK":
+                continue
+
+            candidates = []
+            for item in fetch_res:
+                if isinstance(item, tuple):
+                    header_text = item[1].decode("latin1", errors="ignore")
+                    m_id_str = item[0].split()[0].decode("ascii", errors="ignore")
+                    if not m_id_str.isdigit():
+                        continue
+
+                    msg_temp = email.message_from_string(header_text)
+                    subj = ""
+                    for part, enc in decode_header(msg_temp.get("Subject", "")):
+                        if isinstance(part, bytes):
+                            subj += part.decode(enc or "latin1", errors="ignore")
+                        else:
+                            subj += str(part)
+
+                    sender = ""
+                    for part, enc in decode_header(msg_temp.get("From", "")):
+                        if isinstance(part, bytes):
+                            sender += part.decode(enc or "latin1", errors="ignore")
+                        else:
+                            sender += str(part)
+                    date_hdr = msg_temp.get("Date", "")
+                    low_all = (subj + " " + sender + " " + date_hdr).lower()
+
+                    is_from_sender = any(k in sender.lower() for k in ["joyce", "yasmim", "gerente.pamplona", "assistente.pamplona", "zangari"])
+                    has_keywords = any(k in low_all for k in ["sabesp", "insumos", "fatura", "conta", "agua", "água"])
+
+                    if is_from_sender or has_keywords:
+                        if target_month:
+                            match_m = any(m_kw in low_all for m_kw in keywords_month)
+                            if not match_m:
+                                continue
+
+                        candidates.append((int(m_id_str), str(m_id_str), sender, subj, date_hdr))
+
+            # Ordenar do mais novo para o mais antigo
+            candidates.sort(key=lambda x: x[0], reverse=True)
+
+            for c_int, c_id, sender, subj, date_hdr in candidates:
+                typ_f, m_data = mail.fetch(c_id, "(RFC822)")
                 if typ_f != "OK" or not m_data or not m_data[0]:
                     continue
+                full_msg = email.message_from_bytes(m_data[0][1])
 
-                raw_email = m_data[0][1]
-                msg = email.message_from_bytes(raw_email)
-
-                subject = ""
-                for part, enc in decode_header(msg.get("Subject", "")):
-                    if isinstance(part, bytes):
-                        subject += part.decode(enc or "utf-8", errors="ignore")
-                    else:
-                        subject += str(part)
-
-                sender = msg.get("From", "")
-                is_candidate = any(k in subject.lower() for k in ["sabesp", "agua", "água", "fatura", "conta", "insumos", "pamplona", "rateio"]) or \
-                               any(k in sender.lower() for k in ["sabesp", "zangari", "pamplona", "joyce", "yasmim", "gerente", "assistente"])
-
-                # Percorre os anexos
-                for part in msg.walk():
+                for part in full_msg.walk():
                     if part.get_content_maintype() == "multipart":
                         continue
                     if part.get("Content-Disposition") is None:
                         continue
-
-                    filename = part.get_filename()
-                    if not filename:
+                    fn = part.get_filename()
+                    if not fn:
                         continue
 
                     fn_clean = ""
-                    for p, enc in decode_header(filename):
+                    for p, enc in decode_header(fn):
                         if isinstance(p, bytes):
                             fn_clean += p.decode(enc or "utf-8", errors="ignore")
                         else:
                             fn_clean += str(p)
 
                     if fn_clean.lower().endswith(".pdf"):
-                        if is_candidate or any(k in fn_clean.lower() for k in ["sabesp", "fatura", "conta", "agua"]):
+                        if any(k in fn_clean.lower() for k in ["sabesp", "fatura", "conta", "agua"]):
                             pdf_path = os.path.join(destination_dir, fn_clean)
                             with open(pdf_path, "wb") as f_out:
                                 f_out.write(part.get_payload(decode=True))
 
-                            # Valida se realmente é Sabesp
-                            ok, _, _ = parse_sabesp_pdf(pdf_path)
-                            if ok:
+                            ok, _, data = parse_sabesp_pdf(pdf_path)
+                            if ok and data:
+                                # Se um target_month foi especificado, conferir se a fatura bate com o mês solicitado
+                                if target_month:
+                                    fim_str = data.get("periodo_rateio_fim", "")
+                                    # Formato dd/mm/yyyy
+                                    if fim_str and len(fim_str) == 10:
+                                        try:
+                                            m_fim = int(fim_str.split("/")[1])
+                                            if m_fim != target_month:
+                                                # Se o período não bater exatamente com o mês alvo, continua procurando
+                                                continue
+                                        except Exception:
+                                            pass
+
                                 mail.logout()
-                                return True, f"Fatura encontrada no e-mail de {sender} ({subject[:45]}...)", pdf_path
+                                return True, f"Fatura encontrada: {sender} ({fn_clean})", pdf_path
 
         mail.logout()
-        return False, "Nenhuma fatura da Sabesp em PDF foi encontrada nos e-mails recentes.", None
+        msg_not_found = f"Nenhuma fatura da Sabesp do mês {target_month:02d} foi encontrada no e-mail." if target_month else "Nenhuma fatura da Sabesp foi encontrada nos e-mails recentes."
+        return False, msg_not_found, None
 
     except Exception as e:
         return False, f"Erro ao acessar a caixa de e-mail via IMAP: {e}", None
+

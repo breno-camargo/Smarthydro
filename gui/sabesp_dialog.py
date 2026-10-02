@@ -20,7 +20,7 @@ COLOR_TEXT_MUTED = "#55664C"
 
 
 class SabespImportDialog(tk.Toplevel):
-    def __init__(self, parent, config: dict, on_apply_callback=None, on_generate_callback=None):
+    def __init__(self, parent, config: dict, on_apply_callback=None, on_generate_callback=None, target_month=None, target_year=None):
         super().__init__(parent)
         self.title("Fatura Sabesp — Preenchimento Inteligente")
         self.geometry("630x530")
@@ -31,6 +31,8 @@ class SabespImportDialog(tk.Toplevel):
         self.config = config
         self.on_apply_callback = on_apply_callback
         self.on_generate_callback = on_generate_callback
+        self.target_month = target_month
+        self.target_year = target_year
         self.sabesp_data = None
 
         self._center_window()
@@ -157,7 +159,11 @@ class SabespImportDialog(tk.Toplevel):
         self.update_idletasks()
 
         def _worker():
-            ok, msg, pdf_path = search_sabesp_in_email(self.config)
+            ok, msg, pdf_path = search_sabesp_in_email(
+                self.config,
+                target_month=self.target_month,
+                target_year=self.target_year
+            )
             self.after(0, lambda: self._on_email_search_done(ok, msg, pdf_path))
 
         threading.Thread(target=_worker, daemon=True).start()

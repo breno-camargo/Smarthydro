@@ -212,14 +212,21 @@ class AppHidrometrosWindow:
         )
         btn_ciclo.pack(side=tk.LEFT, padx=(0, 6))
 
-        btn_sabesp = tk.Button(
+        self.btn_puxar_sabesp = tk.Button(
             frame_quick_btns,
-            text="📩 Fatura Sabesp",
-            command=self._open_sabesp_dialog,
+            text="📩 Puxar Sabesp",
+            command=self._one_click_sabesp_pull,
             bg="#EBF3E6", fg=COLOR_PRIMARY, activebackground=COLOR_ACCENT,
             font=("Segoe UI", 8, "bold"), relief="flat", padx=8, pady=3, cursor="hand2"
         )
-        btn_sabesp.pack(side=tk.LEFT)
+        self.btn_puxar_sabesp.pack(side=tk.LEFT, padx=(0, 6))
+
+        btn_sabesp_dialog = ttk.Button(
+            frame_quick_btns,
+            text="🔍 Detalhes...",
+            command=self._open_sabesp_dialog
+        )
+        btn_sabesp_dialog.pack(side=tk.LEFT)
 
         self.var_sort_desc = tk.BooleanVar(value=self.config.get("sort_by_consumption", True))
         chk_sort = ttk.Checkbutton(
@@ -269,22 +276,31 @@ class AppHidrometrosWindow:
         )
         btn_test.pack(side=tk.LEFT)
 
-        # Botão Principal Verde CompaSSS
-        self.btn_gerar = tk.Button(
+        # Botão Principal Verde CompaSSS: Puxar Sabesp e Gerar em 1 Único Clique!
+        self.btn_sabesp_gerar = tk.Button(
             frame_actions,
-            text="✔ Gerar Relatório Excel",
-            command=self._start_processing,
+            text="🚀 Puxar Sabesp e Gerar (1 Clique)",
+            command=self._one_click_sabesp_generate,
             bg=COLOR_PRIMARY,
             fg="white",
             activebackground=COLOR_PRIMARY_HOVER,
             activeforeground="white",
             font=("Segoe UI", 10, "bold"),
             relief="flat",
-            padx=16,
+            padx=14,
             pady=8,
             cursor="hand2"
         )
-        self.btn_gerar.pack(side=tk.RIGHT)
+        self.btn_sabesp_gerar.pack(side=tk.RIGHT)
+
+        # Botão Secundário: Gerar com os parâmetros manuais da tela
+        self.btn_gerar = ttk.Button(
+            frame_actions,
+            text="✔ Gerar c/ Dados da Tela",
+            command=self._start_processing,
+            style="Secondary.TButton"
+        )
+        self.btn_gerar.pack(side=tk.RIGHT, padx=(0, 8))
 
         # ─── BARRA DE PROGRESSO E STATUS (DOCK NO BOTTOM) ───
         self.lbl_status = tk.Label(
@@ -363,14 +379,132 @@ class AppHidrometrosWindow:
         except Exception:
             pass
 
+    def _one_click_sabesp_generate(self):
+        """1 CLIQUE: Conecta ao e-mail, puxa a fatura Sabesp do mês selecionado, preenche e gera o relatório Excel na hora!"""
+        self._execute_sabesp_sync(generate_after=True)
+
+    def _one_click_sabesp_pull(self):
+        """1 CLIQUE: Conecta ao e-mail, puxa a fatura Sabesp e preenche os campos na tela."""
+        self._execute_sabesp_sync(generate_after=False)
+
+    def _execute_sabesp_sync(self, generate_after: bool = False):
+        self.btn_gerar.config(state=tk.DISABLED)
+        self.btn_sabesp_gerar.config(state=tk.DISABLED)
+        self.btn_puxar_sabesp.config(state=tk.DISABLED)
+        self.prog_bar["value"] = 25
+
+        target_m = None
+        target_y = None
+        try:
+            d_fim = self.cal_fim.get_date()
+            today = date.today()
+            if d_fim.year != today.year or d_fim.month != today.month:
+                target_m = d_fim.month
+                target_y = d_fim.year
+        except Exception:
+            pass
+
+        target_str = f" de {MESES_PT[target_m-1]}/{target_y}" if (target_m and target_m <= len(MESES_PT)) else " mais recente"
+        self.lbl_status.config(
+            text=f"Conectando ao e-mail para localizar fatura Sabesp{target_str}...",
+            fg=COLOR_PRIMARY
+        )
+
+        def _worker():
+            try:
+                from core.sabesp_parser import search_sabesp_in_email, parse_sabesp_pdf
+                ok, msg, pdf_path = search_sabesp_in_email(self.config, target_month=target_m, target_year=target_y)
+                if not ok or not pdf_path:
+                    self.root.after(0, lambda: self._on_sabesp_sync_error(msg))
+                    return
+
+                ok_p, msg_p, data = parse_sabesp_pdf(pdf_path)
+                if not ok_p or not data:
+                    self.root.after(0, lambda: self._on_sabesp_sync_error(msg_p))
+                    return
+
+                self.root.after(0, lambda: self._on_sabesp_sync_success(data, generate_after))
+            except Exception as e:
+                self.root.after(0, lambda: self._on_sabesp_sync_error(str(e)))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _on_sabesp_sync_error(self, err_msg):
+        self.prog_bar["value"] = 0
+        self.btn_gerar.config(state=tk.NORMAL)
+        self.btn_sabesp_gerar.config(state=tk.NORMAL)
+        self.btn_puxar_sabesp.config(state=tk.NORMAL)
+        self.lbl_status.config(text=f"Aviso Sabesp: {err_msg}", fg="red")
+        messagebox.showwarning(
+            "Fatura Sabesp no E-mail",
+            f"Não foi possível obter a fatura Sabesp diretamente do e-mail:\n\n{err_msg}\n\n"
+            f"Você pode selecionar manualmente em '🔍 Detalhes...' ou clicar em 'Gerar c/ Dados da Tela'.",
+            parent=self.root
+        )
+
+    def _on_sabesp_sync_success(self, data: dict, generate_after: bool):
+        self.prog_bar["value"] = 0
+        self.btn_gerar.config(state=tk.NORMAL)
+        self.btn_sabesp_gerar.config(state=tk.NORMAL)
+        self.btn_puxar_sabesp.config(state=tk.NORMAL)
+
+        from datetime import datetime
+        ini_str = data.get("periodo_rateio_ini", "")
+        fim_str = data.get("periodo_rateio_fim", "")
+        rate = data.get("tarifa_faixa", 63.68)
+        tot_fat = data.get("valor_total_fatura", 0.0)
+        m3_sab = data.get("consumo_sabesp_m3", 0.0)
+
+        if ini_str:
+            self.cal_inicio.set_date(datetime.strptime(ini_str, "%d/%m/%Y"))
+        if fim_str:
+            self.cal_fim.set_date(datetime.strptime(fim_str, "%d/%m/%Y"))
+
+        self.ent_valor.delete(0, tk.END)
+        self.ent_valor.insert(0, f"{rate:.2f}")
+        self.sabesp_data = data
+
+        self.lbl_status.config(
+            text=f"✔ Fatura Sabesp ({data.get('arquivo_origem')}): {ini_str} a {fim_str} | R$ {rate:.2f}/m³ (Consumo Sabesp: {m3_sab:,.0f} m³ | Total: R$ {tot_fat:,.2f})",
+            fg=COLOR_PRIMARY
+        )
+
+        if generate_after:
+            self._start_processing()
+        else:
+            messagebox.showinfo(
+                "Fatura Sabesp Aplicada em 1 Clique",
+                f"✔ Fatura da Sabesp localizada e aplicada com sucesso!\n\n"
+                f"• Origem: {data.get('arquivo_origem')}\n"
+                f"• Período das Salas: {ini_str} a {fim_str}\n"
+                f"• Tarifa Aplicada: R$ {rate:.2f} / m³ (Água + Esgoto)\n"
+                f"• Volume Geral Sabesp: {m3_sab:,.1f} m³\n"
+                f"• Total da Fatura: R$ {tot_fat:,.2f}\n\n"
+                f"Pronto para gerar o relatório com 1 clique!",
+                parent=self.root
+            )
+
     def _open_sabesp_dialog(self):
         """Abre o diálogo inteligente de importação e leitura de fatura da Sabesp."""
+        target_m = None
+        target_y = None
+        try:
+            d_fim = self.cal_fim.get_date()
+            today = date.today()
+            if d_fim.year != today.year or d_fim.month != today.month:
+                target_m = d_fim.month
+                target_y = d_fim.year
+        except Exception:
+            pass
+
         from gui.sabesp_dialog import SabespImportDialog
         SabespImportDialog(
             self.root,
             self.config,
             on_apply_callback=self._apply_sabesp_data,
-            on_generate_callback=self._start_processing
+            on_generate_callback=self._start_processing,
+            target_month=target_m,
+            target_year=target_y
         )
 
     def _apply_sabesp_data(self, data: dict, selected_rate: float):
