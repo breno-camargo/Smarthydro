@@ -22,10 +22,12 @@ logger = logging.getLogger(__name__)
 DEFAULT_SUBJECT_TEMPLATE = "Relatório de insumos - {MES}/{ANO} - Praça Pamplona - CompaSSS"
 
 DEFAULT_HTML_BODY = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="pt-BR">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="pt-BR" xml:lang="pt-BR">
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light only" />
+  <meta name="supported-color-schemes" content="light only" />
   <title>Relatório de insumos - {MES}/{ANO} - Praça Pamplona - CompaSSS</title>
   <!--[if mso]>
   <style type="text/css">
@@ -34,6 +36,12 @@ DEFAULT_HTML_BODY = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional
   <![endif]-->
 </head>
 <body bgcolor="#F6F9F2" style="margin: 0; padding: 20px 0; background-color: #F6F9F2; font-family: 'Segoe UI', Calibri, Arial, sans-serif; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
+
+  <!-- Preheader (texto de prévia na caixa de entrada) -->
+  <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all; font-size: 1px; line-height: 1px; color: #F6F9F2; opacity: 0;">
+    Consumo de {TOTAL_M3} m³ no período {PERIODO}. Planilha e PDF em anexo.
+  </div>
+
   <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#F6F9F2" style="background-color: #F6F9F2; width: 100%; margin: 0; padding: 0;">
     <tr>
       <td align="center" valign="top" style="padding: 10px 15px;">
@@ -43,6 +51,7 @@ DEFAULT_HTML_BODY = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional
             <td>
         <![endif]-->
         <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#FFFFFF" style="max-width: 640px; width: 100%; background-color: #FFFFFF; border: 1px solid #D5E5C9; border-collapse: separate; border-radius: 6px; overflow: hidden; margin: 0 auto;">
+
           <!-- ─── CABEÇALHO ─── -->
           <tr>
             <td bgcolor="#3D6B24" style="background-color: #3D6B24; padding: 20px 24px;">
@@ -70,7 +79,8 @@ DEFAULT_HTML_BODY = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional
           <!-- ─── CONTEÚDO PRINCIPAL ─── -->
           <tr>
             <td bgcolor="#FFFFFF" style="background-color: #FFFFFF; padding: 22px 24px; font-family: 'Segoe UI', Calibri, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #1B2A12;">
-              <p style="margin: 0 0 12px 0; font-size: 14px; color: #1B2A12;">Prezados, boa tarde!</p>
+              <!-- {SAUDACAO} = "bom dia" | "boa tarde" | "boa noite" gerado dinamicamente -->
+              <p style="margin: 0 0 12px 0; font-size: 14px; color: #1B2A12;">Prezados, {SAUDACAO}!</p>
 
               <p style="margin: 0 0 16px 0; font-size: 14px; color: #1B2A12;">
                 Segue em anexo o relatório de insumos referente ao mês de <strong>{MES}</strong>, período de <strong>{PERIODO}</strong>.
@@ -100,7 +110,7 @@ DEFAULT_HTML_BODY = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional
                       </tr>
                       <tr>
                         <td align="left" style="font-family: 'Segoe UI', Calibri, Arial, sans-serif; font-size: 13px; color: #55664C; padding: 3px 0;">Medidores:</td>
-                        <td align="right" style="font-family: 'Segoe UI', Calibri, Arial, sans-serif; font-size: 13px; font-weight: 600; color: #1B2A12; padding: 3px 0;">{QTD_SALAS}</td>
+                        <td align="right" style="font-family: 'Segoe UI', Calibri, Arial, sans-serif; font-size: 13px; font-weight: 600; color: #1B2A12; padding: 3px 0;">{QTD_MEDIDORES}</td>
                       </tr>
                     </table>
                   </td>
@@ -130,7 +140,7 @@ DEFAULT_HTML_BODY = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional
                       <span style="color: #006600; font-weight: bold; font-size: 11pt;">Breno Camargo</span><br />
                       <span style="color: #006600; font-weight: bold; font-size: 10pt;">+55 11 99012 7316</span><br />
                       <a href="mailto:breno.camargo@compasss.com.br" style="color: #0563C1; text-decoration: underline; font-size: 10pt;">breno.camargo@compasss.com.br</a><br />
-                      <a href="http://www.compasss.com.br" style="color: #0563C1; text-decoration: underline; font-size: 10pt;">www.compasss.com.br</a><br />
+                      <a href="https://www.compasss.com.br" style="color: #0563C1; text-decoration: underline; font-size: 10pt;">www.compasss.com.br</a><br />
                       <span style="color: #006600; font-size: 9.5pt;">RJ – Praia de Botafogo, 300 – Mezanino – Botafogo – CEP: 20031-040</span><br />
                       <span style="color: #006600; font-size: 9.5pt;">SP – Alameda Santos, 2477 – 11º Andar – Jardim Paulista – CEP: 01419-101</span>
                     </div>
@@ -464,14 +474,34 @@ def extract_report_summary(xlsx_path):
     return summary
 
 
+def get_greeting():
+    """
+    Retorna a saudação adequada ao horário atual da máquina:
+    - 05:00 às 11:59: 'bom dia'
+    - 12:00 às 17:59: 'boa tarde'
+    - 18:00 às 04:59: 'boa noite'
+    """
+    hour = datetime.now().hour
+    if 5 <= hour < 12:
+        return "bom dia"
+    elif 12 <= hour < 18:
+        return "boa tarde"
+    else:
+        return "boa noite"
+
+
 def render_email(subject_template, body_template, context):
     """
     Substitui as tags/placeholders do modelo pelos valores reais do contexto.
     Tags suportadas:
-    {MES}, {ANO}, {PERIODO}, {TOTAL_M3}, {TOTAL_VALOR}, {VALOR_M3}, {QTD_SALAS}, {DATA_EMISSAO}
+    {MES}, {ANO}, {PERIODO}, {TOTAL_M3}, {TOTAL_VALOR}, {VALOR_M3},
+    {QTD_MEDIDORES}, {QTD_SALAS}, {DATA_EMISSAO}, {SAUDACAO}
     """
     rendered_subject = subject_template
     rendered_body = body_template
+
+    qtd_val = str(context.get("qtd_medidores") or context.get("qtd_salas") or "289")
+    saudacao_val = get_greeting()
 
     mapping = {
         "{MES}": str(context.get("mes", "")),
@@ -480,8 +510,10 @@ def render_email(subject_template, body_template, context):
         "{TOTAL_M3}": str(context.get("total_m3", "0,00")),
         "{TOTAL_VALOR}": str(context.get("total_valor", "0,00")),
         "{VALOR_M3}": str(context.get("valor_m3", "63,68")),
-        "{QTD_SALAS}": str(context.get("qtd_salas", "289")),
+        "{QTD_MEDIDORES}": qtd_val,
+        "{QTD_SALAS}": qtd_val,
         "{DATA_EMISSAO}": str(context.get("data_emissao", "")),
+        "{SAUDACAO}": saudacao_val,
     }
 
     # Substituição case-insensitive
