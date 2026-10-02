@@ -1,6 +1,7 @@
 import os
 import subprocess
 import threading
+import webbrowser
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 
@@ -14,10 +15,11 @@ COLOR_PRIMARY = "#3D6B24"
 COLOR_PRIMARY_HOVER = "#2D501A"
 COLOR_ACCENT = "#90C671"
 COLOR_BG_LIGHT = "#F6F9F2"
+COLOR_TEXT_MAIN = "#1B2A12"
 COLOR_TEXT_MUTED = "#55664C"
 
 class SettingsDialog(tk.Toplevel):
-    def __init__(self, parent, on_save_callback=None):
+    def __init__(self, parent, on_save_callback=None, initial_tab=0):
         super().__init__(parent)
         self.title("Configurações do Sistema — CompaSSS")
         self.geometry("560x540")
@@ -27,10 +29,17 @@ class SettingsDialog(tk.Toplevel):
         self.grab_set()
 
         self.on_save_callback = on_save_callback
+        self.initial_tab = initial_tab
         self.config = load_config()
 
         self._build_ui()
         self._load_values()
+
+        if self.initial_tab > 0:
+            try:
+                self.notebook.select(self.initial_tab)
+            except Exception:
+                pass
 
     def _build_ui(self):
         container = ttk.Frame(self, padding="16 12 16 12")
@@ -48,6 +57,11 @@ class SettingsDialog(tk.Toplevel):
         tab_email = ttk.Frame(self.notebook, padding="14 12 14 12")
         self.notebook.add(tab_email, text=" ✉ E-mail & UOL Pro ")
         self._build_tab_email(tab_email)
+
+        # ─── ABA 3: DESENVOLVEDOR ───
+        tab_dev = ttk.Frame(self.notebook, padding="14 12 14 12")
+        self.notebook.add(tab_dev, text=" 👨‍💻 Desenvolvedor ")
+        self._build_tab_dev(tab_dev)
 
         # ─── BOTÕES DE AÇÃO INFERIORES ───
         frame_btns = tk.Frame(container, bg=COLOR_BG_LIGHT)
@@ -358,3 +372,78 @@ class SettingsDialog(tk.Toplevel):
             self.destroy()
         else:
             messagebox.showerror("Erro", "Não foi possível salvar as configurações no arquivo config.json.", parent=self)
+
+    def _build_tab_dev(self, parent):
+        """Constrói a aba com informações de autoria e créditos do desenvolvedor."""
+        card = tk.Frame(
+            parent, bg="#FFFFFF",
+            highlightbackground="#D5E5C9",
+            highlightthickness=1,
+            padx=18, pady=16
+        )
+        card.pack(fill=tk.BOTH, expand=True)
+
+        lbl_avatar = tk.Label(card, text="👨‍💻", font=("Segoe UI Emoji", 26), bg="#FFFFFF")
+        lbl_avatar.pack(pady=(0, 2))
+
+        lbl_title = tk.Label(
+            card, text="SmartHydro — Automação de Hidrômetros",
+            font=("Segoe UI", 12, "bold"), fg=COLOR_PRIMARY, bg="#FFFFFF"
+        )
+        lbl_title.pack()
+
+        lbl_sub = tk.Label(
+            card, text="Condomínio Praça Pamplona • Telemetria StruxureWare EBO",
+            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg="#FFFFFF"
+        )
+        lbl_sub.pack(pady=(1, 8))
+
+        div = tk.Frame(card, height=1, bg="#D5E5C9")
+        div.pack(fill=tk.X, pady=(0, 10))
+
+        frame_info = tk.Frame(card, bg="#FFFFFF")
+        frame_info.pack(fill=tk.X, padx=8)
+        frame_info.columnconfigure(1, weight=1)
+
+        info_items = [
+            ("Desenvolvido por:", "Breno Camargo", True),
+            ("E-mail:", "breno.camargo@compasss.com.br", False),
+            ("Empresa:", "CompaSSS Tecnologia e Automação", False),
+            ("Empreendimento:", "Condomínio Praça Pamplona", False),
+            ("Integração BMS:", "Schneider Electric StruxureWare EBO (SQL Server)", False),
+            ("Linguagem & Motor:", "Python 3.11 • Tkinter • openpyxl", False),
+            ("Versão:", "2.1 (Edição Executiva 2026)", False),
+        ]
+
+        for r_idx, (label, val, is_bold) in enumerate(info_items):
+            lbl_l = tk.Label(
+                frame_info, text=label,
+                font=("Segoe UI", 9, "bold"), fg=COLOR_TEXT_MUTED, bg="#FFFFFF",
+                anchor="w"
+            )
+            lbl_l.grid(row=r_idx, column=0, sticky=tk.W, pady=2, padx=(0, 8))
+
+            lbl_v = tk.Label(
+                frame_info, text=val,
+                font=("Segoe UI", 9, "bold" if is_bold else "normal"),
+                fg=COLOR_PRIMARY if is_bold else COLOR_TEXT_MAIN,
+                bg="#FFFFFF", anchor="w"
+            )
+            lbl_v.grid(row=r_idx, column=1, sticky=tk.W, pady=2)
+
+        btn_github = tk.Button(
+            card,
+            text="🌐 Ver Repositório no GitHub (breno-camargo/Smarthydro)",
+            command=lambda: webbrowser.open("https://github.com/breno-camargo/Smarthydro"),
+            bg="#EBF3E6", fg=COLOR_PRIMARY, activebackground=COLOR_ACCENT,
+            font=("Segoe UI", 9, "bold"), relief="flat", padx=10, pady=5,
+            cursor="hand2"
+        )
+        btn_github.pack(pady=(12, 4))
+
+        lbl_copy = tk.Label(
+            card,
+            text="© 2026 Breno Camargo — Todos os direitos reservados.",
+            font=("Segoe UI", 7, "italic"), fg=COLOR_TEXT_MUTED, bg="#FFFFFF"
+        )
+        lbl_copy.pack(pady=(2, 0))
