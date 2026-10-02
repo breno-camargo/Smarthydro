@@ -47,27 +47,31 @@ def detect_anomalies(df, threshold_mult=3.0, min_diff_m3=5.0, min_zero_hist_m3=5
         logger.warning(f"Colunas de medição não identificadas no DataFrame: {df.columns.tolist()}")
         return []
 
-    anomalies = []
+    col_user_idx = df.columns.get_loc(col_user)
+    col_consumo_idx = df.columns.get_loc(col_consumo)
+    col_media_idx = df.columns.get_loc(col_media) if col_media else None
 
-    for _, row in df.iterrows():
-        sala_raw = row.get(col_user)
+    for row in df.itertuples(index=False):
+        sala_raw = row[col_user_idx]
         if pd.isna(sala_raw):
             continue
 
         sala = str(sala_raw).strip()
         # Ignorar linhas de totalização ou cabeçalhos
-        if "total geral" in sala.lower() or "total" in sala.lower() and len(sala) <= 12:
+        if "total geral" in sala.lower() or ("total" in sala.lower() and len(sala) <= 12):
             continue
 
         try:
-            val_consumo = float(row.get(col_consumo, 0.0) or 0.0)
+            val_c = row[col_consumo_idx]
+            val_consumo = float(val_c or 0.0) if not pd.isna(val_c) else 0.0
         except (ValueError, TypeError):
             continue
 
         val_media = 0.0
-        if col_media:
+        if col_media_idx is not None:
             try:
-                val_media = float(row.get(col_media, 0.0) or 0.0)
+                val_m = row[col_media_idx]
+                val_media = float(val_m or 0.0) if not pd.isna(val_m) else 0.0
             except (ValueError, TypeError):
                 val_media = 0.0
 

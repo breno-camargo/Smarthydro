@@ -1,4 +1,6 @@
 import os
+import subprocess
+import threading
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 
@@ -12,7 +14,6 @@ COLOR_PRIMARY = "#3D6B24"
 COLOR_PRIMARY_HOVER = "#2D501A"
 COLOR_ACCENT = "#90C671"
 COLOR_BG_LIGHT = "#F6F9F2"
-COLOR_TEXT_MAIN = "#1B2A12"
 COLOR_TEXT_MUTED = "#55664C"
 
 class SettingsDialog(tk.Toplevel):
@@ -229,7 +230,7 @@ class SettingsDialog(tk.Toplevel):
     def _open_template_in_notepad(self):
         path = get_email_template_path()
         try:
-            os.system(f'notepad.exe "{path}"')
+            subprocess.Popen(["notepad.exe", path])
         except Exception as e:
             messagebox.showerror("Erro", f"Não foi possível abrir o arquivo:\n{e}", parent=self)
 
@@ -297,7 +298,9 @@ class SettingsDialog(tk.Toplevel):
         except ValueError:
             port_val = 465
 
-        return {
+        # Preserva integralmente chaves existentes (recent_reports, report_send_log, etc.)
+        updated_cfg = self.config.copy()
+        updated_cfg.update({
             "server": self.ent_server.get().strip(),
             "database": self.ent_database.get().strip(),
             "odbc_driver": self.cmb_driver.get().strip(),
@@ -305,10 +308,6 @@ class SettingsDialog(tk.Toplevel):
             "db_user": self.ent_user.get().strip(),
             "db_password": self.ent_pass.get().strip(),
             "output_directory": self.ent_dir.get().strip(),
-            "billing_cycle_type": self.config.get("billing_cycle_type", "ciclo_29_28"),
-            "default_m3_price": self.config.get("default_m3_price", 63.68),
-            "open_excel_after_generation": self.config.get("open_excel_after_generation", True),
-            "sort_by_consumption": self.config.get("sort_by_consumption", True),
             # E-mail
             "email_recipients": self.ent_recipients.get().strip(),
             "email_cc": self.ent_cc.get().strip(),
@@ -319,23 +318,36 @@ class SettingsDialog(tk.Toplevel):
             "smtp_use_ssl": False,
             "smtp_user": self.ent_smtp_user.get().strip(),
             "smtp_password": self.ent_smtp_pass.get().strip(),
-        }
+        })
+        return updated_cfg
 
     def _test_connection(self):
         temp_cfg = self._get_current_inputs_config()
-        ok, msg, drv = test_db_connection(temp_cfg)
-        if ok:
-            messagebox.showinfo("Sucesso na Conexão", msg, parent=self)
-        else:
-            messagebox.showerror("Erro de Conexão", msg, parent=self)
+
+        def _worker():
+            ok, msg, _ = test_db_connection(temp_cfg)
+            def _ui():
+                if ok:
+                    messagebox.showinfo("Sucesso na Conexão", msg, parent=self)
+                else:
+                    messagebox.showerror("Erro de Conexão", msg, parent=self)
+            self.after(0, _ui)
+
+        threading.Thread(target=_worker, daemon=True).start()
 
     def _test_smtp(self):
         temp_cfg = self._get_current_inputs_config()
-        ok, msg = test_smtp_connection(temp_cfg)
-        if ok:
-            messagebox.showinfo("Sucesso no SMTP", msg, parent=self)
-        else:
-            messagebox.showerror("Erro no SMTP", msg, parent=self)
+
+        def _worker():
+            ok, msg = test_smtp_connection(temp_cfg)
+            def _ui():
+                if ok:
+                    messagebox.showinfo("Sucesso no SMTP", msg, parent=self)
+                else:
+                    messagebox.showerror("Erro no SMTP", msg, parent=self)
+            self.after(0, _ui)
+
+        threading.Thread(target=_worker, daemon=True).start()
 
     def _save_and_close(self):
         new_cfg = self._get_current_inputs_config()

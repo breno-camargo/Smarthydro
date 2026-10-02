@@ -3,10 +3,16 @@ import pandas as pd
 import logging
 from core.config_manager import load_config
 
+_cached_drivers = None
+
 def get_available_odbc_drivers():
-    """Retorna lista dos drivers ODBC disponíveis no sistema operacional."""
+    """Retorna lista dos drivers ODBC disponíveis no sistema operacional (com cache)."""
+    global _cached_drivers
+    if _cached_drivers is not None:
+        return _cached_drivers
     try:
-        return pyodbc.drivers()
+        _cached_drivers = pyodbc.drivers()
+        return _cached_drivers
     except Exception as e:
         logging.warning(f"Não foi possível listar drivers ODBC via pyodbc: {e}")
         return []

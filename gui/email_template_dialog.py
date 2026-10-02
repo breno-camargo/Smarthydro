@@ -1,4 +1,6 @@
 import os
+import subprocess
+import threading
 import tempfile
 import webbrowser
 import tkinter as tk
@@ -11,9 +13,7 @@ from core.email_sender import (
 
 COLOR_PRIMARY = "#3D6B24"
 COLOR_PRIMARY_HOVER = "#2D501A"
-COLOR_ACCENT = "#90C671"
 COLOR_BG_LIGHT = "#F6F9F2"
-COLOR_TEXT_MAIN = "#1B2A12"
 COLOR_TEXT_MUTED = "#55664C"
 
 class EmailTemplateDialog(tk.Toplevel):
@@ -210,11 +210,14 @@ class EmailTemplateDialog(tk.Toplevel):
             messagebox.showerror("Erro na Prévia", f"Falha ao gerar prévia: {e}", parent=self)
 
     def _open_in_notepad(self):
-        """Salva temporariamente e abre o arquivo no Bloco de Notas para edição externa."""
+        """Salva temporariamente e abre o arquivo no Bloco de Notas para edição externa sem travar a interface."""
         path = get_email_template_path()
         try:
-            os.system(f'notepad.exe "{path}"')
-            # Recarrega após fechar o bloco de notas
-            self._load_template()
+            def _watch():
+                proc = subprocess.Popen(["notepad.exe", path])
+                proc.wait()
+                self.after(0, self._load_template)
+
+            threading.Thread(target=_watch, daemon=True).start()
         except Exception as e:
             messagebox.showerror("Erro", f"Não foi possível abrir no Bloco de Notas: {e}", parent=self)

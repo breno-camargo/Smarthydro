@@ -6,23 +6,20 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
-        ('config.json', '.'),
         ('app_icon.ico', '.'),
-        ('header_logo.png', '.'),
-        ('logo.jpeg', '.'),
         ('logo_final.png', '.'),
         ('signature_logo.png', '.'),
         ('gui_logo.png', '.'),
         ('modelo_relatorio.xlsx', '.'),
         ('modelo_email.html', '.')
     ],
-    hiddenimports=['babel.numbers', 'win32com', 'win32com.client', 'pythoncom', 'pywintypes', 'email', 'smtplib'],
+    hiddenimports=['babel.numbers', 'win32com', 'win32com.client', 'pythoncom', 'pywintypes'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=['unittest', 'test', 'pydoc'],
     noarchive=False,
-    optimize=0,
+    optimize=1,
 )
 pyz = PYZ(a.pure)
 

@@ -9,9 +9,10 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.chart import BarChart, PieChart, Reference
 from openpyxl.worksheet.page import PageMargins
+from openpyxl.worksheet.properties import PageSetupProperties
 from openpyxl.drawing.image import Image as XlImage
 
-from core.config_manager import get_base_dir
+from core.config_manager import get_base_dir, add_recent_report
 
 # ─────────────────────────────────────────────────────────────
 # PALETA CORPORATIVA EXECUTIVA — CompaSSS (Elegante & Minimalista)
@@ -28,24 +29,8 @@ CLR_TEXT_ZERO    = "94A3B8"   # Cinza suave para salas zeradas (destaca quem con
 CLR_TEXT_WHITE   = "FFFFFF"
 
 # Compatibilidade
-CLR_GREEN_DARK   = CLR_FOREST_DEEP
 CLR_GREEN_MED    = CLR_BRAND_GREEN
 CLR_GREEN_BRAND  = CLR_ACCENT_GREEN
-CLR_GREEN_LIGHT  = "B8D98A"
-CLR_GREEN_PALE   = CLR_CARD_BG
-
-CLR_BG_TITLE     = CLR_FOREST_DEEP
-CLR_BG_HEADER    = CLR_FOREST_DEEP
-CLR_BG_ZEBRA_A   = "FFFFFF"
-CLR_BG_ZEBRA_B   = CLR_ZEBRA_LIGHT
-CLR_BG_TOTAL     = CLR_CARD_BG
-CLR_BG_META      = CLR_CARD_BG
-CLR_BG_KPI       = CLR_CARD_BG
-
-CLR_ACCENT_GOLD  = "C2A33A"
-CLR_ACCENT_LINE  = CLR_ACCENT_GREEN
-CLR_BORDER_LIGHT  = CLR_LINE_SUBTLE
-CLR_BORDER_HEADER = CLR_FOREST_DEEP
 
 
 def get_template_path():

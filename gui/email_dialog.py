@@ -2,6 +2,7 @@ import os
 import threading
 import tempfile
 import webbrowser
+from datetime import datetime
 import tkinter as tk
 from tkinter import ttk, messagebox
 
@@ -14,9 +15,7 @@ from gui.email_template_dialog import EmailTemplateDialog
 
 COLOR_PRIMARY = "#3D6B24"
 COLOR_PRIMARY_HOVER = "#2D501A"
-COLOR_ACCENT = "#90C671"
 COLOR_BG_LIGHT = "#F6F9F2"
-COLOR_TEXT_MAIN = "#1B2A12"
 COLOR_TEXT_MUTED = "#55664C"
 
 class SendEmailDialog(tk.Toplevel):

@@ -1,7 +1,7 @@
 import os
 import sys
 import threading
-from datetime import datetime, date
+from datetime import date
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from tkcalendar import DateEntry
@@ -9,7 +9,6 @@ from PIL import Image, ImageTk
 
 from core.config_manager import load_config, save_config, get_base_dir, get_recent_reports, format_report_filename, get_report_output_folder
 from core.database import test_db_connection
-from core.report_generator import open_template_in_excel
 from cli.runner import execute_extraction
 from gui.settings_dialog import SettingsDialog
 from gui.email_dialog import SendEmailDialog
@@ -20,7 +19,6 @@ COLOR_PRIMARY = "#3D6B24"       # Verde escuro institucional
 COLOR_PRIMARY_HOVER = "#2D501A" # Verde escuro ao passar o mouse
 COLOR_ACCENT = "#90C671"        # Verde da logo CompaSSS
 COLOR_BG_LIGHT = "#F6F9F2"      # Fundo suave esverdeado
-COLOR_FRAME_BG = "#FFFFFF"      # Fundo dos cards brancos
 COLOR_TEXT_MAIN = "#1B2A12"     # Texto principal escuro
 COLOR_TEXT_MUTED = "#55664C"    # Texto secundário
 
@@ -80,13 +78,11 @@ class AppHidrometrosWindow:
 
             # Fallback com imagem PNG apenas se iconbitmap falhar
             img_candidates = [
-                os.path.join(get_base_dir(), "header_logo.png"),
                 os.path.join(get_base_dir(), "logo_final.png"),
                 os.path.join(get_base_dir(), "gui_logo.png"),
             ]
             if hasattr(sys, '_MEIPASS'):
-                img_candidates.insert(0, os.path.join(sys._MEIPASS, "header_logo.png"))
-                img_candidates.insert(1, os.path.join(sys._MEIPASS, "logo_final.png"))
+                img_candidates.insert(0, os.path.join(sys._MEIPASS, "logo_final.png"))
 
             for p in img_candidates:
                 if os.path.exists(p):
@@ -343,17 +339,36 @@ class AppHidrometrosWindow:
         self.ent_valor.delete(0, tk.END)
         self.ent_valor.insert(0, str(self.config.get("default_m3_price", 63.68)))
 
-    def _refresh_history(self):
-        """Atualiza a lista visual dos relatórios gerados recentemente."""
+    def _refresh_history(self, force=False):
+        """Atualiza a lista visual dos relatórios gerados recentemente sem travamentos."""
         # Cancela timer anterior para evitar acúmulo de callbacks
         if hasattr(self, "_history_timer_id") and self._history_timer_id is not None:
-            self.root.after_cancel(self._history_timer_id)
+            try:
+                self.root.after_cancel(self._history_timer_id)
+            except Exception:
+                pass
             self._history_timer_id = None
+
+        self.config = load_config()
+        recent = get_recent_reports()
+        send_log = self.config.get("report_send_log", {})
+
+        # Cria assinatura de estado para evitar reconstrução desnecessária de widgets da tela
+        current_sig = tuple(
+            (it.get("path"), it.get("gerado_em"), send_log.get(it.get("filename", os.path.basename(it.get("path", "")))))
+            for it in recent[:3]
+        )
+
+        if not force and hasattr(self, "_last_history_sig") and self._last_history_sig == current_sig:
+            # Estado idêntico; agenda próxima checagem em 30s sem recriar widgets
+            self._history_timer_id = self.root.after(30000, lambda: self._refresh_history(force=False))
+            return
+
+        self._last_history_sig = current_sig
 
         for child in self.frame_history_list.winfo_children():
             child.destroy()
 
-        recent = get_recent_reports()
         if not recent:
             lbl_empty = tk.Label(
                 self.frame_history_list,
@@ -361,8 +376,7 @@ class AppHidrometrosWindow:
                 font=("Segoe UI", 8, "italic"), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT
             )
             lbl_empty.pack(anchor=tk.W, pady=4, padx=4)
-            # Agenda próximo refresh mesmo sem itens
-            self._history_timer_id = self.root.after(10000, self._refresh_history)
+            self._history_timer_id = self.root.after(30000, lambda: self._refresh_history(force=False))
             return
 
         for idx, item in enumerate(recent[:3]):
@@ -379,12 +393,10 @@ class AppHidrometrosWindow:
             row_frame.pack(fill=tk.X, pady=3, padx=2)
 
             # Empacotar botões de ação à direita na ordem visual correta:
-            # No Tkinter, side=tk.RIGHT empacota da direita para a esquerda:
             # 1º pack: E-mail (fica na ponta direita)
             # 2º pack: PDF (ao lado do E-mail, se existir)
             # 3º pack: Excel (ao lado esquerdo do PDF)
-            # 4º pack: Excluir (ao lado esquerdo do Excel!)
-            # Ordem visual da esquerda para a direita: [Excluir] [Excel] [PDF] [E-mail]
+            # 4º pack: Excluir (ao lado esquerdo do Excel)
             pdf_p = item.get("pdf_path", "")
             has_pdf = item.get("has_pdf") and os.path.exists(pdf_p)
 
@@ -435,7 +447,6 @@ class AppHidrometrosWindow:
                 )
                 lbl_d.pack(side=tk.LEFT, padx=(4, 0))
 
-            send_log = self.config.get("report_send_log", {})
             sent_time = send_log.get(f_name)
             if sent_time:
                 lbl_sent = tk.Label(
@@ -444,8 +455,8 @@ class AppHidrometrosWindow:
                 )
                 lbl_sent.pack(side=tk.LEFT, padx=(6, 0))
 
-        # Agenda próximo refresh automático (10 segundos)
-        self._history_timer_id = self.root.after(10000, self._refresh_history)
+        # Agenda próxima checagem periódica em 30 segundos
+        self._history_timer_id = self.root.after(30000, lambda: self._refresh_history(force=False))
 
     def _open_specific_file(self, path):
         """Abre com segurança um arquivo do histórico recente."""
@@ -455,7 +466,7 @@ class AppHidrometrosWindow:
                 f"O arquivo não foi localizado:\n{path}\n\nEle pode ter sido movido ou excluído.",
                 parent=self.root
             )
-            self._refresh_history()
+            self._refresh_history(force=True)
             return
         try:
             os.startfile(path)
@@ -463,16 +474,18 @@ class AppHidrometrosWindow:
             messagebox.showerror("Erro ao Abrir", f"Não foi possível abrir o arquivo:\n{e}", parent=self.root)
 
     def _send_email_action(self, xlsx_path, pdf_path=None):
-        """Abre o diálogo de envio de e-mail para o relatório selecionado."""
+        """Abre o diálogo de envio de e-mail e atualiza o histórico ao fechar."""
         if not os.path.exists(xlsx_path):
             messagebox.showwarning(
                 "Arquivo Não Encontrado",
                 f"O arquivo não foi localizado:\n{xlsx_path}\n\nEle pode ter sido movido ou excluído.",
                 parent=self.root
             )
-            self._refresh_history()
+            self._refresh_history(force=True)
             return
-        SendEmailDialog(self.root, xlsx_path, pdf_path)
+        dlg = SendEmailDialog(self.root, xlsx_path, pdf_path)
+        self.root.wait_window(dlg)
+        self._refresh_history(force=True)
 
     def _delete_specific_file(self, xlsx_path, pdf_path=None):
         """Solicita confirmação e exclui o relatório (Excel e PDF associado) com segurança."""
@@ -556,22 +569,6 @@ class AppHidrometrosWindow:
             os.startfile(folder)
         except Exception as e:
             messagebox.showerror("Erro ao Abrir Pasta", f"Não foi possível abrir a pasta:\n{e}", parent=self.root)
-
-    def _edit_template_action(self):
-        try:
-            path = open_template_in_excel()
-            self.lbl_status.config(text=f"Modelo aberto no Excel: {os.path.basename(path)}")
-            messagebox.showinfo(
-                "Editar Modelo Excel",
-                "O arquivo de modelo base foi aberto no Microsoft Excel!\n\n"
-                "• Você pode trocar a logo, alterar cores, títulos, fontes ou bordas.\n"
-                "• Mantenha o cabeçalho (linha 7) e a linha de exemplo (linha 8).\n"
-                "• Ao terminar, basta salvar (Ctrl+S / Ctrl+B) e fechar o Excel.\n\n"
-                "Os próximos relatórios gerados seguirão exatamente as alterações que você fizer!",
-                parent=self.root
-            )
-        except Exception as e:
-            messagebox.showerror("Erro ao Abrir Modelo", f"Não foi possível abrir o arquivo de modelo:\n{e}", parent=self.root)
 
     def _start_processing(self):
         # Validação das datas pelo DateEntry

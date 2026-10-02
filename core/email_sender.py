@@ -15,7 +15,7 @@ from email.mime.image import MIMEImage
 from email.header import Header
 from email.utils import formatdate, make_msgid
 
-from core.config_manager import get_base_dir, MESES_PT
+from core.config_manager import get_base_dir, MESES_PT, decode_password
 
 logger = logging.getLogger(__name__)
 
@@ -190,13 +190,19 @@ def get_logo_image_path():
     return None
 
 
+_cached_logo_b64 = None
+
 def get_logo_base64():
-    """Retorna a string base64 da logo CompaSSS para prévia em navegadores."""
+    """Retorna a string base64 da logo CompaSSS para prévia em navegadores (com cache)."""
+    global _cached_logo_b64
+    if _cached_logo_b64 is not None:
+        return _cached_logo_b64
     p = get_logo_image_path()
     if p and os.path.exists(p):
         try:
             with open(p, "rb") as f:
-                return base64.b64encode(f.read()).decode("ascii")
+                _cached_logo_b64 = base64.b64encode(f.read()).decode("ascii")
+                return _cached_logo_b64
         except Exception as e:
             logger.warning(f"Erro ao converter logo para base64: {e}")
     return ""
@@ -333,22 +339,18 @@ def parse_recipients(recipients_val):
     return valid
 
 
+def format_br_number(val):
+    """Formata valor float para número/moeda brasileira com 2 casas decimais (ex: 46,40 ou 2.954,75)."""
+    try:
+        val_f = float(val)
+        return f"{val_f:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except Exception:
+        return str(val or "0,00")
+
+
 def format_br_currency(val):
     """Formata valor float para moeda brasileira (ex: 2.954,75)."""
-    try:
-        val_f = float(val)
-        return f"{val_f:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except Exception:
-        return str(val or "0,00")
-
-
-def format_br_number(val):
-    """Formata valor float para número brasileiro com 2 casas (ex: 46,40)."""
-    try:
-        val_f = float(val)
-        return f"{val_f:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except Exception:
-        return str(val or "0,00")
+    return format_br_number(val)
 
 
 def extract_report_summary(xlsx_path):
@@ -594,71 +596,6 @@ def build_mime_message(to_addrs, subject, html_body, attachment_paths, cc_addrs=
     return msg
 
 
-def open_in_outlook(to_addrs, subject, html_body, attachment_paths, cc_addrs=None):
-    """
-    Abre o e-mail diretamente no Microsoft Outlook com rascunho preenchido,
-    destinatário principal (gerente), pessoas em cópia (Cc) e os anexos (Excel e PDF).
-    Tenta primeiro via Outlook COM; se não for possível, utiliza arquivo EML nativo.
-    """
-    # 1. Tentar criar arquivo .eml com X-Unsent: 1 e abrir nativamente no Outlook
-    import tempfile
-    try:
-        temp_dir = tempfile.gettempdir()
-        safe_subject = re.sub(r'[\\/*?:"<>|]', "", subject)[:40].strip() or "Relatorio_Agua"
-        eml_filename = f"{safe_subject}_{datetime.now().strftime('%H%M%S')}.eml"
-        eml_path = os.path.join(temp_dir, eml_filename)
-
-        msg = build_mime_message(
-            to_addrs=to_addrs,
-            subject=subject,
-            html_body=html_body,
-            attachment_paths=attachment_paths,
-            cc_addrs=cc_addrs,
-            is_unsent_draft=True
-        )
-
-        with open(eml_path, "wb") as f:
-            f.write(msg.as_bytes())
-
-        os.startfile(eml_path)
-        return True, "E-mail aberto no Microsoft Outlook com sucesso!"
-    except Exception as e:
-        logger.warning(f"Falha ao abrir via EML ({e}), tentando COM...")
-
-    # 2. Fallback COM se startfile falhar
-    try:
-        import pythoncom
-        import win32com.client
-        pythoncom.CoInitialize()
-        outlook = win32com.client.Dispatch("Outlook.Application")
-        mail = outlook.CreateItem(0)
-        mail.To = "; ".join(to_addrs)
-        if cc_addrs:
-            mail.CC = "; ".join(cc_addrs)
-        mail.Subject = subject
-        mail.HTMLBody = html_body
-
-        for f_path in attachment_paths:
-            if f_path and os.path.exists(f_path):
-                mail.Attachments.Add(os.path.abspath(f_path))
-
-        if "cid:logo_compasss" in html_body.lower():
-            logo_path = get_logo_image_path()
-            if logo_path and os.path.exists(logo_path):
-                try:
-                    att = mail.Attachments.Add(os.path.abspath(logo_path))
-                    att.PropertyAccessor.SetProperty(
-                        "http://schemas.microsoft.com/mapi/proptag/0x3712001F", "logo_compasss"
-                    )
-                except Exception as ex_cid:
-                    logger.warning(f"Erro ao configurar CID no Outlook COM: {ex_cid}")
-
-        mail.Display()
-        return True, "E-mail exibido no Microsoft Outlook!"
-    except Exception as com_err:
-        return False, f"Não foi possível abrir o e-mail no Outlook: {com_err}"
-
-
 def get_effective_smtp_host(host, user):
     """Retorna o host correto do UOL (smtps.uol.com.br para @uol.com.br ou smtps.uhserver.com para domínios próprios)."""
     h = (host or "").strip()
@@ -682,13 +619,7 @@ def save_email_to_sent_imap(smtp_cfg, msg_bytes):
     Dessa forma, o e-mail aparece no Outlook e Webmail com a data e hora em que foi enviado.
     """
     user = smtp_cfg.get("smtp_user", "").strip()
-    pwd = smtp_cfg.get("smtp_password", "").strip()
-    if pwd.startswith("b64:"):
-        try:
-            import base64
-            pwd = base64.b64decode(pwd[4:]).decode("utf-8")
-        except Exception:
-            pass
+    pwd = decode_password(smtp_cfg.get("smtp_password", "").strip())
 
     if not user or not pwd:
         return False, "Usuário ou senha não configurados."
@@ -770,13 +701,7 @@ def send_email_smtp(smtp_cfg, to_addrs, subject, html_body, attachment_paths, cc
     port = int(smtp_cfg.get("smtp_port", 587))
     use_ssl = bool(smtp_cfg.get("smtp_use_ssl", False))
     use_tls = bool(smtp_cfg.get("smtp_use_tls", True))
-    pwd = smtp_cfg.get("smtp_password", "").strip()
-    if pwd.startswith("b64:"):
-        try:
-            import base64
-            pwd = base64.b64decode(pwd[4:]).decode("utf-8")
-        except Exception:
-            pass
+    pwd = decode_password(smtp_cfg.get("smtp_password", "").strip())
 
     if not server_host:
         return False, "Endereço do servidor SMTP não informado."

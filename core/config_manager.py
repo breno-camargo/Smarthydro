@@ -3,6 +3,8 @@ import sys
 import json
 import base64
 import logging
+import re
+import shutil
 from datetime import datetime
 
 DEFAULT_CONFIG = {
@@ -104,8 +106,6 @@ def organize_loose_reports(base_out_dir):
     Organiza arquivos soltos na raiz e migra pastas antigas com nome de mês por extenso
     (ex: 2026\Outubro -> 2026\10.26) para manter a ordem cronológica correta no Windows Explorer.
     """
-    import shutil
-    import re
     if not base_out_dir or not os.path.exists(base_out_dir):
         return
 
@@ -196,6 +196,9 @@ def _decode_password(stored_value):
     # Retrocompatibilidade: senha antiga salva em texto puro
     return stored_value
 
+decode_password = _decode_password
+encode_password = _encode_password
+
 
 def load_config():
     """Carrega as configurações a partir do arquivo config.json ou retorna os padrões."""
@@ -215,14 +218,6 @@ def load_config():
     # Decodificar senhas ofuscadas para uso em memória
     config["db_password"] = _decode_password(config.get("db_password", ""))
     config["smtp_password"] = _decode_password(config.get("smtp_password", ""))
-
-    # Garantir que a pasta de saída padrão exista
-    out_dir = config.get("output_directory")
-    if out_dir:
-        try:
-            os.makedirs(out_dir, exist_ok=True)
-        except Exception as e:
-            logging.warning(f"Não foi possível criar a pasta de saída {out_dir}: {e}")
 
     return config
 
@@ -276,19 +271,23 @@ def get_recent_reports():
     # Escaneia a pasta de saída recursivamente (suporta subpastas Ano/Mês)
     if out_dir and os.path.exists(out_dir):
         try:
-            files = []
+            files_with_mtime = []
             for root, _, filenames in os.walk(out_dir):
                 for f in filenames:
                     if f.lower().endswith(".xlsx") and not f.startswith("~$"):
-                        files.append(os.path.join(root, f))
+                        full_p = os.path.join(root, f)
+                        try:
+                            mt = os.path.getmtime(full_p)
+                            files_with_mtime.append((mt, full_p))
+                        except OSError:
+                            pass
 
-            # Ordenar pelos mais recentes (data de modificação)
-            files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+            # Ordenar pelos mais recentes de uma só vez (sem re-chamar stat)
+            files_with_mtime.sort(key=lambda x: x[0], reverse=True)
 
-            for f_path in files[:5]:
+            for mtime, f_path in files_with_mtime[:5]:
                 abs_path = os.path.abspath(f_path)
                 key = os.path.normcase(abs_path)
-                mtime = os.path.getmtime(f_path)
                 dt_str = datetime.fromtimestamp(mtime).strftime("%d/%m/%Y %H:%M")
 
                 # Checar se existe arquivo PDF correspondente na mesma pasta
