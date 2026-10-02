@@ -170,6 +170,12 @@ class AppHidrometrosWindow:
         )
         self.cal_fim.grid(row=1, column=1, sticky=tk.W, pady=8, padx=(10, 0))
 
+        # Botão rápido para preencher o ciclo fechado (dia 29 ao dia 28)
+        btn_ciclo = ttk.Button(
+            frame_card, text="⚡ Preencher Ciclo Atual", command=self._apply_closed_cycle
+        )
+        btn_ciclo.grid(row=0, column=2, rowspan=2, padx=(18, 0), pady=8, sticky=tk.W)
+
         # Valor do m³ (R$)
         lbl_val = ttk.Label(frame_card, text="Valor do m³ (R$):", font=("Segoe UI", 9, "bold"))
         lbl_val.grid(row=2, column=0, sticky=tk.W, pady=8)
@@ -309,6 +315,16 @@ class AppHidrometrosWindow:
         try:
             self.cal_inicio.set_date(d_ini)
             self.cal_fim.set_date(d_fim)
+        except Exception:
+            pass
+
+    def _apply_closed_cycle(self):
+        """Preenche o último ciclo fechado (dia 29 a 28) com confirmação no status."""
+        self._set_default_dates()
+        try:
+            ini_str = self.cal_inicio.get_date().strftime("%d/%m/%Y")
+            fim_str = self.cal_fim.get_date().strftime("%d/%m/%Y")
+            self.lbl_status.config(text=f"Datas ajustadas para o ciclo fechado: {ini_str} a {fim_str}")
         except Exception:
             pass
 
@@ -676,17 +692,27 @@ class AppHidrometrosWindow:
                 os.startfile(final_file)
             except Exception as e:
                 messagebox.showwarning("Aviso", f"Relatório gerado em:\n{final_file}\n\nNão foi possível abrir o Excel automaticamente: {e}", parent=self.root)
-        else:
+
+        # Oferecer envio imediato por e-mail para fluxo contínuo
+        pdf_line = f"\n• PDF: {os.path.basename(pdf_file)}" if has_pdf else ""
+        resp_email = messagebox.askyesno(
+            "Relatório Concluído — Enviar por E-mail",
+            f"Relatório gerado com sucesso!\n\n"
+            f"• Planilha: {os.path.basename(final_file)}{pdf_line}\n\n"
+            f"Deseja abrir a tela de e-mail para conferir os destinatários e enviar agora?",
+            parent=self.root,
+            default=messagebox.YES
+        )
+        if resp_email:
+            self._send_email_action(final_file, pdf_file if has_pdf else None)
+        elif not self.var_open_excel.get():
             folder_dir = os.path.dirname(final_file)
-            pdf_line = f"\n• PDF: {os.path.basename(pdf_file)}" if has_pdf else ""
-            resp = messagebox.askyesno(
-                "Sucesso!",
-                f"Relatório gerado com sucesso!\n\n"
-                f"• Excel: {os.path.basename(final_file)}{pdf_line}\n\n"
-                f"Pasta: {folder_dir}\n\nDeseja abrir a pasta agora?",
+            resp_folder = messagebox.askyesno(
+                "Abrir Pasta",
+                f"Relatório salvo em:\n{folder_dir}\n\nDeseja abrir a pasta agora?",
                 parent=self.root
             )
-            if resp:
+            if resp_folder:
                 try:
                     os.startfile(folder_dir)
                 except Exception:

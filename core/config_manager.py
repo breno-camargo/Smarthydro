@@ -222,9 +222,17 @@ def load_config():
     return config
 
 def save_config(new_config):
-    """Salva o dicionário de configurações no arquivo config.json (ofuscando senhas)."""
+    """Salva o dicionário de configurações no arquivo config.json (ofuscando senhas e mantendo backup)."""
     cfg_path = get_config_path()
     try:
+        # Backup de segurança antes de sobrescrever
+        if os.path.exists(cfg_path):
+            bak_path = os.path.join(os.path.dirname(cfg_path), "config.backup.json")
+            try:
+                shutil.copy2(cfg_path, bak_path)
+            except Exception:
+                pass
+
         # Criar cópia para não modificar o dict em memória
         config_to_save = new_config.copy()
         # Ofuscar senhas antes de gravar no disco

@@ -644,7 +644,7 @@ def generate_excel_from_template(template_path, df, dt_inicio_str, dt_fim_str, v
     # ── Criar ou atualizar a aba separada "Gráficos" ──
     try:
         if progress_callback:
-            progress_callback(78, "3/4: Construindo gráficos comparativos e indicadores...")
+            progress_callback(75, "3/4: Formatando planilha Excel e gráficos de consumo...")
         _build_graphics_sheet(wb, df, dt_inicio_str, dt_fim_str, valor_m3)
     except Exception as e:
         logging.warning(f"Não foi possível construir a aba de Gráficos: {e}")
@@ -657,7 +657,7 @@ def generate_excel_from_template(template_path, df, dt_inicio_str, dt_fim_str, v
     _configure_print_settings(ws, last_data_row=total_row)
 
     if progress_callback:
-        progress_callback(92, "4/4: Gravando arquivo Excel...")
+        progress_callback(88, "3/4: Salvando arquivo Excel...")
 
     try:
         wb.save(output_path)
@@ -760,7 +760,7 @@ def generate_excel_report(df, dt_inicio_str, dt_fim_str, valor_m3, output_path, 
     # Gerar cópia executiva em PDF automaticamente na mesma pasta
     try:
         if progress_callback:
-            progress_callback(95, "5/5: Gerando cópia executiva em PDF...")
+            progress_callback(94, "4/4: Exportando relatório executivo em PDF...")
         pdf_res = export_to_pdf(res_path)
         if not pdf_res:
             warnings.append("Aviso: A versão em PDF não pôde ser gerada automaticamente (Excel indisponível).")

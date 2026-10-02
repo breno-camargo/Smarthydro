@@ -212,6 +212,21 @@ class SendEmailDialog(tk.Toplevel):
 
         subject = self.ent_subj.get().strip() or self.rendered_subj
 
+        # Confirmação explícita dos destinatários antes do disparo real para total segurança
+        to_list_str = "\n".join(f"  • {e}" for e in recipients)
+        cc_list_str = "\n".join(f"  • {e}" for e in cc_recipients) if cc_recipients else "  (Nenhum)"
+        att_list_str = "\n".join(f"  • {os.path.basename(a)}" for a in attachments) if attachments else "  (Nenhum anexo)"
+
+        confirm_msg = (
+            f"Por favor, confira os destinatários antes do disparo:\n\n"
+            f"Destinatário(s) Principal(is):\n{to_list_str}\n\n"
+            f"Em Cópia (Cc):\n{cc_list_str}\n\n"
+            f"Arquivo(s) em Anexo:\n{att_list_str}\n\n"
+            f"Deseja confirmar e disparar o e-mail agora?"
+        )
+        if not messagebox.askyesno("Confirmar Destinatários", confirm_msg, parent=self, default=messagebox.YES):
+            return
+
         # Salvar destinatários no config para as próximas vezes
         self.config["email_recipients"] = raw_to
         self.config["email_cc"] = raw_cc

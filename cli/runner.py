@@ -71,7 +71,7 @@ def execute_extraction(dt_inicio, dt_fim, valor_m3=None, output_path=None, confi
     logging.info(f"Iniciando extração: Período {dt_inicio} até {dt_fim} | Valor/m³: R$ {valor_m3:.2f} | Ordenação por consumo: {sort_by_consumption}")
 
     if progress_callback:
-        progress_callback(10, "1/4: Conectando ao SQL Server (StruxureWare)...")
+        progress_callback(15, "1/4: Conectando ao SQL Server e obtendo medições...")
 
     df = fetch_hidrometros_data(dt_inicio, dt_fim, valor_m3, config, progress_callback=progress_callback)
     logging.info(f"Dados obtidos com sucesso do SQL Server: {len(df)} registros encontrados.")
@@ -84,7 +84,7 @@ def execute_extraction(dt_inicio, dt_fim, valor_m3=None, output_path=None, confi
         output_path = os.path.join(target_dir, filename)
 
     if progress_callback:
-        progress_callback(55, "3/4: Formatando planilha e gráficos de consumo...")
+        progress_callback(50, "2/4: Processando rateio e histórico de consumo...")
 
     result_path, warnings = generate_excel_report(df, dt_inicio, dt_fim, valor_m3, output_path, sort_by_consumption=sort_by_consumption, progress_callback=progress_callback)
     logging.info(f"Relatório Excel gravado com sucesso em: {result_path}")
