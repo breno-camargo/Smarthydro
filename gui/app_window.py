@@ -108,7 +108,8 @@ class AppHidrometrosWindow:
 
         # Estilo dos botões secundários e do histórico
         self.style.configure("Secondary.TButton", font=("Segoe UI", 9), padding=6)
-        self.style.configure("History.TButton", font=("Segoe UI", 9), padding=(8, 3))
+        self.style.configure("History.TButton", font=("Segoe UI", 9), padding=(6, 2))
+        self.style.configure("Delete.TButton", font=("Segoe UI", 9), padding=(6, 2))
 
     def _build_ui(self):
         main_container = ttk.Frame(self.root, padding="20 12 20 12")
@@ -375,7 +376,22 @@ class AppHidrometrosWindow:
             row_frame = tk.Frame(self.frame_history_list, bg=COLOR_BG_LIGHT)
             row_frame.pack(fill=tk.X, pady=3, padx=2)
 
-            # Empacotar botões de ação à direita (Excel e PDF)
+            # Empacotar botões de ação à direita na ordem visual correta:
+            # No Tkinter, side=tk.RIGHT empacota da direita para a esquerda:
+            # 1º pack: PDF (fica na extrema direita)
+            # 2º pack: Excel (fica no meio)
+            # 3º pack: Excluir (fica à esquerda do botão Excel!)
+            pdf_p = item.get("pdf_path", "")
+            has_pdf = item.get("has_pdf") and os.path.exists(pdf_p)
+
+            if has_pdf:
+                btn_pdf = ttk.Button(
+                    row_frame, text="PDF", width=5,
+                    command=lambda p=pdf_p: self._open_specific_file(p),
+                    style="History.TButton"
+                )
+                btn_pdf.pack(side=tk.RIGHT, padx=(4, 0))
+
             btn_open = ttk.Button(
                 row_frame, text="Excel", width=6,
                 command=lambda p=f_path: self._open_specific_file(p),
@@ -383,14 +399,12 @@ class AppHidrometrosWindow:
             )
             btn_open.pack(side=tk.RIGHT, padx=(4, 0))
 
-            if item.get("has_pdf") and os.path.exists(item.get("pdf_path", "")):
-                pdf_p = item["pdf_path"]
-                btn_pdf = ttk.Button(
-                    row_frame, text="PDF", width=5,
-                    command=lambda p=pdf_p: self._open_specific_file(p),
-                    style="History.TButton"
-                )
-                btn_pdf.pack(side=tk.RIGHT, padx=(4, 0))
+            btn_del = ttk.Button(
+                row_frame, text="Excluir", width=6,
+                command=lambda x=f_path, p=pdf_p: self._delete_specific_file(x, p),
+                style="Delete.TButton"
+            )
+            btn_del.pack(side=tk.RIGHT, padx=(4, 0))
 
             # Lado esquerdo: Nome em negrito com largura fixa para alinhamento em coluna
             lbl_left = tk.Frame(row_frame, bg=COLOR_BG_LIGHT)
@@ -399,7 +413,7 @@ class AppHidrometrosWindow:
             lbl_f = tk.Label(
                 lbl_left, text=f"•  {disp_name}", font=("Segoe UI", 9, "bold"),
                 fg=COLOR_TEXT_MAIN, bg=COLOR_BG_LIGHT,
-                width=24, anchor="w"
+                width=22, anchor="w"
             )
             lbl_f.pack(side=tk.LEFT)
 
@@ -426,7 +440,52 @@ class AppHidrometrosWindow:
         try:
             os.startfile(path)
         except Exception as e:
-            messagebox.showerror("Erro ao Abrir", f"Não foi possível abrir o arquivo no Excel:\n{e}", parent=self.root)
+            messagebox.showerror("Erro ao Abrir", f"Não foi possível abrir o arquivo:\n{e}", parent=self.root)
+
+    def _delete_specific_file(self, xlsx_path, pdf_path=None):
+        """Solicita confirmação e exclui o relatório (Excel e PDF associado) com segurança."""
+        f_name = os.path.basename(xlsx_path)
+        resp = messagebox.askyesno(
+            "Confirmar Exclusão",
+            f"Deseja realmente excluir este relatório?\n\n'{f_name}'\n\n(A planilha Excel e a cópia em PDF serão removidas do disco)",
+            parent=self.root,
+            icon="warning"
+        )
+        if not resp:
+            return
+
+        try:
+            # Exclui o arquivo Excel
+            if os.path.exists(xlsx_path):
+                os.remove(xlsx_path)
+
+            # Exclui o PDF correspondente se existir
+            if pdf_path and os.path.exists(pdf_path):
+                os.remove(pdf_path)
+            else:
+                cand_pdf = os.path.splitext(xlsx_path)[0] + ".pdf"
+                if os.path.exists(cand_pdf):
+                    os.remove(cand_pdf)
+
+            # Se a subpasta do mês ficou vazia (ex: 2026\10.26), limpa a subpasta
+            parent_dir = os.path.dirname(xlsx_path)
+            if os.path.exists(parent_dir) and not os.listdir(parent_dir):
+                try:
+                    os.rmdir(parent_dir)
+                except Exception:
+                    pass
+
+            messagebox.showinfo("Sucesso", f"O relatório '{f_name}' foi excluído com sucesso.", parent=self.root)
+        except PermissionError:
+            messagebox.showerror(
+                "Arquivo Aberto",
+                f"Não foi possível excluir o arquivo porque ele está aberto no Excel.\nFeche o Excel e tente novamente.",
+                parent=self.root
+            )
+        except Exception as e:
+            messagebox.showerror("Erro ao Excluir", f"Falha ao excluir o arquivo:\n{e}", parent=self.root)
+        finally:
+            self._refresh_history()
 
     def _update_progress(self, percent, message):
         """Atualiza a barra de progresso e o status da interface de forma suave."""
