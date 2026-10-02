@@ -11,6 +11,7 @@ a = Analysis(
         ('header_logo.png', '.'),
         ('logo.jpeg', '.'),
         ('logo_final.png', '.'),
+        ('signature_logo.png', '.'),
         ('gui_logo.png', '.'),
         ('modelo_relatorio.xlsx', '.'),
         ('modelo_email.html', '.')

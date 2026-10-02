@@ -180,18 +180,17 @@ DEFAULT_HTML_BODY = """<!DOCTYPE html>
 
       <p>Quaisquer dúvidas estamos à disposição!</p>
 
-      <div class="signature">
-        <div class="sig-name">Breno Camargo</div>
-        <div class="sig-details">
-          +55 11 99012 7316<br>
-          <a href="mailto:breno.camargo@compasss.com.br">breno.camargo@compasss.com.br</a><br>
-          <a href="https://www.compasss.com.br">www.compasss.com.br</a><br>
-          <br>
-          RJ – Praia de Botafogo, 300 – Mezanino – Botafogo – CEP: 20031-040<br>
-          SP – Alameda Santos, 2477 – 11º Andar – Jardim Paulista – CEP: 01419-101
+      <div class="signature" style="margin-top: 24px; padding-top: 14px; border-top: 1px solid #D5E5C9;">
+        <div style="font-family: Calibri, 'Segoe UI', Arial, sans-serif; line-height: 1.35;">
+          <span style="color: #006600; font-weight: bold; font-size: 11pt;">Breno Camargo</span><br>
+          <span style="color: #006600; font-weight: bold; font-size: 10pt;">+55 11 99012 7316</span><br>
+          <a href="mailto:breno.camargo@compasss.com.br" style="color: #0563C1; text-decoration: underline; font-size: 10pt;">breno.camargo@compasss.com.br</a><br>
+          <a href="http://www.compasss.com.br" style="color: #0563C1; text-decoration: underline; font-size: 10pt;">www.compasss.com.br</a><br>
+          <span style="color: #006600; font-size: 9.5pt;">RJ – Praia de Botafogo, 300 – Mezanino – Botafogo – CEP: 20031-040</span><br>
+          <span style="color: #006600; font-size: 9.5pt;">SP – Alameda Santos, 2477 – 11º Andar – Jardim Paulista – CEP: 01419-101</span>
         </div>
-        <div class="sig-logo">
-          <img src="cid:logo_compasss" alt="CompaSSS" style="height: 42px;">
+        <div style="margin-top: 8px;">
+          <img src="cid:logo_compasss" alt="CompaSSS" style="width: 220px; height: auto; max-width: 100%; display: block; border: 0;">
         </div>
       </div>
     </div>
@@ -202,9 +201,10 @@ DEFAULT_HTML_BODY = """<!DOCTYPE html>
 
 
 def get_logo_image_path():
-    """Localiza o ficheiro da logo CompaSSS (logo_final.png, excel_logo_0.png, etc.)."""
+    """Localiza o ficheiro da logo CompaSSS (signature_logo.png, logo_final.png, etc.)."""
     base = get_base_dir()
     candidates = [
+        os.path.join(base, "signature_logo.png"),
         os.path.join(base, "logo_final.png"),
         os.path.join(base, "excel_logo_0.png"),
         os.path.join(base, "gui_logo.png"),
@@ -213,9 +213,10 @@ def get_logo_image_path():
     ]
     if getattr(sys, 'frozen', False):
         exe_dir = os.path.dirname(sys.executable)
-        candidates.insert(0, os.path.join(exe_dir, "logo_final.png"))
-        candidates.insert(1, os.path.join(exe_dir, "excel_logo_0.png"))
-        candidates.insert(2, os.path.join(exe_dir, "gui_logo.png"))
+        candidates.insert(0, os.path.join(exe_dir, "signature_logo.png"))
+        candidates.insert(1, os.path.join(exe_dir, "logo_final.png"))
+        candidates.insert(2, os.path.join(exe_dir, "excel_logo_0.png"))
+        candidates.insert(3, os.path.join(exe_dir, "gui_logo.png"))
     for cand in candidates:
         if os.path.exists(cand):
             return cand
