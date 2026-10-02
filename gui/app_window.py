@@ -61,6 +61,7 @@ class AppHidrometrosWindow:
 
         self._build_ui()
         self._set_default_dates()
+        self._auto_check_latest_sabesp_cache()
         self._refresh_history()
         self._refresh_operators_ui()
 
@@ -161,91 +162,122 @@ class AppHidrometrosWindow:
         div = tk.Frame(main_container, height=2, bg=COLOR_ACCENT)
         div.pack(fill=tk.X, pady=(0, 16))
 
-        # ─── PARÂMETROS DE EXTRAÇÃO (CARD PRINCIPAL) ───
-        frame_card = ttk.LabelFrame(main_container, text="  Parâmetros do Relatório  ", padding="16 14 16 14")
-        frame_card.pack(fill=tk.X, pady=(0, 14))
-        frame_card.columnconfigure(2, weight=1)
+        # ─── 1. HERO CARD: SINCRONIZAÇÃO INTELIGENTE VIA E-MAIL (ZANGARI) ───
+        frame_sabesp_hero = tk.LabelFrame(
+            main_container,
+            text="  📩 Fatura Sabesp — Integração com E-mail Zangari  ",
+            font=("Segoe UI", 9, "bold"),
+            bg=COLOR_BG_LIGHT,
+            fg=COLOR_PRIMARY,
+            padx=14,
+            pady=10
+        )
+        frame_sabesp_hero.pack(fill=tk.X, pady=(0, 10))
 
-        # Data Inicial com Mini Calendário DateEntry
-        lbl_ini = ttk.Label(frame_card, text="Data Inicial:", font=("Segoe UI", 9, "bold"))
-        lbl_ini.grid(row=0, column=0, sticky=tk.W, pady=6)
+        frame_hero_top = tk.Frame(frame_sabesp_hero, bg=COLOR_BG_LIGHT)
+        frame_hero_top.pack(fill=tk.X)
+
+        self.lbl_hero_icon = tk.Label(frame_hero_top, text="📄", font=("Segoe UI", 18), bg=COLOR_BG_LIGHT, fg=COLOR_PRIMARY)
+        self.lbl_hero_icon.pack(side=tk.LEFT, padx=(0, 10))
+
+        frame_hero_info = tk.Frame(frame_hero_top, bg=COLOR_BG_LIGHT)
+        frame_hero_info.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        self.lbl_hero_title = tk.Label(
+            frame_hero_info,
+            text="Fatura Sabesp: Nenhuma fatura carregada ainda.",
+            font=("Segoe UI", 9, "bold"), fg=COLOR_TEXT_MAIN, bg=COLOR_BG_LIGHT, anchor="w"
+        )
+        self.lbl_hero_title.pack(fill=tk.X)
+
+        self.lbl_hero_sub = tk.Label(
+            frame_hero_info,
+            text="Clique em 'Buscar no E-mail' para puxar a conta de água enviada pela administração (Joyce / Yasmim).",
+            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT, anchor="w"
+        )
+        self.lbl_hero_sub.pack(fill=tk.X, pady=(2, 0))
+
+        frame_hero_actions = tk.Frame(frame_hero_top, bg=COLOR_BG_LIGHT)
+        frame_hero_actions.pack(side=tk.RIGHT, padx=(10, 0))
+
+        self.btn_hero_sync = tk.Button(
+            frame_hero_actions,
+            text="🔄 Buscar no E-mail",
+            command=self._sync_sabesp_from_email_only,
+            bg=COLOR_PRIMARY, fg="white", activebackground=COLOR_PRIMARY_HOVER, activeforeground="white",
+            font=("Segoe UI", 8, "bold"), relief="flat", padx=10, pady=4, cursor="hand2"
+        )
+        self.btn_hero_sync.pack(side=tk.TOP, fill=tk.X, pady=(0, 3))
+
+        btn_hero_file = ttk.Button(
+            frame_hero_actions,
+            text="📁 Escolher PDF...",
+            command=self._open_sabesp_dialog,
+            style="Secondary.TButton"
+        )
+        btn_hero_file.pack(side=tk.TOP, fill=tk.X)
+
+        # ─── 2. CARD DE PARÂMETROS DO RATEIO (ESPELHO DA FATURA) ───
+        frame_params = ttk.LabelFrame(
+            main_container,
+            text="  ⚙ Parâmetros do Rateio das Salas  ",
+            padding="12 8 12 8"
+        )
+        frame_params.pack(fill=tk.X, pady=(0, 10))
+
+        frame_fields = tk.Frame(frame_params, bg=COLOR_BG_LIGHT)
+        frame_fields.pack(fill=tk.X, pady=(0, 6))
+
+        lbl_ini = ttk.Label(frame_fields, text="Início:", font=("Segoe UI", 9, "bold"))
+        lbl_ini.pack(side=tk.LEFT, padx=(0, 4))
 
         self.cal_inicio = DateEntry(
-            frame_card, width=14, font=("Segoe UI", 9),
+            frame_fields, width=12, font=("Segoe UI", 9),
             background=COLOR_PRIMARY, foreground="white",
             headersbackground=COLOR_PRIMARY, headersforeground="white",
             selectbackground=COLOR_ACCENT, selectforeground="black",
             date_pattern="dd/mm/yyyy", locale="pt_BR", borderwidth=1
         )
-        self.cal_inicio.grid(row=0, column=1, sticky=tk.W, pady=6, padx=(10, 0))
+        self.cal_inicio.pack(side=tk.LEFT, padx=(0, 16))
 
-        # Data Final com Mini Calendário DateEntry
-        lbl_fim = ttk.Label(frame_card, text="Data Final:", font=("Segoe UI", 9, "bold"))
-        lbl_fim.grid(row=1, column=0, sticky=tk.W, pady=6)
+        lbl_fim = ttk.Label(frame_fields, text="Fim:", font=("Segoe UI", 9, "bold"))
+        lbl_fim.pack(side=tk.LEFT, padx=(0, 4))
 
         self.cal_fim = DateEntry(
-            frame_card, width=14, font=("Segoe UI", 9),
+            frame_fields, width=12, font=("Segoe UI", 9),
             background=COLOR_PRIMARY, foreground="white",
             headersbackground=COLOR_PRIMARY, headersforeground="white",
             selectbackground=COLOR_ACCENT, selectforeground="black",
             date_pattern="dd/mm/yyyy", locale="pt_BR", borderwidth=1
         )
-        self.cal_fim.grid(row=1, column=1, sticky=tk.W, pady=6, padx=(10, 0))
+        self.cal_fim.pack(side=tk.LEFT, padx=(0, 16))
 
-        # Valor do m³ (R$)
-        lbl_val = ttk.Label(frame_card, text="Valor do m³ (R$):", font=("Segoe UI", 9, "bold"))
-        lbl_val.grid(row=2, column=0, sticky=tk.W, pady=6)
+        lbl_val = ttk.Label(frame_fields, text="Tarifa m³ (R$):", font=("Segoe UI", 9, "bold"))
+        lbl_val.pack(side=tk.LEFT, padx=(0, 4))
 
-        self.ent_valor = ttk.Entry(frame_card, font=("Segoe UI", 9), width=14)
+        self.ent_valor = ttk.Entry(frame_fields, font=("Segoe UI", 9), width=10)
         self.ent_valor.insert(0, str(self.config.get("default_m3_price", "63.68")))
-        self.ent_valor.grid(row=2, column=1, sticky=tk.W, pady=6, padx=(10, 0))
+        self.ent_valor.pack(side=tk.LEFT)
 
-        # Pasta de Saída (Alinhada na coluna dos campos)
-        lbl_dir = ttk.Label(frame_card, text="Salvar em:", font=("Segoe UI", 9, "bold"))
-        lbl_dir.grid(row=3, column=0, sticky=tk.W, pady=6)
+        # Linha inferior: Pasta de saída
+        frame_out = tk.Frame(frame_params, bg=COLOR_BG_LIGHT)
+        frame_out.pack(fill=tk.X)
 
-        frame_out = tk.Frame(frame_card, bg=COLOR_BG_LIGHT)
-        frame_out.grid(row=3, column=1, sticky=tk.W, pady=6, padx=(10, 0))
+        lbl_dir = ttk.Label(frame_out, text="Salvar em:", font=("Segoe UI", 8, "bold"))
+        lbl_dir.pack(side=tk.LEFT, padx=(0, 6))
 
-        self.lbl_pasta = ttk.Entry(frame_out, font=("Segoe UI", 8), width=14)
+        self.lbl_pasta = ttk.Entry(frame_out, font=("Segoe UI", 8))
         self.lbl_pasta.insert(0, self.config.get("output_directory", ""))
-        self.lbl_pasta.pack(side=tk.LEFT)
+        self.lbl_pasta.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         btn_browse = ttk.Button(frame_out, text="Alterar...", width=8, command=self._browse_output_dir)
-        btn_browse.pack(side=tk.LEFT, padx=(4, 0))
-
-        # ─── LADO DIREITO: CARD DE INTEGRAÇÃO SABESP ───
-        frame_right = tk.Frame(frame_card, bg=COLOR_BG_LIGHT)
-        frame_right.grid(row=0, column=2, rowspan=4, sticky=tk.NSEW, padx=(24, 0), pady=(0, 2))
-
-        frame_sabesp_box = tk.LabelFrame(
-            frame_right, text="  Integração Sabesp  ",
-            font=("Segoe UI", 8, "bold"), bg=COLOR_BG_LIGHT, fg=COLOR_PRIMARY,
-            padx=12, pady=10
-        )
-        frame_sabesp_box.pack(fill=tk.BOTH, expand=True)
-
-        self.btn_sabesp = tk.Button(
-            frame_sabesp_box,
-            text="📩 Fatura Sabesp",
-            command=self._open_sabesp_dialog,
-            bg="#EBF3E6", fg=COLOR_PRIMARY, activebackground=COLOR_ACCENT,
-            font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=6, cursor="hand2"
-        )
-        self.btn_sabesp.pack(fill=tk.X, pady=(2, 6))
-
-        lbl_sabesp_hint = tk.Label(
-            frame_sabesp_box,
-            text="Localiza a conta no e-mail e\npreenche período e tarifa marginal",
-            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT, justify=tk.CENTER
-        )
-        lbl_sabesp_hint.pack()
+        btn_browse.pack(side=tk.LEFT, padx=(6, 0))
 
         # Preferências mantidas no config (configuráveis via ⚙)
         self.var_sort_desc = tk.BooleanVar(value=self.config.get("sort_by_consumption", True))
         self.var_open_excel = tk.BooleanVar(value=self.config.get("open_excel_after_generation", True))
 
-        # ─── BOTÕES DE AÇÃO INFERIORES ───
+        # ─── 3. BOTÕES DE AÇÃO INFERIORES ───
         frame_actions = tk.Frame(main_container, bg=COLOR_BG_LIGHT)
         frame_actions.pack(fill=tk.X, side=tk.BOTTOM, pady=(8, 0))
 
@@ -261,22 +293,31 @@ class AppHidrometrosWindow:
         )
         btn_test.pack(side=tk.LEFT)
 
-        # Botão Principal Verde CompaSSS
-        self.btn_gerar = tk.Button(
+        # BOTÃO PRINCIPAL VERDE COMPASSS: O E-MAIL É A ESTRELA!
+        self.btn_sabesp_gerar = tk.Button(
             frame_actions,
-            text="✔ Gerar Relatório Excel",
-            command=self._start_processing,
+            text="🚀 Puxar do E-mail e Gerar Excel",
+            command=self._one_click_email_and_generate,
             bg=COLOR_PRIMARY,
             fg="white",
             activebackground=COLOR_PRIMARY_HOVER,
             activeforeground="white",
             font=("Segoe UI", 10, "bold"),
             relief="flat",
-            padx=18,
+            padx=16,
             pady=8,
             cursor="hand2"
         )
-        self.btn_gerar.pack(side=tk.RIGHT)
+        self.btn_sabesp_gerar.pack(side=tk.RIGHT)
+
+        # Botão Secundário: Gerar com os dados já confirmados na tela
+        self.btn_gerar = ttk.Button(
+            frame_actions,
+            text="✔ Gerar c/ Dados da Tela",
+            command=self._start_processing,
+            style="Secondary.TButton"
+        )
+        self.btn_gerar.pack(side=tk.RIGHT, padx=(0, 8))
 
         # ─── BARRA DE PROGRESSO E STATUS (DOCK NO BOTTOM) ───
         self.lbl_status = tk.Label(
@@ -378,7 +419,129 @@ class AppHidrometrosWindow:
             target_year=target_y
         )
 
-    def _apply_sabesp_data(self, data: dict, selected_rate: float):
+    def _auto_check_latest_sabesp_cache(self):
+        """Verifica se há fatura recente baixada no cache temp_sabesp e já pré-carrega no Hero Card."""
+        try:
+            cache_dir = os.path.join(get_base_dir(), "temp_sabesp")
+            if os.path.exists(cache_dir):
+                pdfs = [os.path.join(cache_dir, f) for f in os.listdir(cache_dir) if f.lower().endswith(".pdf")]
+                if pdfs:
+                    latest = max(pdfs, key=os.path.getmtime)
+                    from core.sabesp_parser import parse_sabesp_pdf
+                    ok, _, data = parse_sabesp_pdf(latest)
+                    if ok and data:
+                        self._apply_sabesp_data(data, data.get("tarifa_faixa", 63.68), silent=True)
+        except Exception:
+            pass
+
+    def _update_sabesp_hero_card(self, data: dict):
+        if not hasattr(self, "lbl_hero_title") or not data:
+            return
+        fn = data.get("arquivo_origem", "Fatura Sabesp")
+        ini = data.get("periodo_rateio_ini", "")
+        fim = data.get("periodo_rateio_fim", "")
+        rate = data.get("tarifa_faixa", 63.68)
+        tot = data.get("valor_total_fatura", 0.0)
+        m3 = data.get("consumo_sabesp_m3", 0.0)
+
+        self.lbl_hero_icon.config(text="✔", fg=COLOR_PRIMARY)
+        self.lbl_hero_title.config(
+            text=f"Fatura Sabesp Ativa: {fn}"
+        )
+        self.lbl_hero_sub.config(
+            text=f"Período: {ini} a {fim}  |  Tarifa Marginal: R$ {rate:.2f}/m³  |  Sabesp: {m3:,.0f} m³ (R$ {tot:,.2f})"
+        )
+
+    def _one_click_email_and_generate(self):
+        """FLUXO PRINCIPAL: Conecta ao e-mail da Zangari, puxa a fatura, preenche e gera o relatório Excel na hora!"""
+        self._execute_email_sabesp_flow(generate_after=True)
+
+    def _sync_sabesp_from_email_only(self):
+        """Busca a fatura recente no e-mail e atualiza os campos na tela (sem gerar ainda)."""
+        self._execute_email_sabesp_flow(generate_after=False)
+
+    def _execute_email_sabesp_flow(self, generate_after: bool = False):
+        self.btn_gerar.config(state=tk.DISABLED)
+        self.btn_sabesp_gerar.config(state=tk.DISABLED)
+        self.btn_hero_sync.config(state=tk.DISABLED)
+        self.prog_bar["value"] = 25
+
+        target_m = None
+        target_y = None
+        try:
+            d_fim = self.cal_fim.get_date()
+            today = date.today()
+            if d_fim.year != today.year or d_fim.month != today.month:
+                target_m = d_fim.month
+                target_y = d_fim.year
+        except Exception:
+            pass
+
+        target_str = f" de {MESES_PT[target_m-1]}/{target_y}" if (target_m and target_m <= len(MESES_PT)) else " recente"
+        self.lbl_status.config(
+            text=f"Conectando à caixa da Zangari (Joyce/Yasmim) para localizar fatura Sabesp{target_str}...",
+            fg=COLOR_PRIMARY
+        )
+
+        def _worker():
+            try:
+                from core.sabesp_parser import search_sabesp_in_email, parse_sabesp_pdf
+                ok, msg, pdf_path = search_sabesp_in_email(self.config, target_month=target_m, target_year=target_y)
+                if not ok or not pdf_path:
+                    self.root.after(0, lambda: self._on_email_sabesp_error(msg))
+                    return
+
+                ok_p, msg_p, data = parse_sabesp_pdf(pdf_path)
+                if not ok_p or not data:
+                    self.root.after(0, lambda: self._on_email_sabesp_error(msg_p))
+                    return
+
+                self.root.after(0, lambda: self._on_email_sabesp_ready(data, generate_after))
+            except Exception as e:
+                self.root.after(0, lambda: self._on_email_sabesp_error(str(e)))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _on_email_sabesp_error(self, err_msg):
+        self.prog_bar["value"] = 0
+        self.btn_gerar.config(state=tk.NORMAL)
+        self.btn_sabesp_gerar.config(state=tk.NORMAL)
+        self.btn_hero_sync.config(state=tk.NORMAL)
+        self.lbl_status.config(text=f"Aviso E-mail: {err_msg}", fg="red")
+        messagebox.showwarning(
+            "Fatura Sabesp no E-mail",
+            f"Não foi possível localizar a fatura Sabesp no e-mail:\n\n{err_msg}\n\n"
+            f"Você ainda pode usar '📁 Escolher PDF...' para selecionar manualmente ou gerar com as datas da tela.",
+            parent=self.root
+        )
+
+    def _on_email_sabesp_ready(self, data: dict, generate_after: bool):
+        self.prog_bar["value"] = 0
+        self.btn_gerar.config(state=tk.NORMAL)
+        self.btn_sabesp_gerar.config(state=tk.NORMAL)
+        self.btn_hero_sync.config(state=tk.NORMAL)
+
+        rate = data.get("tarifa_faixa", 63.68)
+        self._apply_sabesp_data(data, rate, silent=True)
+
+        if generate_after:
+            self._start_processing()
+        else:
+            ini_str = data.get("periodo_rateio_ini", "")
+            fim_str = data.get("periodo_rateio_fim", "")
+            messagebox.showinfo(
+                "Fatura Sabesp Sincronizada",
+                f"✔ Fatura da Sabesp sincronizada com sucesso do e-mail da Zangari!\n\n"
+                f"• Arquivo: {data.get('arquivo_origem')}\n"
+                f"• Período do Rateio: {ini_str} a {fim_str}\n"
+                f"• Tarifa Marginal: R$ {rate:.2f} / m³ (Faixa > 50 m³)\n"
+                f"• Volume Sabesp: {data.get('consumo_sabesp_m3', 0.0):,.1f} m³\n"
+                f"• Total da Conta: R$ {data.get('valor_total_fatura', 0.0):,.2f}\n\n"
+                f"Pronto para gerar o relatório!",
+                parent=self.root
+            )
+
+    def _apply_sabesp_data(self, data: dict, selected_rate: float, silent: bool = False):
         """Aplica as datas e a tarifa da fatura Sabesp diretamente nos campos da interface."""
         try:
             from datetime import datetime
@@ -397,20 +560,24 @@ class AppHidrometrosWindow:
             self.sabesp_data = data
             cons_sab = data.get("consumo_sabesp_m3", 0.0)
             tot_fat = data.get("valor_total_fatura", 0.0)
+
+            self._update_sabesp_hero_card(data)
+
             self.lbl_status.config(
                 text=f"✔ Fatura Sabesp ({data.get('arquivo_origem', 'PDF')}): {ini_str} a {fim_str} | R$ {selected_rate:.2f}/m³",
                 fg=COLOR_PRIMARY
             )
-            messagebox.showinfo(
-                "Fatura Sabesp Aplicada",
-                f"Parâmetros atualizados com sucesso a partir da fatura Sabesp!\n\n"
-                f"• Período do Rateio: {ini_str} a {fim_str}\n"
-                f"• Tarifa Aplicada: R$ {selected_rate:.2f} / m³\n"
-                f"• Consumo Geral Sabesp: {cons_sab:,.1f} m³\n"
-                f"• Total da Fatura: R$ {tot_fat:,.2f}\n\n"
-                f"Pronto para gerar o relatório com 1 clique.",
-                parent=self.root
-            )
+            if not silent:
+                messagebox.showinfo(
+                    "Fatura Sabesp Aplicada",
+                    f"Parâmetros atualizados com sucesso a partir da fatura Sabesp!\n\n"
+                    f"• Período do Rateio: {ini_str} a {fim_str}\n"
+                    f"• Tarifa Aplicada: R$ {selected_rate:.2f} / m³\n"
+                    f"• Consumo Geral Sabesp: {cons_sab:,.1f} m³\n"
+                    f"• Total da Fatura: R$ {tot_fat:,.2f}\n\n"
+                    f"Pronto para gerar o relatório.",
+                    parent=self.root
+                )
         except Exception as e:
             messagebox.showwarning("Aviso", f"Erro ao aplicar dados da Sabesp: {e}", parent=self.root)
 
