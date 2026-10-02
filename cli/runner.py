@@ -134,6 +134,28 @@ def run_cli():
         cycle_type = config.get("billing_cycle_type", "ciclo_29_28")
         dt_ini, dt_fim, _, _ = get_billing_cycle_dates(cycle_type)
         val = args.valor or float(config.get("default_m3_price", 63.68))
+
+        # Tenta obter fatura recente da Sabesp no e-mail para sincronizar datas e tarifa
+        sabesp_meta = None
+        try:
+            from core.sabesp_parser import search_sabesp_in_email, parse_sabesp_pdf
+            ok_s, msg_s, pdf_p = search_sabesp_in_email(config)
+            if ok_s and pdf_p:
+                ok_p, _, s_data = parse_sabesp_pdf(pdf_p)
+                if ok_p and s_data:
+                    sabesp_meta = s_data
+                    ini_s = s_data.get("periodo_rateio_ini")
+                    fim_s = s_data.get("periodo_rateio_fim")
+                    if ini_s and fim_s:
+                        d_i = datetime.strptime(ini_s, "%d/%m/%Y").strftime("%Y-%m-%d")
+                        d_f = datetime.strptime(fim_s, "%d/%m/%Y").strftime("%Y-%m-%d")
+                        dt_ini = f"{d_i} 00:00:00"
+                        dt_fim = f"{d_f} 23:59:59"
+                    val = s_data.get("tarifa_faixa", val)
+                    logging.info(f"[SABESP] Fatura sincronizada do e-mail: {ini_s} a {fim_s} | Tarifa R$ {val:.2f}/m³")
+        except Exception as e_s:
+            logging.warning(f"[SABESP] Não foi possível verificar fatura no e-mail: {e_s}")
+
         try:
             out_file, warnings, anoms = execute_extraction(dt_ini, dt_fim, val, args.saida, config, sort_by_consumption=sort_by_consumption)
             logging.info(f"[SUCESSO] Relatório gerado: {out_file}")
@@ -159,7 +181,8 @@ def run_cli():
                         "total_rs": tot_rs,
                         "anomalias": anoms or [],
                         "operador": op_str,
-                        "excel_file": os.path.basename(out_file)
+                        "excel_file": os.path.basename(out_file),
+                        "sabesp": sabesp_meta
                     }
                     ok_wh, msg_wh = send_report_webhook(wh_sum, cfg_fresh)
                     logging.info(f"Notificação Webhook agendada: {msg_wh}")
