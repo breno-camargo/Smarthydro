@@ -96,11 +96,22 @@ def _format_whatsapp_message(summary: dict) -> str:
 
     sabesp = summary.get("sabesp")
     sabesp_line = ""
+    balanco_line = ""
     if sabesp:
-        m3_sab = sabesp.get("consumo_sabesp_m3", 0.0)
-        val_sab = sabesp.get("valor_total_fatura", 0.0)
+        m3_sab = float(sabesp.get("consumo_sabesp_m3") or 0.0)
+        val_sab = float(sabesp.get("valor_total_fatura") or 0.0)
         val_sab_fmt = f"R$ {val_sab:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
         sabesp_line = f"🏷️ *Fatura Sabesp:* {val_sab_fmt} (Sabesp: {m3_sab:,.0f} m³)\n"
+        if m3_sab > 0 and total_m3 > 0:
+            diff_m3 = m3_sab - total_m3
+            diff_fmt = f"{abs(diff_m3):,.1f} m³".replace(",", "X").replace(".", ",").replace("X", ".")
+            pct = (diff_m3 / m3_sab) * 100.0
+            pct_fmt = f"{pct:.1f}%".replace(".", ",")
+            if diff_m3 >= 0:
+                st = "Normal ✅" if pct <= 10.0 else ("Atenção ⚠️" if pct <= 15.0 else "Alerta Vazamento 🚨")
+                balanco_line = f"🌿 *Balanço Hídrico:* {diff_fmt} ({pct_fmt}) • Área Comum ({st})\n"
+            else:
+                balanco_line = f"🌿 *Balanço Hídrico:* +{diff_fmt} privativo excedente\n"
 
     return (
         f"💧 *SmartHydro — Relatório de Água Concluído*\n"
@@ -109,6 +120,7 @@ def _format_whatsapp_message(summary: dict) -> str:
         f"💧 *Consumo Total:* {m3_fmt}\n"
         f"💰 *Faturamento Estimado:* {rs_fmt}\n"
         f"{sabesp_line}"
+        f"{balanco_line}"
         f"🔍 *Auditoria:* {anom_txt}\n"
         f"👤 *Operador:* {operador}\n"
         f"📄 *Planilha:* {excel_file}\n\n"
@@ -136,6 +148,15 @@ def _format_teams_card(summary: dict) -> dict:
         {"name": "👤 Operador Responsável:", "value": operador}
     ]
 
+    sabesp = summary.get("sabesp")
+    if sabesp and total_m3 > 0:
+        m3_sab = float(sabesp.get("consumo_sabesp_m3") or 0.0)
+        if m3_sab > 0:
+            diff_m3 = m3_sab - total_m3
+            pct = (diff_m3 / m3_sab) * 100.0
+            st = "Normal ✅" if pct <= 10.0 else ("Atenção ⚠️" if pct <= 15.0 else "Alerta Vazamento 🚨")
+            facts.insert(3, {"name": "🌿 Balanço Hídrico (Área Comum):", "value": f"**{abs(diff_m3):,.1f} m³ ({pct:.1f}%)** • {st}"})
+
     return {
         "@type": "MessageCard",
         "@context": "http://schema.org/extensions",
@@ -162,20 +183,30 @@ def _format_discord_embed(summary: dict) -> dict:
     rs_fmt = f"R$ {total_rs:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     anom_txt = f"⚠️ {len(anomalias)} sala(s)" if anomalias else "✅ Normal (0)"
 
+    fields = [
+        {"name": "📅 Período", "value": periodo, "inline": True},
+        {"name": "💧 Consumo Total", "value": m3_fmt, "inline": True},
+        {"name": "💰 Faturamento", "value": rs_fmt, "inline": True},
+        {"name": "🔍 Auditoria / Vazamento", "value": anom_txt, "inline": True},
+        {"name": "👤 Operador", "value": operador, "inline": True}
+    ]
+
+    sabesp = summary.get("sabesp")
+    if sabesp and total_m3 > 0:
+        m3_sab = float(sabesp.get("consumo_sabesp_m3") or 0.0)
+        if m3_sab > 0:
+            diff_m3 = m3_sab - total_m3
+            pct = (diff_m3 / m3_sab) * 100.0
+            fields.insert(3, {"name": "🌿 Balanço Hídrico", "value": f"{abs(diff_m3):,.1f} m³ ({pct:.1f}%)", "inline": True})
+
     return {
         "username": "SmartHydro CompaSSS",
         "embeds": [{
             "title": "💧 Fechamento Mensal de Hidrômetros — Praça Pamplona",
             "description": "O relatório de medição foi extraído com sucesso do StruxureWare EBO e compilado.",
             "color": 4025124,  # #3D6B24 em decimal
-            "fields": [
-                {"name": "📅 Período", "value": periodo, "inline": True},
-                {"name": "💧 Consumo Total", "value": m3_fmt, "inline": True},
-                {"name": "💰 Faturamento", "value": rs_fmt, "inline": True},
-                {"name": "🔍 Auditoria / Vazamento", "value": anom_txt, "inline": True},
-                {"name": "👤 Operador", "value": operador, "inline": True}
-            ],
-            "footer": {"text": "SmartHydro v2.3 • CompaSSS Engenharia Predial"}
+            "fields": fields,
+            "footer": {"text": "SmartHydro v2.8 • CompaSSS Engenharia Predial"}
         }]
     }
 
@@ -192,11 +223,20 @@ def _format_slack_blocks(summary: dict) -> dict:
     rs_fmt = f"R$ {total_rs:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     anom_txt = f"⚠️ {len(anomalias)} suspeita(s)" if anomalias else "✅ Tudo normal"
 
+    sabesp = summary.get("sabesp")
+    balanco_txt = ""
+    if sabesp and total_m3 > 0:
+        m3_sab = float(sabesp.get("consumo_sabesp_m3") or 0.0)
+        if m3_sab > 0:
+            diff_m3 = m3_sab - total_m3
+            pct = (diff_m3 / m3_sab) * 100.0
+            balanco_txt = f"\n• *Balanço Hídrico:* {abs(diff_m3):,.1f} m³ ({pct:.1f}% área comum)"
+
     msg = (
         f"💧 *SmartHydro — Relatório de Água Concluído*\n"
         f"🏢 *Condomínio Praça Pamplona*\n"
         f"• *Período:* {periodo}\n"
-        f"• *Consumo:* {m3_fmt} | *Faturamento:* {rs_fmt}\n"
+        f"• *Consumo:* {m3_fmt} | *Faturamento:* {rs_fmt}{balanco_txt}\n"
         f"• *Auditoria:* {anom_txt}\n"
         f"• *Operador:* {operador}"
     )
@@ -215,12 +255,22 @@ def _format_telegram_message(summary: dict) -> str:
     rs_fmt = f"R$ {total_rs:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     anom_txt = f"⚠️ {len(anomalias)} sala(s) sob suspeita" if anomalias else "✅ Nenhuma anomalia"
 
+    sabesp = summary.get("sabesp")
+    balanco_line = ""
+    if sabesp and total_m3 > 0:
+        m3_sab = float(sabesp.get("consumo_sabesp_m3") or 0.0)
+        if m3_sab > 0:
+            diff_m3 = m3_sab - total_m3
+            pct = (diff_m3 / m3_sab) * 100.0
+            balanco_line = f"🌿 *Balanço Hídrico:* `{abs(diff_m3):,.1f} m³ ({pct:.1f}%)` • Área Comum\n"
+
     return (
         f"💧 *SmartHydro — Fechamento Mensal de Água*\n"
         f"🏢 *Condomínio Praça Pamplona*\n\n"
         f"📅 *Período:* {periodo}\n"
         f"💧 *Consumo Total:* `{m3_fmt}`\n"
         f"💰 *Faturamento Estimado:* `{rs_fmt}`\n"
+        f"{balanco_line}"
         f"🔍 *Auditoria:* {anom_txt}\n"
         f"👤 *Operador:* {operador}\n\n"
         f"_Relatório gerado com sucesso via telemetria StruxureWare EBO._"
@@ -229,13 +279,22 @@ def _format_telegram_message(summary: dict) -> str:
 
 def _format_generic_json(summary: dict) -> dict:
     """Payload JSON limpo e estruturado para integrações customizadas (WhatsApp API / Node-RED / n8n)."""
+    sabesp = summary.get("sabesp") or {}
+    sab_m3 = sabesp.get("consumo_sabesp_m3")
+    tot_m3 = summary.get("total_m3")
+    diff_m3 = None
+    if sab_m3 is not None and tot_m3 is not None:
+        diff_m3 = round(float(sab_m3) - float(tot_m3), 2)
+
     return {
         "event": "hidrometro_report_generated",
         "app": "SmartHydro",
         "condominio": "Condominio Praca Pamplona",
         "periodo": summary.get("periodo"),
-        "total_consumo_m3": summary.get("total_m3"),
+        "total_consumo_m3": tot_m3,
         "total_faturamento_rs": summary.get("total_rs"),
+        "consumo_sabesp_m3": sab_m3,
+        "balanco_hidrico_area_comum_m3": diff_m3,
         "salas_medidas": summary.get("salas_medidas", 54),
         "anomalias_detectadas": len(summary.get("anomalias", [])),
         "operador": summary.get("operador"),

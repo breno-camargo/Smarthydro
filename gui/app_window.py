@@ -41,11 +41,11 @@ class AppHidrometrosWindow:
             self.root.update_idletasks()
             s_w = self.root.winfo_screenwidth()
             s_h = self.root.winfo_screenheight()
-            pos_x = max(0, (s_w - 750) // 2)
-            pos_y = max(0, (s_h - 635) // 2)
-            self.root.geometry(f"750x635+{pos_x}+{pos_y}")
+            pos_x = max(0, (s_w - 760) // 2)
+            pos_y = max(0, (s_h - 645) // 2)
+            self.root.geometry(f"760x645+{pos_x}+{pos_y}")
         except Exception:
-            self.root.geometry("750x635")
+            self.root.geometry("760x645")
 
         self._set_window_icon()
 
@@ -454,23 +454,104 @@ class AppHidrometrosWindow:
             pass
 
     def _build_kpi_bar(self, parent):
-        box1 = tk.Frame(parent, bg="#EBF3E6", bd=1, relief="solid", highlightbackground="#D3E4CB", highlightthickness=1, padx=12, pady=6)
-        box1.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 4))
-        tk.Label(box1, text="💧 HIDRÔMETROS MEDIDOS", font=("Segoe UI", 8, "bold"), fg=COLOR_PRIMARY, bg="#EBF3E6").pack(anchor="w")
+        # 1. Hidrômetros Medidos
+        box1 = tk.Frame(parent, bg="#EBF3E6", bd=1, relief="solid", highlightbackground="#D3E4CB", highlightthickness=1, padx=10, pady=5)
+        box1.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 3))
+        tk.Label(box1, text="💧 HIDRÔMETROS MEDIDOS", font=("Segoe UI", 7, "bold"), fg=COLOR_PRIMARY, bg="#EBF3E6").pack(anchor="w")
         self.lbl_kpi_salas = tk.Label(box1, text="-- m³", font=("Segoe UI", 11, "bold"), fg=COLOR_TEXT_MAIN, bg="#EBF3E6")
-        self.lbl_kpi_salas.pack(anchor="w", pady=(2, 0))
+        self.lbl_kpi_salas.pack(anchor="w", pady=(1, 0))
 
-        box2 = tk.Frame(parent, bg="#EBF3E6", bd=1, relief="solid", highlightbackground="#D3E4CB", highlightthickness=1, padx=12, pady=6)
-        box2.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=4)
-        tk.Label(box2, text="🏢 FATURA CONCESSIONÁRIA", font=("Segoe UI", 8, "bold"), fg=COLOR_PRIMARY, bg="#EBF3E6").pack(anchor="w")
+        # 2. Fatura Concessionária
+        box2 = tk.Frame(parent, bg="#EBF3E6", bd=1, relief="solid", highlightbackground="#D3E4CB", highlightthickness=1, padx=10, pady=5)
+        box2.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=3)
+        tk.Label(box2, text="🏢 FATURA CONCESSIONÁRIA", font=("Segoe UI", 7, "bold"), fg=COLOR_PRIMARY, bg="#EBF3E6").pack(anchor="w")
         self.lbl_kpi_sabesp = tk.Label(box2, text="-- m³", font=("Segoe UI", 11, "bold"), fg=COLOR_TEXT_MAIN, bg="#EBF3E6")
-        self.lbl_kpi_sabesp.pack(anchor="w", pady=(2, 0))
+        self.lbl_kpi_sabesp.pack(anchor="w", pady=(1, 0))
 
-        box3 = tk.Frame(parent, bg="#EBF3E6", bd=1, relief="solid", highlightbackground="#D3E4CB", highlightthickness=1, padx=12, pady=6)
-        box3.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(4, 0))
-        tk.Label(box3, text="💰 TOTAL RATEADO", font=("Segoe UI", 8, "bold"), fg=COLOR_PRIMARY, bg="#EBF3E6").pack(anchor="w")
-        self.lbl_kpi_total = tk.Label(box3, text="R$ --", font=("Segoe UI", 11, "bold"), fg=COLOR_TEXT_MAIN, bg="#EBF3E6")
-        self.lbl_kpi_total.pack(anchor="w", pady=(2, 0))
+        # 3. NOVO: Balanço Hídrico (Área Comum / Diferença)
+        box3 = tk.Frame(parent, bg="#EBF3E6", bd=1, relief="solid", highlightbackground="#D3E4CB", highlightthickness=1, padx=10, pady=5)
+        box3.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=3)
+        tk.Label(box3, text="🌿 BALANÇO HÍDRICO", font=("Segoe UI", 7, "bold"), fg=COLOR_PRIMARY, bg="#EBF3E6").pack(anchor="w")
+        self.lbl_kpi_balanco = tk.Label(box3, text="-- m³", font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg="#EBF3E6")
+        self.lbl_kpi_balanco.pack(anchor="w", pady=(1, 0))
+        self.lbl_kpi_balanco_sub = tk.Label(box3, text="Área Comum", font=("Segoe UI", 7), fg=COLOR_TEXT_MUTED, bg="#EBF3E6")
+        self.lbl_kpi_balanco_sub.pack(anchor="w")
+
+        # 4. Total Rateado
+        box4 = tk.Frame(parent, bg="#EBF3E6", bd=1, relief="solid", highlightbackground="#D3E4CB", highlightthickness=1, padx=10, pady=5)
+        box4.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(3, 0))
+        tk.Label(box4, text="💰 TOTAL RATEADO", font=("Segoe UI", 7, "bold"), fg=COLOR_PRIMARY, bg="#EBF3E6").pack(anchor="w")
+        self.lbl_kpi_total = tk.Label(box4, text="R$ --", font=("Segoe UI", 11, "bold"), fg=COLOR_TEXT_MAIN, bg="#EBF3E6")
+        self.lbl_kpi_total.pack(anchor="w", pady=(1, 0))
+
+    def _update_kpi_bar_values(self):
+        """Atualiza dinamicamente os 4 cartões de KPIs com recálculo automático do Balanço Hídrico."""
+        if not hasattr(self, "lbl_kpi_salas") or not self.lbl_kpi_salas:
+            return
+
+        recent = get_recent_reports()
+        tot_m3 = None
+        tot_rs = None
+        if recent:
+            latest = recent[0]
+            val_m3 = latest.get("total_m3")
+            if val_m3 is not None:
+                tot_m3 = float(val_m3)
+            val_rs = latest.get("total_rs")
+            if val_rs is not None:
+                tot_rs = float(val_rs)
+
+        sab_m3 = None
+        if self.sabesp_data:
+            m3_raw = self.sabesp_data.get("consumo_sabesp_m3")
+            if m3_raw is not None:
+                sab_m3 = float(m3_raw)
+
+        # 1. Hidrômetros Medidos
+        if tot_m3 is not None:
+            m3_str = f"{tot_m3:,.1f}".replace(".", ",")
+            self.lbl_kpi_salas.config(text=f"{m3_str} m³")
+        else:
+            self.lbl_kpi_salas.config(text="-- m³")
+
+        # 2. Total Rateado
+        if tot_rs is not None:
+            rs_str = f"{tot_rs:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            self.lbl_kpi_total.config(text=f"R$ {rs_str}")
+        else:
+            self.lbl_kpi_total.config(text="R$ --")
+
+        # 3. Fatura Concessionária
+        if sab_m3 is not None:
+            sab_str = f"{sab_m3:,.0f}".replace(".", ",")
+            self.lbl_kpi_sabesp.config(text=f"{sab_str} m³")
+        else:
+            self.lbl_kpi_sabesp.config(text="-- m³")
+
+        # 4. Balanço Hídrico (Área Comum / Diferença)
+        if hasattr(self, "lbl_kpi_balanco") and self.lbl_kpi_balanco:
+            if tot_m3 is not None and sab_m3 is not None and sab_m3 > 0:
+                diff_m3 = sab_m3 - tot_m3
+                pct = (diff_m3 / sab_m3) * 100.0
+                diff_fmt = f"{abs(diff_m3):,.1f} m³".replace(",", "X").replace(".", ",").replace("X", ".")
+                pct_fmt = f"{pct:.1f}%".replace(".", ",")
+
+                if diff_m3 >= 0:
+                    if pct <= 10.0:
+                        self.lbl_kpi_balanco.config(text=f"{diff_fmt} ({pct_fmt})", fg=COLOR_PRIMARY)
+                        self.lbl_kpi_balanco_sub.config(text="Área Comum • Normal ✅", fg=COLOR_PRIMARY)
+                    elif pct <= 15.0:
+                        self.lbl_kpi_balanco.config(text=f"{diff_fmt} ({pct_fmt})", fg="#B8860B")
+                        self.lbl_kpi_balanco_sub.config(text="Atenção — Área Comum Alta ⚠️", fg="#B8860B")
+                    else:
+                        self.lbl_kpi_balanco.config(text=f"{diff_fmt} ({pct_fmt})", fg="#C0392B")
+                        self.lbl_kpi_balanco_sub.config(text="Alerta: Suspeita de Vazamento 🚨", fg="#C0392B")
+                else:
+                    self.lbl_kpi_balanco.config(text=f"+{diff_fmt} privativo", fg="#2980B9")
+                    self.lbl_kpi_balanco_sub.config(text="Hidrômetros > Sabesp ℹ️", fg="#2980B9")
+            else:
+                self.lbl_kpi_balanco.config(text="-- m³", fg=COLOR_TEXT_MAIN)
+                self.lbl_kpi_balanco_sub.config(text="Aguardando Sabesp + Leitura", fg=COLOR_TEXT_MUTED)
 
     def _update_sabesp_hero_card(self, data: dict):
         if not hasattr(self, "lbl_hero_title") or not data:
@@ -492,8 +573,7 @@ class AppHidrometrosWindow:
                 text=f"Consumo Faturado: {m3_str} m³   •   Total da Fatura: R$ {tot_str}",
                 fg=COLOR_TEXT_MUTED
             )
-        if hasattr(self, "lbl_kpi_sabesp") and self.lbl_kpi_sabesp:
-            self.lbl_kpi_sabesp.config(text=f"{m3_str} m³")
+        self._update_kpi_bar_values()
 
     def _one_click_email_and_generate(self):
         """FLUXO PRINCIPAL: Conecta ao e-mail, puxa a fatura, preenche e gera o relatório Excel na hora!"""
@@ -727,19 +807,8 @@ class AppHidrometrosWindow:
         recent = get_recent_reports()
         send_log = self.config.get("report_send_log", {})
 
-        # Atualiza a barra de Mini-KPIs com os valores do relatório mais recente
-        if hasattr(self, "lbl_kpi_salas") and self.lbl_kpi_salas:
-            if recent:
-                latest = recent[0]
-                tot_m3 = latest.get("total_m3") or 0.0
-                tot_rs = latest.get("total_rs") or 0.0
-                m3_str = f"{tot_m3:,.1f}".replace(".", ",")
-                rs_str = f"{tot_rs:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                self.lbl_kpi_salas.config(text=f"{m3_str} m³")
-                self.lbl_kpi_total.config(text=f"R$ {rs_str}")
-            if self.sabesp_data:
-                sab_m3 = self.sabesp_data.get("consumo_sabesp_m3") or 0.0
-                self.lbl_kpi_sabesp.config(text=f"{sab_m3:,.0f} m³".replace(".", ","))
+        # Atualiza a barra de Mini-KPIs (inclusive Balanço Hídrico)
+        self._update_kpi_bar_values()
 
         # Cria assinatura de estado para evitar reconstrução desnecessária de widgets da tela
         current_sig = tuple(
