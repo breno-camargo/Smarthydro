@@ -9,7 +9,8 @@ from PIL import Image, ImageTk
 
 from core.config_manager import (
     load_config, save_config, get_base_dir, get_recent_reports, format_report_filename,
-    get_report_output_folder, get_operators, get_active_operator, set_active_operator
+    get_report_output_folder, get_operators, get_active_operator, set_active_operator,
+    MESES_PT
 )
 from core.database import test_db_connection
 from cli.runner import execute_extraction
@@ -479,51 +480,55 @@ class AppHidrometrosWindow:
         self._execute_email_sabesp_flow(generate_after=False)
 
     def _execute_email_sabesp_flow(self, generate_after: bool = False):
-        self.btn_gerar.config(state=tk.DISABLED)
-        self.btn_sabesp_gerar.config(state=tk.DISABLED)
-        if hasattr(self, "btn_hero_sync"):
-            self.btn_hero_sync.config(state=tk.DISABLED)
-
-        # Inicia barra em modo indeterminado com movimento contínuo
-        self.prog_bar.config(mode="indeterminate")
-        self.prog_bar.start(10)
-
-        target_m = None
-        target_y = None
         try:
-            d_fim = self.cal_fim.get_date()
-            today = date.today()
-            if d_fim.year != today.year or d_fim.month != today.month:
-                target_m = d_fim.month
-                target_y = d_fim.year
-        except Exception:
-            pass
+            self.config = load_config()
+            self.btn_gerar.config(state=tk.DISABLED)
+            self.btn_sabesp_gerar.config(state=tk.DISABLED)
+            if hasattr(self, "btn_hero_sync"):
+                self.btn_hero_sync.config(state=tk.DISABLED)
 
-        target_str = f" de {MESES_PT[target_m-1]}/{target_y}" if (target_m and target_m <= len(MESES_PT)) else " recente"
-        self.lbl_status.config(
-            text=f"🔄 Conectando ao servidor de e-mail e buscando fatura Sabesp{target_str}...",
-            fg=COLOR_PRIMARY
-        )
-        self.root.update_idletasks()
+            # Inicia barra em modo indeterminado com movimento contínuo
+            self.prog_bar.config(mode="indeterminate")
+            self.prog_bar.start(10)
 
-        def _worker():
+            target_m = None
+            target_y = None
             try:
-                from core.sabesp_parser import search_sabesp_in_email, parse_sabesp_pdf
-                ok, msg, pdf_path = search_sabesp_in_email(self.config, target_month=target_m, target_year=target_y)
-                if not ok or not pdf_path:
-                    self.root.after(0, lambda: self._on_email_sabesp_error(msg))
-                    return
+                d_fim = self.cal_fim.get_date()
+                today = date.today()
+                if d_fim.year != today.year or d_fim.month != today.month:
+                    target_m = d_fim.month
+                    target_y = d_fim.year
+            except Exception:
+                pass
 
-                ok_p, msg_p, data = parse_sabesp_pdf(pdf_path)
-                if not ok_p or not data:
-                    self.root.after(0, lambda: self._on_email_sabesp_error(msg_p))
-                    return
+            target_str = f" de {MESES_PT[target_m-1]}/{target_y}" if (target_m and 1 <= target_m <= len(MESES_PT)) else " recente"
+            self.lbl_status.config(
+                text=f"🔄 Conectando ao servidor de e-mail e buscando fatura Sabesp{target_str}...",
+                fg=COLOR_PRIMARY
+            )
+            self.root.update_idletasks()
 
-                self.root.after(0, lambda: self._on_email_sabesp_ready(data, generate_after))
-            except Exception as e:
-                self.root.after(0, lambda: self._on_email_sabesp_error(str(e)))
+            def _worker():
+                try:
+                    from core.sabesp_parser import search_sabesp_in_email, parse_sabesp_pdf
+                    ok, msg, pdf_path = search_sabesp_in_email(self.config, target_month=target_m, target_year=target_y)
+                    if not ok or not pdf_path:
+                        self.root.after(0, lambda: self._on_email_sabesp_error(msg))
+                        return
 
-        threading.Thread(target=_worker, daemon=True).start()
+                    ok_p, msg_p, data = parse_sabesp_pdf(pdf_path)
+                    if not ok_p or not data:
+                        self.root.after(0, lambda: self._on_email_sabesp_error(msg_p))
+                        return
+
+                    self.root.after(0, lambda: self._on_email_sabesp_ready(data, generate_after))
+                except Exception as e:
+                    self.root.after(0, lambda: self._on_email_sabesp_error(str(e)))
+
+            threading.Thread(target=_worker, daemon=True).start()
+        except Exception as e:
+            self._on_email_sabesp_error(str(e))
 
     def _on_email_sabesp_error(self, err_msg):
         self.prog_bar.stop()

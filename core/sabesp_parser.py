@@ -160,8 +160,21 @@ def search_sabesp_in_email(config: dict, destination_dir: str = None, target_mon
     Se target_month for especificado (ex: 4 para Abril), localiza a fatura daquele mês específico.
     Caso contrário, localiza a fatura mais recente enviada pela administração (Joyce / Yasmim / Zangari).
     """
-    user = config.get("smtp_user", "").strip()
-    pwd_raw = config.get("smtp_password", "").strip()
+    # Prioriza o e-mail do operador ativo selecionado na interface
+    from core.config_manager import get_active_operator
+    active_op = get_active_operator(config) if config else None
+
+    user = ""
+    pwd_raw = ""
+    if active_op:
+        user = (active_op.get("smtp_user") or active_op.get("email") or "").strip()
+        pwd_raw = (active_op.get("smtp_password") or "").strip()
+
+    if not user:
+        user = config.get("smtp_user", "").strip()
+    if not pwd_raw:
+        pwd_raw = config.get("smtp_password", "").strip()
+
     if pwd_raw.startswith("b64:"):
         try:
             pwd = base64.b64decode(pwd_raw[4:]).decode("utf-8")
@@ -171,7 +184,8 @@ def search_sabesp_in_email(config: dict, destination_dir: str = None, target_mon
         pwd = pwd_raw
 
     if not user or not pwd:
-        return False, "Usuário ou senha de e-mail não configurados nas preferências.", None
+        op_name = f" ({active_op.get('name')})" if active_op and active_op.get("name") else ""
+        return False, f"Usuário ou senha de e-mail não configurados para o operador{op_name}.", None
 
     smtp_srv = config.get("smtp_server", "smtps.uhserver.com")
     imap_srv = smtp_srv.replace("smtps.", "imap.").replace("smtp.", "imap.")
