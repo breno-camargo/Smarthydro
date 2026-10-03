@@ -82,17 +82,8 @@ class AppHidrometrosWindow:
             pass
 
     def _configure_styles(self):
-        self.style.configure(".", background=COLOR_BG_LIGHT, font=("Segoe UI", 9))
-        self.style.configure("TLabel", background=COLOR_BG_LIGHT, foreground=COLOR_TEXT_MAIN)
-        self.style.configure("TLabelframe", background=COLOR_BG_LIGHT, bordercolor=COLOR_ACCENT)
-        self.style.configure("TLabelframe.Label", background=COLOR_BG_LIGHT, foreground=COLOR_PRIMARY, font=("Segoe UI", 10, "bold"))
-        self.style.configure("TCheckbutton", background=COLOR_BG_LIGHT, foreground=COLOR_TEXT_MAIN)
-        self.style.configure("TProgressbar", troughcolor="#E3EDD8", background=COLOR_ACCENT)
-
-        # Estilo dos botões secundários e do histórico
-        self.style.configure("Secondary.TButton", font=("Segoe UI", 9), padding=6)
-        self.style.configure("History.TButton", font=("Segoe UI", 9), padding=(6, 2))
-        self.style.configure("Delete.TButton", font=("Segoe UI", 9), padding=(6, 2))
+        from gui.ui_helpers import setup_common_styles
+        setup_common_styles(self.style)
 
     def _build_ui(self):
         main_container = ttk.Frame(self.root, padding="20 12 20 12")
@@ -100,7 +91,7 @@ class AppHidrometrosWindow:
 
         # ─── TOP BAR (LOGO + TÍTULO + CONFIGURAÇÕES) ───
         frame_top = tk.Frame(main_container, bg=COLOR_BG_LIGHT)
-        frame_top.pack(fill=tk.X, pady=(0, 10))
+        frame_top.pack(fill=tk.X, pady=(0, 6))
 
         # Tentar carregar logo CompaSSS
         self.logo_img = self._load_logo_image()
@@ -108,7 +99,7 @@ class AppHidrometrosWindow:
             lbl_logo = tk.Label(frame_top, image=self.logo_img, bg=COLOR_BG_LIGHT)
             lbl_logo.pack(side=tk.LEFT, padx=(0, 14))
 
-        # Botões de Ação no canto superior direito
+        # Botões de Ação no canto superior direito: APENAS HISTÓRICO E CONFIGURAÇÕES
         frame_top_btns = tk.Frame(frame_top, bg=COLOR_BG_LIGHT)
         frame_top_btns.pack(side=tk.RIGHT, anchor=tk.CENTER, pady=4)
 
@@ -132,16 +123,6 @@ class AppHidrometrosWindow:
         btn_history.pack(side=tk.RIGHT, padx=3)
         create_tooltip(btn_history, "Histórico Anual de Telemetria (12 Meses)")
 
-        btn_test_db = tk.Button(
-            frame_top_btns, text="🔌", command=self._test_connection_action,
-            font=("Segoe UI Emoji", 11), bg="#EBF3E6", fg=COLOR_PRIMARY,
-            activebackground=COLOR_ACCENT, activeforeground=COLOR_PRIMARY,
-            relief="flat", bd=1, highlightbackground="#C5DCBA", highlightthickness=1,
-            width=3, pady=3, cursor="hand2"
-        )
-        btn_test_db.pack(side=tk.RIGHT, padx=3)
-        create_tooltip(btn_test_db, "Testar Conexão com o Banco StruxureWare EBO")
-
         title_box = tk.Frame(frame_top, bg=COLOR_BG_LIGHT)
         title_box.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
@@ -150,30 +131,42 @@ class AppHidrometrosWindow:
         lbl_sub = tk.Label(title_box, text="Condomínio Praça Pamplona  •  StruxureWare EBO", font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT)
         lbl_sub.pack(anchor=tk.W)
 
-        # Seletor discreto do operador ativo
-        frame_op_box = tk.Frame(title_box, bg=COLOR_BG_LIGHT)
-        frame_op_box.pack(anchor=tk.W, pady=(3, 0))
+        # ─── BARRA DE OPERADOR & CONEXÃO (Espaçosa, sem aperto e com o botão de teste integrado) ───
+        frame_subbar = tk.Frame(main_container, bg=COLOR_BG_LIGHT)
+        frame_subbar.pack(fill=tk.X, pady=(2, 8))
 
-        lbl_op_tag = tk.Label(frame_op_box, text="👤 Operador:", font=("Segoe UI", 8, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT)
+        # Lado direito: Teste de Conexão com o Banco EBO
+        self.btn_test_db = tk.Button(
+            frame_subbar, text="🔌 Testar Banco EBO", command=self._test_connection_action,
+            font=("Segoe UI", 8, "bold"), fg=COLOR_PRIMARY, bg="#EBF3E6",
+            activebackground=COLOR_ACCENT, relief="flat", bd=1,
+            highlightbackground="#C5DCBA", highlightthickness=1,
+            padx=10, pady=2, cursor="hand2"
+        )
+        self.btn_test_db.pack(side=tk.RIGHT)
+        create_tooltip(self.btn_test_db, "Testar Conexão com o Banco StruxureWare EBO")
+
+        # Lado esquerdo: Seletor do operador ativo
+        lbl_op_tag = tk.Label(frame_subbar, text="👤 Operador:", font=("Segoe UI", 8, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT)
         lbl_op_tag.pack(side=tk.LEFT)
 
-        self.cmb_active_op = ttk.Combobox(frame_op_box, state="readonly", width=46, font=("Segoe UI", 8))
+        self.cmb_active_op = ttk.Combobox(frame_subbar, state="readonly", width=44, font=("Segoe UI", 8))
         self.cmb_active_op.pack(side=tk.LEFT, padx=(4, 6))
         self.cmb_active_op.bind("<<ComboboxSelected>>", self._on_operator_combobox_change)
 
         btn_manage_ops = tk.Button(
-            frame_op_box, text="👥 Gerenciar", command=self._open_operators_dialog,
+            frame_subbar, text="👥 Gerenciar", command=self._open_operators_dialog,
             font=("Segoe UI", 7, "bold"), fg=COLOR_PRIMARY, bg="#EBF3E6",
             activebackground=COLOR_ACCENT, relief="flat", bd=1,
             highlightbackground="#C5DCBA", highlightthickness=1,
-            padx=6, pady=1, cursor="hand2"
+            padx=6, pady=2, cursor="hand2"
         )
         btn_manage_ops.pack(side=tk.LEFT)
         create_tooltip(btn_manage_ops, "Gerenciar perfis de operadores e assinaturas de e-mail")
 
         # Linha divisória verde suave
         div = tk.Frame(main_container, height=2, bg=COLOR_ACCENT)
-        div.pack(fill=tk.X, pady=(0, 16))
+        div.pack(fill=tk.X, pady=(0, 10))
 
         # ─── 1. CARD UNIFICADO: CICLO DE MEDIÇÃO & FATURA SABESP ───
         frame_sabesp_hero = tk.LabelFrame(
@@ -826,18 +819,18 @@ class AppHidrometrosWindow:
             lbl_f = tk.Label(
                 lbl_left, text=f"•  {disp_name}", font=("Segoe UI", 9, "bold"),
                 fg=COLOR_TEXT_MAIN, bg=COLOR_BG_LIGHT,
-                anchor="w", cursor="hand2"
+                width=28, anchor="w", cursor="hand2"
             )
             lbl_f.pack(side=tk.LEFT)
             lbl_f.bind("<Button-1>", lambda e, p=f_path: self._open_specific_file(p))
 
-            # Data de geração posicionada mais ao meio
+            # Data de geração perfeitamente alinhada em coluna
             if dt_ger:
                 lbl_d = tk.Label(
                     lbl_left, text=f"({dt_ger})", font=("Segoe UI", 8),
                     fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT
                 )
-                lbl_d.pack(side=tk.LEFT, padx=(14, 0))
+                lbl_d.pack(side=tk.LEFT, padx=(8, 0))
 
             sent_time = send_log.get(f_name)
             if sent_time:

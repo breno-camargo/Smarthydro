@@ -1,11 +1,10 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-from gui.ui_helpers import apply_window_icon, center_modal
-
-COLOR_PRIMARY = "#3D6B24"
-COLOR_PRIMARY_HOVER = "#2D501A"
-COLOR_BG_LIGHT = "#F6F9F2"
-COLOR_TEXT_MUTED = "#55664C"
+from gui.ui_helpers import (
+    apply_window_icon, center_modal, setup_common_styles,
+    create_btn_primary, create_btn_secondary,
+    COLOR_PRIMARY, COLOR_PRIMARY_HOVER, COLOR_BG_LIGHT, COLOR_TEXT_MUTED
+)
 
 
 class AnomalyDialog(tk.Toplevel):
@@ -17,6 +16,7 @@ class AnomalyDialog(tk.Toplevel):
         self.grab_set()
 
         apply_window_icon(self)
+        setup_common_styles(ttk.Style(self))
 
         self.anomalies = anomalies
         self.periodo_str = periodo_str
@@ -117,18 +117,15 @@ class AnomalyDialog(tk.Toplevel):
         frame_bottom = tk.Frame(container, bg=COLOR_BG_LIGHT)
         frame_bottom.pack(fill=tk.X)
 
-        btn_copy = ttk.Button(
-            frame_bottom, text="📋 Copiar Lista de Suspeitas",
-            command=self._copy_to_clipboard
+        btn_copy = create_btn_secondary(
+            frame_bottom, "📋 Copiar Lista de Suspeitas",
+            self._copy_to_clipboard, pady=6
         )
         btn_copy.pack(side=tk.LEFT)
 
-        btn_close = tk.Button(
-            frame_bottom, text="✓ Entendido / Fechar",
-            command=self.destroy,
-            bg=COLOR_PRIMARY, fg="white", activebackground=COLOR_PRIMARY_HOVER,
-            activeforeground="white", font=("Segoe UI", 9, "bold"),
-            relief="flat", padx=16, pady=5, cursor="hand2"
+        btn_close = create_btn_primary(
+            frame_bottom, "✓ Entendido / Fechar",
+            self.destroy, padx=16, pady=6
         )
         btn_close.pack(side=tk.RIGHT)
 

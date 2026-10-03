@@ -6,14 +6,12 @@ from core.config_manager import (
     load_config, get_operators, get_active_operator,
     set_active_operator, save_operator, delete_operator
 )
-from gui.ui_helpers import apply_window_icon, center_modal
-
-COLOR_PRIMARY = "#3D6B24"
-COLOR_PRIMARY_HOVER = "#2D501A"
-COLOR_ACCENT = "#90C671"
-COLOR_BG_LIGHT = "#F6F9F2"
-COLOR_TEXT_MAIN = "#1B2A12"
-COLOR_TEXT_MUTED = "#55664C"
+from gui.ui_helpers import (
+    apply_window_icon, center_modal, setup_common_styles,
+    create_btn_primary, create_btn_secondary, create_btn_danger,
+    COLOR_PRIMARY, COLOR_PRIMARY_HOVER, COLOR_ACCENT, COLOR_BG_LIGHT,
+    COLOR_TEXT_MAIN, COLOR_TEXT_MUTED, COLOR_CARD_BG, COLOR_CARD_BORDER
+)
 
 
 class OperatorsDialog(tk.Toplevel):
@@ -26,6 +24,7 @@ class OperatorsDialog(tk.Toplevel):
         self.grab_set()
 
         apply_window_icon(self)
+        setup_common_styles(ttk.Style(self))
         self.on_change_callback = on_change_callback
         self.editing_op_id = None
 
@@ -81,13 +80,13 @@ class OperatorsDialog(tk.Toplevel):
         frame_tbtns = tk.Frame(main_box, bg=COLOR_BG_LIGHT)
         frame_tbtns.pack(fill=tk.X, pady=(0, 8))
 
-        btn_new = ttk.Button(frame_tbtns, text="➕ Novo Operador", command=self._start_new_operator)
+        btn_new = create_btn_secondary(frame_tbtns, "➕ Novo Operador", self._start_new_operator, pady=4)
         btn_new.pack(side=tk.LEFT, padx=(0, 6))
 
-        self.btn_set_default = ttk.Button(frame_tbtns, text="⭐ Definir como Padrão", command=self._set_as_default)
+        self.btn_set_default = create_btn_secondary(frame_tbtns, "⭐ Definir como Padrão", self._set_as_default, pady=4)
         self.btn_set_default.pack(side=tk.LEFT, padx=(0, 6))
 
-        self.btn_delete = ttk.Button(frame_tbtns, text="🗑️ Excluir", command=self._delete_selected)
+        self.btn_delete = create_btn_danger(frame_tbtns, "🗑️ Excluir", self._delete_selected, pady=4)
         self.btn_delete.pack(side=tk.LEFT)
 
         # ─── FORMULÁRIO DE EDIÇÃO / CADASTRO ───
@@ -136,13 +135,8 @@ class OperatorsDialog(tk.Toplevel):
         frame_fbtns = tk.Frame(self.frame_form, bg=COLOR_BG_LIGHT)
         frame_fbtns.grid(row=4, column=0, columnspan=4, sticky=tk.E, pady=(2, 0))
 
-        self.btn_save_op = tk.Button(
-            frame_fbtns,
-            text="💾 Salvar Operador",
-            command=self._save_operator_form,
-            bg=COLOR_PRIMARY, fg="white", activebackground=COLOR_PRIMARY_HOVER,
-            activeforeground="white", font=("Segoe UI", 9, "bold"),
-            relief="flat", padx=12, pady=3, cursor="hand2"
+        self.btn_save_op = create_btn_primary(
+            frame_fbtns, "💾 Salvar Operador", self._save_operator_form, pady=4
         )
         self.btn_save_op.pack(side=tk.RIGHT)
 
@@ -150,7 +144,7 @@ class OperatorsDialog(tk.Toplevel):
         frame_foot = tk.Frame(main_box, bg=COLOR_BG_LIGHT)
         frame_foot.pack(fill=tk.X, side=tk.BOTTOM, pady=(6, 0))
 
-        btn_close = ttk.Button(frame_foot, text="Fechar", command=self.destroy)
+        btn_close = create_btn_secondary(frame_foot, "Fechar", self.destroy, pady=5)
         btn_close.pack(side=tk.RIGHT)
 
     def _load_operators_list(self, select_id=None):

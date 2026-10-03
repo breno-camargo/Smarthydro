@@ -5,17 +5,13 @@ from tkinter import ttk, messagebox, filedialog
 
 from core.config_manager import load_config
 from core.history_manager import fetch_annual_history, export_annual_history_excel
-from gui.ui_helpers import apply_window_icon, center_modal
-
-COLOR_PRIMARY = "#3D6B24"
-COLOR_PRIMARY_HOVER = "#2D501A"
-COLOR_ACCENT = "#90C671"
-COLOR_PEAK = "#D9534F"
-COLOR_BG_LIGHT = "#F6F9F2"
-COLOR_TEXT_MAIN = "#1B2A12"
-COLOR_TEXT_MUTED = "#55664C"
-COLOR_CARD_BG = "#FFFFFF"
-COLOR_CARD_BORDER = "#D5E5C9"
+from gui.ui_helpers import (
+    apply_window_icon, center_modal, setup_common_styles,
+    create_btn_primary, create_btn_secondary,
+    COLOR_PRIMARY, COLOR_PRIMARY_HOVER, COLOR_ACCENT, COLOR_BG_LIGHT,
+    COLOR_TEXT_MAIN, COLOR_TEXT_MUTED, COLOR_CARD_BG, COLOR_CARD_BORDER,
+    COLOR_DANGER as COLOR_PEAK
+)
 
 
 class AnnualHistoryDialog(tk.Toplevel):
@@ -28,6 +24,7 @@ class AnnualHistoryDialog(tk.Toplevel):
         self.grab_set()
 
         apply_window_icon(self)
+        setup_common_styles(ttk.Style(self))
         self.history_data = None
         self.tooltip_window = None
 
@@ -133,20 +130,18 @@ class AnnualHistoryDialog(tk.Toplevel):
 
         # ─── FOOTER & AÇÕES ───
         frame_foot = tk.Frame(self.main_box, bg=COLOR_BG_LIGHT)
-        frame_foot.pack(fill=tk.X, side=tk.BOTTOM)
+        frame_foot.pack(fill=tk.X, side=tk.BOTTOM, pady=(4, 0))
 
-        btn_close = ttk.Button(frame_foot, text="Fechar", command=self.destroy)
+        btn_close = create_btn_secondary(frame_foot, "Fechar", self.destroy, pady=6)
         btn_close.pack(side=tk.RIGHT)
 
-        self.btn_export = tk.Button(
-            frame_foot, text="📥 Exportar Excel (.xlsx)", command=self._export_excel,
-            bg=COLOR_PRIMARY, fg="white", activebackground=COLOR_PRIMARY_HOVER,
-            activeforeground="white", font=("Segoe UI", 9, "bold"), relief="flat",
-            padx=10, pady=3, cursor="hand2", state=tk.DISABLED
+        self.btn_export = create_btn_primary(
+            frame_foot, "📥 Exportar Excel (.xlsx)", self._export_excel,
+            padx=12, pady=6, state=tk.DISABLED
         )
-        self.btn_export.pack(side=tk.RIGHT, padx=(0, 6))
+        self.btn_export.pack(side=tk.RIGHT, padx=(0, 8))
 
-        btn_refresh = ttk.Button(frame_foot, text="🔄 Atualizar", command=self._load_data_async)
+        btn_refresh = create_btn_secondary(frame_foot, "🔄 Atualizar", self._load_data_async, pady=6)
         btn_refresh.pack(side=tk.LEFT)
 
     def _create_kpi_card(self, parent, title, val, sub):

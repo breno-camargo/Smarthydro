@@ -12,12 +12,11 @@ from core.email_sender import (
     parse_recipients, send_email_smtp, prepare_html_for_preview
 )
 from gui.email_template_dialog import EmailTemplateDialog
-from gui.ui_helpers import apply_window_icon, center_modal
-
-COLOR_PRIMARY = "#3D6B24"
-COLOR_PRIMARY_HOVER = "#2D501A"
-COLOR_BG_LIGHT = "#F6F9F2"
-COLOR_TEXT_MUTED = "#55664C"
+from gui.ui_helpers import (
+    apply_window_icon, center_modal, setup_common_styles,
+    create_btn_primary, create_btn_secondary,
+    COLOR_PRIMARY, COLOR_PRIMARY_HOVER, COLOR_BG_LIGHT, COLOR_TEXT_MUTED
+)
 
 class SendEmailDialog(tk.Toplevel):
     def __init__(self, parent, xlsx_path, pdf_path=None):
@@ -29,6 +28,7 @@ class SendEmailDialog(tk.Toplevel):
         self.grab_set()
 
         apply_window_icon(self)
+        setup_common_styles(ttk.Style(self))
 
         self.xlsx_path = xlsx_path
         self.pdf_path = pdf_path if pdf_path and os.path.exists(pdf_path) else (
@@ -170,21 +170,19 @@ class SendEmailDialog(tk.Toplevel):
         frame_bottom = tk.Frame(container, bg=COLOR_BG_LIGHT)
         frame_bottom.pack(fill=tk.X, pady=(4, 0))
 
-        btn_preview = ttk.Button(frame_bottom, text="👁 Prévia", command=self._preview_email)
+        btn_preview = create_btn_secondary(frame_bottom, "👁 Prévia", self._preview_email, pady=6)
         btn_preview.pack(side=tk.LEFT, padx=(0, 6))
 
-        btn_edit_template = ttk.Button(frame_bottom, text="✏ Editar Modelo", command=self._edit_template)
+        btn_edit_template = create_btn_secondary(frame_bottom, "✏ Editar Modelo", self._edit_template, pady=6)
         btn_edit_template.pack(side=tk.LEFT)
 
-        self.btn_send = tk.Button(
-            frame_bottom, text="✉ Enviar Agora", command=self._start_send,
-            bg=COLOR_PRIMARY, fg="white", activebackground=COLOR_PRIMARY_HOVER,
-            activeforeground="white", font=("Segoe UI", 9, "bold"),
-            relief="flat", padx=16, pady=5, cursor="hand2"
+        self.btn_send = create_btn_primary(
+            frame_bottom, "✉ Enviar Agora", self._start_send,
+            padx=16, pady=6
         )
         self.btn_send.pack(side=tk.RIGHT, padx=(8, 0))
 
-        btn_cancel = ttk.Button(frame_bottom, text="Cancelar", command=self.destroy)
+        btn_cancel = create_btn_secondary(frame_bottom, "Cancelar", self.destroy, padx=14, pady=6)
         btn_cancel.pack(side=tk.RIGHT)
 
     def _on_operator_change(self, event=None):

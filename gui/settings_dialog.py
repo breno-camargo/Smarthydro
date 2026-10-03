@@ -19,14 +19,12 @@ from core.email_sender import (
 from gui.email_template_dialog import EmailTemplateDialog
 from gui.scheduler_dialog import SchedulerDialog
 from gui.operators_dialog import OperatorsDialog
-from gui.ui_helpers import apply_window_icon, center_modal
-
-COLOR_PRIMARY = "#3D6B24"
-COLOR_PRIMARY_HOVER = "#2D501A"
-COLOR_ACCENT = "#90C671"
-COLOR_BG_LIGHT = "#F6F9F2"
-COLOR_TEXT_MAIN = "#1B2A12"
-COLOR_TEXT_MUTED = "#55664C"
+from gui.ui_helpers import (
+    apply_window_icon, center_modal, setup_common_styles,
+    create_btn_primary, create_btn_secondary, create_btn_danger,
+    COLOR_PRIMARY, COLOR_PRIMARY_HOVER, COLOR_ACCENT, COLOR_BG_LIGHT,
+    COLOR_TEXT_MAIN, COLOR_TEXT_MUTED, COLOR_CARD_BG, COLOR_CARD_BORDER
+)
 
 class SettingsDialog(tk.Toplevel):
     def __init__(self, parent, on_save_callback=None, initial_tab=0):
@@ -60,6 +58,7 @@ class SettingsDialog(tk.Toplevel):
 
     def _configure_notebook_style(self):
         self.style = ttk.Style(self)
+        setup_common_styles(self.style)
         self.style.configure("Settings.TNotebook", background=COLOR_BG_LIGHT, borderwidth=0)
         self.style.configure(
             "Settings.TNotebook.Tab",
@@ -75,15 +74,16 @@ class SettingsDialog(tk.Toplevel):
         frame_btns = tk.Frame(container, bg=COLOR_BG_LIGHT)
         frame_btns.pack(side=tk.BOTTOM, fill=tk.X, pady=(8, 0))
 
-        btn_save = tk.Button(
-            frame_btns, text="Salvar Alterações", command=self._save_and_close,
-            bg=COLOR_PRIMARY, fg="white", activebackground=COLOR_PRIMARY_HOVER,
-            activeforeground="white", font=("Segoe UI", 9, "bold"),
-            relief="flat", padx=18, pady=6, cursor="hand2", takefocus=False
+        btn_save = create_btn_primary(
+            frame_btns, "✔ Salvar Alterações", self._save_and_close,
+            padx=18, pady=6
         )
         btn_save.pack(side=tk.RIGHT, padx=(8, 0))
 
-        btn_cancel = ttk.Button(frame_btns, text="Cancelar", command=self.destroy, takefocus=False)
+        btn_cancel = create_btn_secondary(
+            frame_btns, "Cancelar", self.destroy,
+            padx=14, pady=6
+        )
         btn_cancel.pack(side=tk.RIGHT)
 
         # ─── NOTEBOOK DAS ABAS (Preenche todo o espaço acima do rodapé) ───
@@ -391,13 +391,11 @@ class SettingsDialog(tk.Toplevel):
         self.lbl_op_info.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(8, 0))
 
         # Botão para abrir o gerenciador completo
-        btn_open_mgr = tk.Button(
+        btn_open_mgr = create_btn_secondary(
             parent,
-            text="👥 Abrir Gerenciador de Operadores (Cadastrar / Editar)",
-            command=self._open_operators_manager,
-            bg="#EBF3E6", fg=COLOR_PRIMARY, activebackground=COLOR_ACCENT,
-            font=("Segoe UI", 9, "bold"), relief="flat", padx=14, pady=8,
-            cursor="hand2", takefocus=False
+            "👥 Abrir Gerenciador de Operadores (Cadastrar / Editar)",
+            self._open_operators_manager,
+            pady=5
         )
         btn_open_mgr.grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=(8, 4))
 
@@ -634,12 +632,10 @@ class SettingsDialog(tk.Toplevel):
         )
         lbl_exp_info.pack(anchor=tk.W, pady=(0, 6))
 
-        btn_exp = tk.Button(
-            card_exp, text="💾 Criar e Exportar Backup (.zip)",
-            command=self._export_backup_action,
-            bg=COLOR_PRIMARY, fg="white", activebackground=COLOR_PRIMARY_HOVER,
-            activeforeground="white", font=("Segoe UI", 9, "bold"),
-            relief="flat", padx=14, pady=5, cursor="hand2"
+        btn_exp = create_btn_primary(
+            card_exp, "💾 Criar e Exportar Backup (.zip)",
+            self._export_backup_action,
+            pady=5
         )
         btn_exp.pack(anchor=tk.W)
 
@@ -654,11 +650,10 @@ class SettingsDialog(tk.Toplevel):
         )
         lbl_imp_info.pack(anchor=tk.W, pady=(0, 6))
 
-        btn_imp = tk.Button(
-            card_imp, text="📂 Selecionar Arquivo de Backup para Restaurar...",
-            command=self._restore_backup_action,
-            bg="#EBF3E6", fg=COLOR_PRIMARY, activebackground=COLOR_ACCENT,
-            font=("Segoe UI", 9, "bold"), relief="flat", padx=14, pady=5, cursor="hand2"
+        btn_imp = create_btn_secondary(
+            card_imp, "📂 Selecionar Arquivo de Backup para Restaurar...",
+            self._restore_backup_action,
+            pady=5
         )
         btn_imp.pack(anchor=tk.W)
 
@@ -666,9 +661,10 @@ class SettingsDialog(tk.Toplevel):
         card_data = ttk.LabelFrame(parent, text="  3. Pasta de Arquivos do Sistema  ", padding="12 8 12 10")
         card_data.pack(fill=tk.X)
 
-        btn_open_data = ttk.Button(
-            card_data, text="📁 Abrir Pasta Raiz do Software no Windows Explorer",
-            command=self._open_data_folder
+        btn_open_data = create_btn_secondary(
+            card_data, "📁 Abrir Pasta Raiz do Software no Windows Explorer",
+            self._open_data_folder,
+            pady=5
         )
         btn_open_data.pack(anchor=tk.W)
 
@@ -807,33 +803,24 @@ class SettingsDialog(tk.Toplevel):
         frame_actions = tk.Frame(card, bg="#FFFFFF")
         frame_actions.pack(pady=(10, 4))
 
-        btn_github = tk.Button(
-            frame_actions,
-            text="🌐 GitHub",
-            command=lambda: webbrowser.open("https://github.com/breno-camargo/Smarthydro"),
-            bg="#EBF3E6", fg=COLOR_PRIMARY, activebackground=COLOR_ACCENT,
-            font=("Segoe UI", 9, "bold"), relief="flat", padx=10, pady=5,
-            cursor="hand2", takefocus=False
+        btn_github = create_btn_secondary(
+            frame_actions, "🌐 GitHub",
+            lambda: webbrowser.open("https://github.com/breno-camargo/Smarthydro"),
+            padx=10, pady=5
         )
         btn_github.pack(side=tk.LEFT, padx=(0, 8))
 
-        btn_copy_email = tk.Button(
-            frame_actions,
-            text="📋 Copiar E-mail",
-            command=self._copy_dev_email,
-            bg="#EBF3E6", fg=COLOR_PRIMARY, activebackground=COLOR_ACCENT,
-            font=("Segoe UI", 9, "bold"), relief="flat", padx=10, pady=5,
-            cursor="hand2", takefocus=False
+        btn_copy_email = create_btn_secondary(
+            frame_actions, "📋 Copiar E-mail",
+            self._copy_dev_email,
+            padx=10, pady=5
         )
         btn_copy_email.pack(side=tk.LEFT, padx=(0, 8))
 
-        btn_shortcut = tk.Button(
-            frame_actions,
-            text="🖥️ Criar Atalho",
-            command=self._create_desktop_shortcut_action,
-            bg="#EBF3E6", fg=COLOR_PRIMARY, activebackground=COLOR_ACCENT,
-            font=("Segoe UI", 9, "bold"), relief="flat", padx=10, pady=5,
-            cursor="hand2", takefocus=False
+        btn_shortcut = create_btn_secondary(
+            frame_actions, "🖥️ Criar Atalho",
+            self._create_desktop_shortcut_action,
+            padx=10, pady=5
         )
         btn_shortcut.pack(side=tk.LEFT)
 

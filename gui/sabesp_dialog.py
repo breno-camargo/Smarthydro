@@ -10,13 +10,12 @@ from tkinter import ttk, messagebox, filedialog
 import threading
 
 from core.sabesp_parser import parse_sabesp_pdf, search_sabesp_in_email
-
-COLOR_PRIMARY = "#3D6B24"
-COLOR_PRIMARY_HOVER = "#2D501A"
-COLOR_ACCENT = "#90C671"
-COLOR_BG_LIGHT = "#F6F9F2"
-COLOR_TEXT_MAIN = "#1B2A12"
-COLOR_TEXT_MUTED = "#55664C"
+from gui.ui_helpers import (
+    apply_window_icon, center_modal, setup_common_styles,
+    create_btn_primary, create_btn_secondary,
+    COLOR_PRIMARY, COLOR_PRIMARY_HOVER, COLOR_ACCENT, COLOR_BG_LIGHT,
+    COLOR_TEXT_MAIN, COLOR_TEXT_MUTED, COLOR_CARD_BG, COLOR_CARD_BORDER
+)
 
 
 class SabespImportDialog(tk.Toplevel):
@@ -25,8 +24,12 @@ class SabespImportDialog(tk.Toplevel):
         self.title("Fatura Sabesp — Preenchimento Inteligente")
         self.geometry("630x530")
         self.minsize(580, 480)
+        self.configure(bg=COLOR_BG_LIGHT)
         self.transient(parent)
         self.grab_set()
+
+        apply_window_icon(self)
+        setup_common_styles(ttk.Style(self))
 
         self.config = config
         self.on_apply_callback = on_apply_callback
@@ -81,21 +84,19 @@ class SabespImportDialog(tk.Toplevel):
         f_actions = tk.LabelFrame(container, text="Origem da Conta de Água", font=("Segoe UI", 9, "bold"), bg=COLOR_BG_LIGHT, fg=COLOR_TEXT_MAIN, padx=10, pady=8)
         f_actions.pack(fill=tk.X, pady=(0, 10))
 
-        btn_email = tk.Button(
+        btn_email = create_btn_primary(
             f_actions,
-            text="📩 Buscar no E-mail da Zangari (IMAP)",
-            command=self._on_search_email,
-            bg=COLOR_PRIMARY, fg="white", activebackground=COLOR_PRIMARY_HOVER, activeforeground="white",
-            font=("Segoe UI", 9, "bold"), relief="flat", padx=14, pady=6, cursor="hand2"
+            "📩 Buscar no E-mail (IMAP)",
+            self._on_search_email,
+            pady=6
         )
         btn_email.pack(side=tk.LEFT, padx=(0, 10))
 
-        btn_file = tk.Button(
+        btn_file = create_btn_secondary(
             f_actions,
-            text="📁 Escolher PDF Local...",
-            command=self._on_select_file,
-            bg="#EBF3E6", fg=COLOR_PRIMARY, activebackground=COLOR_ACCENT,
-            font=("Segoe UI", 9, "bold"), relief="flat", padx=10, pady=6, cursor="hand2"
+            "📁 Escolher PDF Local...",
+            self._on_select_file,
+            pady=6
         )
         btn_file.pack(side=tk.LEFT)
 
@@ -109,7 +110,7 @@ class SabespImportDialog(tk.Toplevel):
         # Initial prompt inside card
         self.lbl_empty = ttk.Label(
             self.f_card,
-            text="Nenhuma fatura carregada ainda.\nClique em 'Buscar no E-mail da Zangari' acima.",
+            text="Nenhuma fatura carregada ainda.\nClique em 'Buscar no E-mail' acima ou selecione um PDF.",
             font=("Segoe UI", 9), justify=tk.CENTER, foreground=COLOR_TEXT_MUTED
         )
         self.lbl_empty.pack(expand=True, pady=30)
@@ -117,30 +118,32 @@ class SabespImportDialog(tk.Toplevel):
         # Data grid (hidden until loaded)
         self.f_grid = tk.Frame(self.f_card, bg=COLOR_BG_LIGHT)
 
+        # Divisor suave antes da barra inferior
+        div_foot = tk.Frame(self, height=1, bg=COLOR_CARD_BORDER)
+        div_foot.pack(fill=tk.X, side=tk.BOTTOM)
+
         # Bottom Bar
-        bottom_bar = tk.Frame(self, bg="#EAEAEA", height=50)
-        bottom_bar.pack(fill=tk.X, side=tk.BOTTOM)
+        bottom_bar = tk.Frame(self, bg=COLOR_BG_LIGHT)
+        bottom_bar.pack(fill=tk.X, side=tk.BOTTOM, padx=14, pady=10)
 
-        self.btn_cancel = ttk.Button(bottom_bar, text="Fechar", command=self.destroy)
-        self.btn_cancel.pack(side=tk.RIGHT, padx=12, pady=10)
+        self.btn_cancel = create_btn_secondary(bottom_bar, "Fechar", self.destroy, pady=6)
+        self.btn_cancel.pack(side=tk.RIGHT)
 
-        self.btn_apply_generate = tk.Button(
+        self.btn_apply_generate = create_btn_primary(
             bottom_bar,
-            text="🚀 Aplicar e Gerar Relatório",
-            command=self._on_apply_and_generate,
-            bg=COLOR_PRIMARY, fg="white", activebackground=COLOR_PRIMARY_HOVER, activeforeground="white",
-            font=("Segoe UI", 9, "bold"), relief="flat", padx=14, pady=5, cursor="hand2", state=tk.DISABLED
+            "🚀 Aplicar e Gerar Relatório",
+            self._on_apply_and_generate,
+            pady=6, state=tk.DISABLED
         )
-        self.btn_apply_generate.pack(side=tk.RIGHT, padx=(0, 8), pady=10)
+        self.btn_apply_generate.pack(side=tk.RIGHT, padx=(0, 8))
 
-        self.btn_apply = tk.Button(
+        self.btn_apply = create_btn_secondary(
             bottom_bar,
-            text="✔ Apenas Aplicar Parâmetros",
-            command=self._on_apply,
-            bg="#EBF3E6", fg=COLOR_PRIMARY, activebackground=COLOR_ACCENT,
-            font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=5, cursor="hand2", state=tk.DISABLED
+            "✔ Apenas Aplicar Parâmetros",
+            self._on_apply,
+            pady=6, state=tk.DISABLED
         )
-        self.btn_apply.pack(side=tk.RIGHT, padx=(0, 8), pady=10)
+        self.btn_apply.pack(side=tk.RIGHT, padx=(0, 8))
 
         self.var_tarifa_escolhida = tk.StringVar(value="faixa")
 

@@ -10,12 +10,11 @@ from core.email_sender import (
     load_email_template, save_email_template, get_email_template_path,
     DEFAULT_HTML_BODY, DEFAULT_SUBJECT_TEMPLATE, render_email, prepare_html_for_preview
 )
-from gui.ui_helpers import apply_window_icon, center_modal
-
-COLOR_PRIMARY = "#3D6B24"
-COLOR_PRIMARY_HOVER = "#2D501A"
-COLOR_BG_LIGHT = "#F6F9F2"
-COLOR_TEXT_MUTED = "#55664C"
+from gui.ui_helpers import (
+    apply_window_icon, center_modal, setup_common_styles,
+    create_btn_primary, create_btn_secondary,
+    COLOR_PRIMARY, COLOR_PRIMARY_HOVER, COLOR_BG_LIGHT, COLOR_TEXT_MUTED
+)
 
 class EmailTemplateDialog(tk.Toplevel):
     def __init__(self, parent, on_save_callback=None):
@@ -26,6 +25,7 @@ class EmailTemplateDialog(tk.Toplevel):
         self.grab_set()
 
         apply_window_icon(self)
+        setup_common_styles(ttk.Style(self))
 
         self.on_save_callback = on_save_callback
         self._build_ui()
@@ -114,26 +114,24 @@ class EmailTemplateDialog(tk.Toplevel):
 
         # ─── BOTÕES DE AÇÃO INFERIORES ───
         frame_actions = tk.Frame(container, bg=COLOR_BG_LIGHT)
-        frame_actions.pack(fill=tk.X)
+        frame_actions.pack(fill=tk.X, pady=(4, 0))
 
-        btn_preview = ttk.Button(frame_actions, text="👁 Visualizar Prévia", command=self._preview_in_browser)
+        btn_preview = create_btn_secondary(frame_actions, "👁 Visualizar Prévia", self._preview_in_browser, pady=6)
         btn_preview.pack(side=tk.LEFT, padx=(0, 6))
 
-        btn_notepad = ttk.Button(frame_actions, text="📝 Abrir no Bloco de Notas", command=self._open_in_notepad)
+        btn_notepad = create_btn_secondary(frame_actions, "📝 Bloco de Notas", self._open_in_notepad, pady=6)
         btn_notepad.pack(side=tk.LEFT, padx=(0, 6))
 
-        btn_restore = ttk.Button(frame_actions, text="↺ Restaurar Padrão", command=self._restore_default)
+        btn_restore = create_btn_secondary(frame_actions, "↺ Restaurar", self._restore_default, pady=6)
         btn_restore.pack(side=tk.LEFT)
 
-        btn_save = tk.Button(
-            frame_actions, text="💾 Salvar Modelo", command=self._save_template,
-            bg=COLOR_PRIMARY, fg="white", activebackground=COLOR_PRIMARY_HOVER,
-            activeforeground="white", font=("Segoe UI", 9, "bold"),
-            relief="flat", padx=14, pady=5, cursor="hand2"
+        btn_save = create_btn_primary(
+            frame_actions, "💾 Salvar Modelo", self._save_template,
+            padx=14, pady=6
         )
         btn_save.pack(side=tk.RIGHT, padx=(8, 0))
 
-        btn_cancel = ttk.Button(frame_actions, text="Fechar", command=self.destroy)
+        btn_cancel = create_btn_secondary(frame_actions, "Fechar", self.destroy, padx=12, pady=6)
         btn_cancel.pack(side=tk.RIGHT)
 
     def _insert_tag(self, tag):

@@ -1,5 +1,175 @@
 import os
 import sys
+import tkinter as tk
+from tkinter import ttk
+
+# ─── PALETA CORPORATIVA COMPASSS SMARTHYDRO ───
+COLOR_PRIMARY = "#3D6B24"          # Verde Corporativo CompaSSS
+COLOR_PRIMARY_HOVER = "#2D501A"    # Verde Escuro (Hover)
+COLOR_ACCENT = "#78A65A"           # Verde Médio
+COLOR_BG_LIGHT = "#F4F7F2"         # Fundo Geral da Aplicação
+COLOR_CARD_BG = "#EBF3E6"          # Fundo Suave para Cards e Botões Secundários
+COLOR_CARD_BORDER = "#C5DCBA"      # Borda Sutil
+COLOR_TEXT_MAIN = "#1E2B18"        # Texto Principal
+COLOR_TEXT_MUTED = "#55664C"       # Texto Secundário / Labels
+COLOR_DANGER = "#D9534F"           # Vermelho Ação Destrutiva
+COLOR_DANGER_BG = "#FDF2F2"        # Fundo Vermelho Suave
+COLOR_DANGER_BORDER = "#F5C6CB"    # Borda Vermelha Suave
+
+
+def setup_common_styles(style: ttk.Style):
+    """Configura o tema ttk (clam) globalmente com as cores e formas corporativas da CompaSSS."""
+    try:
+        style.theme_use("clam")
+    except Exception:
+        pass
+
+    style.configure(".", background=COLOR_BG_LIGHT, font=("Segoe UI", 9))
+    style.configure("TLabel", background=COLOR_BG_LIGHT, foreground=COLOR_TEXT_MAIN)
+    style.configure("TLabelframe", background=COLOR_BG_LIGHT, bordercolor=COLOR_ACCENT)
+    style.configure("TLabelframe.Label", background=COLOR_BG_LIGHT, foreground=COLOR_PRIMARY, font=("Segoe UI", 9, "bold"))
+    style.configure("TCheckbutton", background=COLOR_BG_LIGHT, foreground=COLOR_TEXT_MAIN)
+    style.configure("TRadiobutton", background=COLOR_BG_LIGHT, foreground=COLOR_TEXT_MAIN)
+    style.configure("TProgressbar", troughcolor="#E3EDD8", background=COLOR_ACCENT)
+
+    # Botão padrão ttk (Secondary look)
+    style.configure(
+        "TButton",
+        font=("Segoe UI", 9, "bold"),
+        background=COLOR_CARD_BG,
+        foreground=COLOR_PRIMARY,
+        borderwidth=1,
+        bordercolor=COLOR_CARD_BORDER,
+        focuscolor="none",
+        padding=(10, 4)
+    )
+    style.map(
+        "TButton",
+        background=[("active", "#D3E4CB"), ("disabled", "#F0F0F0")],
+        foreground=[("active", COLOR_PRIMARY), ("disabled", "#A0A0A0")],
+        bordercolor=[("active", COLOR_PRIMARY)]
+    )
+
+    # Botão de Ação Primária ttk (CTA)
+    style.configure(
+        "Primary.TButton",
+        font=("Segoe UI", 9, "bold"),
+        background=COLOR_PRIMARY,
+        foreground="#FFFFFF",
+        borderwidth=1,
+        bordercolor=COLOR_PRIMARY,
+        focuscolor="none",
+        padding=(14, 5)
+    )
+    style.map(
+        "Primary.TButton",
+        background=[("active", COLOR_PRIMARY_HOVER), ("disabled", "#A0B896")],
+        foreground=[("disabled", "#E0E0E0")]
+    )
+
+    # Botão de Ação Secundária ttk
+    style.configure(
+        "Secondary.TButton",
+        font=("Segoe UI", 9, "bold"),
+        background=COLOR_CARD_BG,
+        foreground=COLOR_PRIMARY,
+        borderwidth=1,
+        bordercolor=COLOR_CARD_BORDER,
+        focuscolor="none",
+        padding=(10, 4)
+    )
+    style.map(
+        "Secondary.TButton",
+        background=[("active", "#D3E4CB"), ("disabled", "#F0F0F0")],
+        foreground=[("active", COLOR_PRIMARY), ("disabled", "#A0A0A0")]
+    )
+
+    # Botão de Histórico e Ações Compactas
+    style.configure(
+        "History.TButton",
+        font=("Segoe UI", 8, "bold"),
+        background=COLOR_CARD_BG,
+        foreground=COLOR_PRIMARY,
+        borderwidth=1,
+        bordercolor=COLOR_CARD_BORDER,
+        focuscolor="none",
+        padding=(6, 2)
+    )
+    style.map(
+        "History.TButton",
+        background=[("active", "#D3E4CB"), ("disabled", "#F0F0F0")],
+        foreground=[("active", COLOR_PRIMARY), ("disabled", "#A0A0A0")]
+    )
+
+    # Botões de Abas do Notebook
+    style.configure(
+        "TNotebook",
+        background=COLOR_BG_LIGHT,
+        borderwidth=0
+    )
+    style.configure(
+        "TNotebook.Tab",
+        font=("Segoe UI", 9, "bold"),
+        background="#E6ECE0",
+        foreground=COLOR_TEXT_MUTED,
+        padding=[10, 5],
+        borderwidth=1,
+        bordercolor=COLOR_CARD_BORDER
+    )
+    style.map(
+        "TNotebook.Tab",
+        background=[("selected", COLOR_BG_LIGHT), ("active", "#DDE7D6")],
+        foreground=[("selected", COLOR_PRIMARY), ("active", COLOR_PRIMARY)]
+    )
+
+
+def create_btn_primary(parent, text, command, **kwargs):
+    """Cria um botão primário com identidade corporativa verde CompaSSS."""
+    pad_x = kwargs.pop("padx", 16)
+    pad_y = kwargs.pop("pady", 6)
+    btn = tk.Button(
+        parent, text=text, command=command,
+        bg=COLOR_PRIMARY, fg="white",
+        activebackground=COLOR_PRIMARY_HOVER, activeforeground="white",
+        font=("Segoe UI", 9, "bold"),
+        relief="flat", bd=1,
+        highlightbackground=COLOR_PRIMARY, highlightthickness=1,
+        padx=pad_x, pady=pad_y, cursor="hand2", **kwargs
+    )
+    return btn
+
+
+def create_btn_secondary(parent, text, command, **kwargs):
+    """Cria um botão secundário suave, com fundo claro e borda verde sutil."""
+    pad_x = kwargs.pop("padx", 12)
+    pad_y = kwargs.pop("pady", 6)
+    btn = tk.Button(
+        parent, text=text, command=command,
+        bg=COLOR_CARD_BG, fg=COLOR_PRIMARY,
+        activebackground="#D3E4CB", activeforeground=COLOR_PRIMARY,
+        font=("Segoe UI", 9, "bold"),
+        relief="flat", bd=1,
+        highlightbackground=COLOR_CARD_BORDER, highlightthickness=1,
+        padx=pad_x, pady=pad_y, cursor="hand2", **kwargs
+    )
+    return btn
+
+
+def create_btn_danger(parent, text, command, **kwargs):
+    """Cria um botão de perigo/exclusão com fundo avermelhado suave."""
+    pad_x = kwargs.pop("padx", 10)
+    pad_y = kwargs.pop("pady", 5)
+    btn = tk.Button(
+        parent, text=text, command=command,
+        bg=COLOR_DANGER_BG, fg="#C9302C",
+        activebackground="#FADBD8", activeforeground="#C9302C",
+        font=("Segoe UI", 8, "bold"),
+        relief="flat", bd=1,
+        highlightbackground=COLOR_DANGER_BORDER, highlightthickness=1,
+        padx=pad_x, pady=pad_y, cursor="hand2", **kwargs
+    )
+    return btn
+
 
 def apply_window_icon(window):
     """
