@@ -162,10 +162,10 @@ class AppHidrometrosWindow:
         div = tk.Frame(main_container, height=2, bg=COLOR_ACCENT)
         div.pack(fill=tk.X, pady=(0, 16))
 
-        # ─── 1. HERO CARD: SINCRONIZAÇÃO INTELIGENTE VIA E-MAIL (ZANGARI) ───
+        # ─── 1. HERO CARD: SINCRONIZAÇÃO INTELIGENTE VIA E-MAIL ───
         frame_sabesp_hero = tk.LabelFrame(
             main_container,
-            text="  📩 Fatura Sabesp — Integração com E-mail Zangari  ",
+            text="  📩 Fatura Sabesp — Integração com E-mail  ",
             font=("Segoe UI", 9, "bold"),
             bg=COLOR_BG_LIGHT,
             fg=COLOR_PRIMARY,
@@ -177,18 +177,9 @@ class AppHidrometrosWindow:
         frame_hero_top = tk.Frame(frame_sabesp_hero, bg=COLOR_BG_LIGHT)
         frame_hero_top.pack(fill=tk.X)
 
-        # Empacota os botões de ação na DIREITA PRIMEIRO com largura garantida
+        # Botões na direita (estilo secundário discreto para não competir com o botão principal)
         frame_hero_actions = tk.Frame(frame_hero_top, bg=COLOR_BG_LIGHT)
         frame_hero_actions.pack(side=tk.RIGHT, padx=(14, 0))
-
-        self.btn_hero_sync = tk.Button(
-            frame_hero_actions,
-            text="🔄 Buscar no E-mail",
-            command=self._sync_sabesp_from_email_only,
-            bg=COLOR_PRIMARY, fg="white", activebackground=COLOR_PRIMARY_HOVER, activeforeground="white",
-            font=("Segoe UI", 8, "bold"), relief="flat", padx=12, pady=4, cursor="hand2"
-        )
-        self.btn_hero_sync.pack(side=tk.TOP, fill=tk.X, pady=(0, 4))
 
         btn_hero_file = ttk.Button(
             frame_hero_actions,
@@ -196,10 +187,18 @@ class AppHidrometrosWindow:
             command=self._open_sabesp_dialog,
             style="Secondary.TButton"
         )
-        btn_hero_file.pack(side=tk.TOP, fill=tk.X)
+        btn_hero_file.pack(side=tk.TOP, fill=tk.X, pady=(0, 4))
 
-        self.lbl_hero_icon = tk.Label(frame_hero_top, text="📄", font=("Segoe UI", 18), bg=COLOR_BG_LIGHT, fg=COLOR_PRIMARY)
-        self.lbl_hero_icon.pack(side=tk.LEFT, padx=(0, 10))
+        self.btn_hero_sync = ttk.Button(
+            frame_hero_actions,
+            text="🔄 Sincronizar E-mail",
+            command=self._sync_sabesp_from_email_only,
+            style="Secondary.TButton"
+        )
+        self.btn_hero_sync.pack(side=tk.TOP, fill=tk.X)
+
+        self.lbl_hero_icon = tk.Label(frame_hero_top, text="📄", font=("Segoe UI", 20), bg=COLOR_BG_LIGHT, fg=COLOR_PRIMARY)
+        self.lbl_hero_icon.pack(side=tk.LEFT, padx=(0, 12))
 
         frame_hero_info = tk.Frame(frame_hero_top, bg=COLOR_BG_LIGHT)
         frame_hero_info.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -211,12 +210,19 @@ class AppHidrometrosWindow:
         )
         self.lbl_hero_title.pack(fill=tk.X)
 
-        self.lbl_hero_sub = tk.Label(
+        self.lbl_hero_sub1 = tk.Label(
             frame_hero_info,
-            text="Clique em 'Buscar no E-mail' para puxar a conta de água enviada pela administração (Joyce / Yasmim).",
+            text="Período do Rateio: Aguardando sincronização...",
             font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT, anchor="w"
         )
-        self.lbl_hero_sub.pack(fill=tk.X, pady=(2, 0))
+        self.lbl_hero_sub1.pack(fill=tk.X, pady=(2, 0))
+
+        self.lbl_hero_sub2 = tk.Label(
+            frame_hero_info,
+            text="Clique no botão verde abaixo para puxar a fatura e gerar o relatório.",
+            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT, anchor="w"
+        )
+        self.lbl_hero_sub2.pack(fill=tk.X)
 
         # ─── 2. CARD DE PARÂMETROS DO RATEIO (ESPELHO DA FATURA) ───
         frame_params = ttk.LabelFrame(
@@ -453,12 +459,19 @@ class AppHidrometrosWindow:
         self.lbl_hero_title.config(
             text=f"Fatura Sabesp Ativa: {fn}"
         )
-        self.lbl_hero_sub.config(
-            text=f"Período: {ini} a {fim}  |  Tarifa Marginal: R$ {rate_str}/m³  |  Sabesp: {m3_str} m³ (R$ {tot_str})"
-        )
+        if hasattr(self, "lbl_hero_sub1"):
+            self.lbl_hero_sub1.config(
+                text=f"Período do Rateio: {ini} a {fim}   •   Tarifa Marginal: R$ {rate_str}/m³",
+                fg=COLOR_TEXT_MAIN
+            )
+        if hasattr(self, "lbl_hero_sub2"):
+            self.lbl_hero_sub2.config(
+                text=f"Consumo Sabesp: {m3_str} m³   •   Total da Fatura: R$ {tot_str}",
+                fg=COLOR_TEXT_MUTED
+            )
 
     def _one_click_email_and_generate(self):
-        """FLUXO PRINCIPAL: Conecta ao e-mail da Zangari, puxa a fatura, preenche e gera o relatório Excel na hora!"""
+        """FLUXO PRINCIPAL: Conecta ao e-mail, puxa a fatura, preenche e gera o relatório Excel na hora!"""
         self._execute_email_sabesp_flow(generate_after=True)
 
     def _sync_sabesp_from_email_only(self):
@@ -468,8 +481,12 @@ class AppHidrometrosWindow:
     def _execute_email_sabesp_flow(self, generate_after: bool = False):
         self.btn_gerar.config(state=tk.DISABLED)
         self.btn_sabesp_gerar.config(state=tk.DISABLED)
-        self.btn_hero_sync.config(state=tk.DISABLED)
-        self.prog_bar["value"] = 25
+        if hasattr(self, "btn_hero_sync"):
+            self.btn_hero_sync.config(state=tk.DISABLED)
+
+        # Inicia barra em modo indeterminado com movimento contínuo
+        self.prog_bar.config(mode="indeterminate")
+        self.prog_bar.start(10)
 
         target_m = None
         target_y = None
@@ -484,9 +501,10 @@ class AppHidrometrosWindow:
 
         target_str = f" de {MESES_PT[target_m-1]}/{target_y}" if (target_m and target_m <= len(MESES_PT)) else " recente"
         self.lbl_status.config(
-            text=f"Conectando à caixa da Zangari (Joyce/Yasmim) para localizar fatura Sabesp{target_str}...",
+            text=f"🔄 Conectando ao servidor de e-mail e buscando fatura Sabesp{target_str}...",
             fg=COLOR_PRIMARY
         )
+        self.root.update_idletasks()
 
         def _worker():
             try:
@@ -508,10 +526,13 @@ class AppHidrometrosWindow:
         threading.Thread(target=_worker, daemon=True).start()
 
     def _on_email_sabesp_error(self, err_msg):
+        self.prog_bar.stop()
+        self.prog_bar.config(mode="determinate")
         self.prog_bar["value"] = 0
         self.btn_gerar.config(state=tk.NORMAL)
         self.btn_sabesp_gerar.config(state=tk.NORMAL)
-        self.btn_hero_sync.config(state=tk.NORMAL)
+        if hasattr(self, "btn_hero_sync"):
+            self.btn_hero_sync.config(state=tk.NORMAL)
         self.lbl_status.config(text=f"Aviso E-mail: {err_msg}", fg="red")
         messagebox.showwarning(
             "Fatura Sabesp no E-mail",
@@ -521,10 +542,13 @@ class AppHidrometrosWindow:
         )
 
     def _on_email_sabesp_ready(self, data: dict, generate_after: bool):
+        self.prog_bar.stop()
+        self.prog_bar.config(mode="determinate")
         self.prog_bar["value"] = 0
         self.btn_gerar.config(state=tk.NORMAL)
         self.btn_sabesp_gerar.config(state=tk.NORMAL)
-        self.btn_hero_sync.config(state=tk.NORMAL)
+        if hasattr(self, "btn_hero_sync"):
+            self.btn_hero_sync.config(state=tk.NORMAL)
 
         rate = data.get("tarifa_faixa", 63.68)
         self._apply_sabesp_data(data, rate, silent=True)
@@ -534,15 +558,19 @@ class AppHidrometrosWindow:
         else:
             ini_str = data.get("periodo_rateio_ini", "")
             fim_str = data.get("periodo_rateio_fim", "")
+            self.lbl_status.config(
+                text=f"✔ Fatura {data.get('arquivo_origem', 'Sabesp')} sincronizada com sucesso!",
+                fg=COLOR_PRIMARY
+            )
             messagebox.showinfo(
                 "Fatura Sabesp Sincronizada",
-                f"✔ Fatura da Sabesp sincronizada com sucesso do e-mail da Zangari!\n\n"
+                f"✔ Fatura da Sabesp sincronizada com sucesso do e-mail!\n\n"
                 f"• Arquivo: {data.get('arquivo_origem')}\n"
                 f"• Período do Rateio: {ini_str} a {fim_str}\n"
-                f"• Tarifa Marginal: R$ {rate:.2f} / m³ (Faixa > 50 m³)\n"
+                f"• Tarifa Marginal: R$ {rate:.2f} / m³\n"
                 f"• Volume Sabesp: {data.get('consumo_sabesp_m3', 0.0):,.1f} m³\n"
-                f"• Total da Conta: R$ {data.get('valor_total_fatura', 0.0):,.2f}\n\n"
-                f"Pronto para gerar o relatório!",
+                f"• Total da Fatura: R$ {data.get('valor_total_fatura', 0.0):,.2f}\n\n"
+                f"Pronto para gerar o relatório com 1 clique!",
                 parent=self.root
             )
 
@@ -919,8 +947,11 @@ class AppHidrometrosWindow:
         self.config["default_m3_price"] = v_m3
         save_config(self.config)
 
-        # Bloquear botão e iniciar etapas com barra de progresso
+        # Bloquear botões e iniciar etapas com barra de progresso
         self.btn_gerar.config(state=tk.DISABLED)
+        self.btn_sabesp_gerar.config(state=tk.DISABLED)
+        if hasattr(self, "btn_hero_sync"):
+            self.btn_hero_sync.config(state=tk.DISABLED)
         self.prog_bar["value"] = 5
         self.lbl_status.config(text="Iniciando processamento da medição...")
 
@@ -950,6 +981,9 @@ class AppHidrometrosWindow:
     def _on_success(self, final_file, warnings=None, anomalies=None):
         self.prog_bar["value"] = 100
         self.btn_gerar.config(state=tk.NORMAL)
+        self.btn_sabesp_gerar.config(state=tk.NORMAL)
+        if hasattr(self, "btn_hero_sync"):
+            self.btn_hero_sync.config(state=tk.NORMAL)
 
         pdf_file = os.path.splitext(final_file)[0] + ".pdf"
         has_pdf = os.path.exists(pdf_file)
@@ -1053,6 +1087,9 @@ class AppHidrometrosWindow:
     def _on_error(self, err_msg):
         self.prog_bar["value"] = 0
         self.btn_gerar.config(state=tk.NORMAL)
+        self.btn_sabesp_gerar.config(state=tk.NORMAL)
+        if hasattr(self, "btn_hero_sync"):
+            self.btn_hero_sync.config(state=tk.NORMAL)
         self.lbl_status.config(text="Ocorreu um erro durante a geração do relatório.")
         messagebox.showerror("Erro de Execução", f"Falha ao gerar relatório:\n\n{err_msg}", parent=self.root)
 
