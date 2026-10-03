@@ -129,8 +129,18 @@ class AppHidrometrosWindow:
             relief="flat", bd=1, highlightbackground=COLOR_ACCENT, highlightthickness=1,
             width=3, pady=2, cursor="hand2"
         )
-        btn_history.pack(side=tk.RIGHT)
+        btn_history.pack(side=tk.RIGHT, padx=(5, 0))
         create_tooltip(btn_history, "Histórico Anual de Telemetria (12 Meses)")
+
+        btn_test_db = tk.Button(
+            frame_top_btns, text="🔌", command=self._test_connection_action,
+            font=("Segoe UI Emoji", 11), bg="#EBF3E6", fg=COLOR_PRIMARY,
+            activebackground=COLOR_ACCENT, activeforeground=COLOR_PRIMARY,
+            relief="flat", bd=1, highlightbackground=COLOR_ACCENT, highlightthickness=1,
+            width=3, pady=2, cursor="hand2"
+        )
+        btn_test_db.pack(side=tk.RIGHT)
+        create_tooltip(btn_test_db, "Testar Conexão com o Banco StruxureWare EBO")
 
         title_box = tk.Frame(frame_top, bg=COLOR_BG_LIGHT)
         title_box.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -147,7 +157,7 @@ class AppHidrometrosWindow:
         lbl_op_tag = tk.Label(frame_op_box, text="👤 Operador:", font=("Segoe UI", 8, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT)
         lbl_op_tag.pack(side=tk.LEFT)
 
-        self.cmb_active_op = ttk.Combobox(frame_op_box, state="readonly", width=32, font=("Segoe UI", 8))
+        self.cmb_active_op = ttk.Combobox(frame_op_box, state="readonly", width=38, font=("Segoe UI", 8))
         self.cmb_active_op.pack(side=tk.LEFT, padx=(4, 6))
         self.cmb_active_op.bind("<<ComboboxSelected>>", self._on_operator_combobox_change)
 
@@ -163,22 +173,22 @@ class AppHidrometrosWindow:
         div = tk.Frame(main_container, height=2, bg=COLOR_ACCENT)
         div.pack(fill=tk.X, pady=(0, 16))
 
-        # ─── 1. HERO CARD: SINCRONIZAÇÃO INTELIGENTE VIA E-MAIL ───
+        # ─── 1. CARD UNIFICADO: CICLO DE MEDIÇÃO & FATURA SABESP ───
         frame_sabesp_hero = tk.LabelFrame(
             main_container,
-            text="  📩 Fatura Sabesp — Integração com E-mail  ",
+            text="  📩 Ciclo de Medição & Fatura Sabesp  ",
             font=("Segoe UI", 9, "bold"),
             bg=COLOR_BG_LIGHT,
             fg=COLOR_PRIMARY,
             padx=14,
-            pady=10
+            pady=8
         )
-        frame_sabesp_hero.pack(fill=tk.X, pady=(0, 10))
+        frame_sabesp_hero.pack(fill=tk.X, pady=(0, 8))
 
         frame_hero_top = tk.Frame(frame_sabesp_hero, bg=COLOR_BG_LIGHT)
         frame_hero_top.pack(fill=tk.X)
 
-        # Botões na direita (estilo secundário discreto para não competir com o botão principal)
+        # Botões na direita
         frame_hero_actions = tk.Frame(frame_hero_top, bg=COLOR_BG_LIGHT)
         frame_hero_actions.pack(side=tk.RIGHT, padx=(14, 0))
 
@@ -188,7 +198,7 @@ class AppHidrometrosWindow:
             command=self._open_sabesp_dialog,
             style="Secondary.TButton"
         )
-        btn_hero_file.pack(side=tk.TOP, fill=tk.X, pady=(0, 4))
+        btn_hero_file.pack(side=tk.TOP, fill=tk.X, pady=(0, 3))
 
         self.btn_hero_sync = ttk.Button(
             frame_hero_actions,
@@ -211,30 +221,20 @@ class AppHidrometrosWindow:
         )
         self.lbl_hero_title.pack(fill=tk.X)
 
-        self.lbl_hero_sub1 = tk.Label(
-            frame_hero_info,
-            text="Período do Rateio: Aguardando sincronização...",
-            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT, anchor="w"
-        )
-        self.lbl_hero_sub1.pack(fill=tk.X, pady=(2, 0))
-
         self.lbl_hero_sub2 = tk.Label(
             frame_hero_info,
-            text="Clique no botão verde abaixo para puxar a fatura e gerar o relatório.",
+            text="Consumo Concessionária: Aguardando sincronização com e-mail...",
             font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT, anchor="w"
         )
-        self.lbl_hero_sub2.pack(fill=tk.X)
+        self.lbl_hero_sub2.pack(fill=tk.X, pady=(2, 0))
 
-        # ─── 2. CARD DE PARÂMETROS DO RATEIO (ESPELHO DA FATURA) ───
-        frame_params = ttk.LabelFrame(
-            main_container,
-            text="  ⚙ Parâmetros do Rateio das Salas  ",
-            padding="12 8 12 8"
-        )
-        frame_params.pack(fill=tk.X, pady=(0, 10))
+        # Divisor suave separando a fatura dos parâmetros do rateio
+        div_params = tk.Frame(frame_sabesp_hero, height=1, bg="#E2EDD8")
+        div_params.pack(fill=tk.X, pady=(7, 7))
 
-        frame_fields = tk.Frame(frame_params, bg=COLOR_BG_LIGHT)
-        frame_fields.pack(fill=tk.X, pady=(0, 6))
+        # Linha de parâmetros do rateio (Início, Fim, Tarifa m³)
+        frame_fields = tk.Frame(frame_sabesp_hero, bg=COLOR_BG_LIGHT)
+        frame_fields.pack(fill=tk.X, pady=(0, 4))
 
         lbl_ini = ttk.Label(frame_fields, text="Início:", font=("Segoe UI", 9, "bold"))
         lbl_ini.pack(side=tk.LEFT, padx=(0, 4))
@@ -267,9 +267,9 @@ class AppHidrometrosWindow:
         self.ent_valor.insert(0, str(self.config.get("default_m3_price", "63.68")))
         self.ent_valor.pack(side=tk.LEFT)
 
-        # Linha inferior: Pasta de saída
-        frame_out = tk.Frame(frame_params, bg=COLOR_BG_LIGHT)
-        frame_out.pack(fill=tk.X)
+        # Linha compacta de destino dos relatórios
+        frame_out = tk.Frame(frame_sabesp_hero, bg=COLOR_BG_LIGHT)
+        frame_out.pack(fill=tk.X, pady=(3, 0))
 
         lbl_dir = ttk.Label(frame_out, text="Salvar em:", font=("Segoe UI", 8, "bold"))
         lbl_dir.pack(side=tk.LEFT, padx=(0, 6))
@@ -285,21 +285,20 @@ class AppHidrometrosWindow:
         self.var_sort_desc = tk.BooleanVar(value=self.config.get("sort_by_consumption", True))
         self.var_open_excel = tk.BooleanVar(value=self.config.get("open_excel_after_generation", True))
 
+        # ─── 2. MINI-KPIS DO ÚLTIMO RATEIO ───
+        self.frame_kpi = tk.Frame(main_container, bg=COLOR_BG_LIGHT)
+        self.frame_kpi.pack(fill=tk.X, pady=(0, 8))
+        self._build_kpi_bar(self.frame_kpi)
+
         # ─── 3. BOTÕES DE AÇÃO INFERIORES ───
         frame_actions = tk.Frame(main_container, bg=COLOR_BG_LIGHT)
         frame_actions.pack(fill=tk.X, side=tk.BOTTOM, pady=(8, 0))
 
         btn_open_folder = ttk.Button(
-            frame_actions, text="Abrir Pasta", command=self._open_output_folder,
+            frame_actions, text="📁 Abrir Pasta", command=self._open_output_folder,
             style="Secondary.TButton"
         )
-        btn_open_folder.pack(side=tk.LEFT, padx=(0, 8))
-
-        btn_test = ttk.Button(
-            frame_actions, text="Testar Conexão", command=self._test_connection_action,
-            style="Secondary.TButton"
-        )
-        btn_test.pack(side=tk.LEFT)
+        btn_open_folder.pack(side=tk.LEFT)
 
         # BOTÃO PRINCIPAL VERDE COMPASSS: O E-MAIL É A ESTRELA!
         self.btn_sabesp_gerar = tk.Button(
@@ -341,7 +340,7 @@ class AppHidrometrosWindow:
 
         # ─── HISTÓRICO DE RELATÓRIOS RECENTES (COMPACTO) ───
         self.frame_history_card = ttk.LabelFrame(main_container, text="  Últimos Relatórios Gerados  ", padding="12 8 12 8")
-        self.frame_history_card.pack(fill=tk.X, side=tk.TOP, pady=(6, 12))
+        self.frame_history_card.pack(fill=tk.X, side=tk.TOP, pady=(2, 8))
 
         self.frame_history_list = tk.Frame(self.frame_history_card, bg=COLOR_BG_LIGHT)
         self.frame_history_list.pack(fill=tk.X, expand=True)
@@ -442,6 +441,25 @@ class AppHidrometrosWindow:
         except Exception:
             pass
 
+    def _build_kpi_bar(self, parent):
+        box1 = tk.Frame(parent, bg="#EBF3E6", bd=1, relief="solid", highlightbackground="#D3E4CB", highlightthickness=1, padx=10, pady=5)
+        box1.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 4))
+        tk.Label(box1, text="💧 HIDRÔMETROS MEDIDOS", font=("Segoe UI", 7, "bold"), fg=COLOR_PRIMARY, bg="#EBF3E6").pack(anchor="w")
+        self.lbl_kpi_salas = tk.Label(box1, text="-- m³", font=("Segoe UI", 10, "bold"), fg=COLOR_TEXT_MAIN, bg="#EBF3E6")
+        self.lbl_kpi_salas.pack(anchor="w")
+
+        box2 = tk.Frame(parent, bg="#EBF3E6", bd=1, relief="solid", highlightbackground="#D3E4CB", highlightthickness=1, padx=10, pady=5)
+        box2.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
+        tk.Label(box2, text="🏢 FATURA CONCESSIONÁRIA", font=("Segoe UI", 7, "bold"), fg=COLOR_PRIMARY, bg="#EBF3E6").pack(anchor="w")
+        self.lbl_kpi_sabesp = tk.Label(box2, text="-- m³", font=("Segoe UI", 10, "bold"), fg=COLOR_TEXT_MAIN, bg="#EBF3E6")
+        self.lbl_kpi_sabesp.pack(anchor="w")
+
+        box3 = tk.Frame(parent, bg="#EBF3E6", bd=1, relief="solid", highlightbackground="#D3E4CB", highlightthickness=1, padx=10, pady=5)
+        box3.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(4, 0))
+        tk.Label(box3, text="💰 TOTAL RATEADO", font=("Segoe UI", 7, "bold"), fg=COLOR_PRIMARY, bg="#EBF3E6").pack(anchor="w")
+        self.lbl_kpi_total = tk.Label(box3, text="R$ --", font=("Segoe UI", 10, "bold"), fg=COLOR_TEXT_MAIN, bg="#EBF3E6")
+        self.lbl_kpi_total.pack(anchor="w")
+
     def _update_sabesp_hero_card(self, data: dict):
         if not hasattr(self, "lbl_hero_title") or not data:
             return
@@ -460,16 +478,13 @@ class AppHidrometrosWindow:
         self.lbl_hero_title.config(
             text=f"Fatura Sabesp Ativa: {fn}"
         )
-        if hasattr(self, "lbl_hero_sub1"):
-            self.lbl_hero_sub1.config(
-                text=f"Período do Rateio: {ini} a {fim}   •   Tarifa Marginal: R$ {rate_str}/m³",
-                fg=COLOR_TEXT_MAIN
-            )
         if hasattr(self, "lbl_hero_sub2"):
             self.lbl_hero_sub2.config(
-                text=f"Consumo Sabesp: {m3_str} m³   •   Total da Fatura: R$ {tot_str}",
+                text=f"Consumo Sabesp: {m3_str} m³   •   Total da Fatura: R$ {tot_str}   •   Tarifa Marginal: R$ {rate_str}/m³",
                 fg=COLOR_TEXT_MUTED
             )
+        if hasattr(self, "lbl_kpi_sabesp") and self.lbl_kpi_sabesp:
+            self.lbl_kpi_sabesp.config(text=f"{m3_str} m³")
 
     def _one_click_email_and_generate(self):
         """FLUXO PRINCIPAL: Conecta ao e-mail, puxa a fatura, preenche e gera o relatório Excel na hora!"""
@@ -697,6 +712,20 @@ class AppHidrometrosWindow:
         self.config = load_config()
         recent = get_recent_reports()
         send_log = self.config.get("report_send_log", {})
+
+        # Atualiza a barra de Mini-KPIs com os valores do relatório mais recente
+        if hasattr(self, "lbl_kpi_salas") and self.lbl_kpi_salas:
+            if recent:
+                latest = recent[0]
+                tot_m3 = latest.get("total_m3", 0.0)
+                tot_rs = latest.get("total_rs", 0.0)
+                m3_str = f"{tot_m3:,.1f}".replace(".", ",")
+                rs_str = f"{tot_rs:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                self.lbl_kpi_salas.config(text=f"{m3_str} m³")
+                self.lbl_kpi_total.config(text=f"R$ {rs_str}")
+            if self.sabesp_data:
+                sab_m3 = self.sabesp_data.get("consumo_sabesp_m3", 0.0)
+                self.lbl_kpi_sabesp.config(text=f"{sab_m3:,.0f} m³".replace(".", ","))
 
         # Cria assinatura de estado para evitar reconstrução desnecessária de widgets da tela
         current_sig = tuple(
@@ -983,6 +1012,12 @@ class AppHidrometrosWindow:
         except Exception as e:
             self.root.after(0, lambda: self._on_error(str(e)))
 
+    def _auto_reset_progress(self):
+        try:
+            self.prog_bar["value"] = 0
+        except Exception:
+            pass
+
     def _on_success(self, final_file, warnings=None, anomalies=None):
         self.prog_bar["value"] = 100
         self.btn_gerar.config(state=tk.NORMAL)
@@ -992,11 +1027,14 @@ class AppHidrometrosWindow:
 
         pdf_file = os.path.splitext(final_file)[0] + ".pdf"
         has_pdf = os.path.exists(pdf_file)
-        status_txt = f"Relatório concluído com sucesso: {os.path.basename(final_file)}"
+        status_txt = f"✔ Relatório concluído com sucesso: {os.path.basename(final_file)}"
         if has_pdf:
             status_txt += " (+ PDF)"
-        self.lbl_status.config(text=status_txt)
-        self._refresh_history()
+        self.lbl_status.config(text=status_txt, fg=COLOR_PRIMARY)
+        self._refresh_history(force=True)
+
+        # Reseta suavemente a barra de progresso após 3.5 segundos para não ficar estática em 100%
+        self.root.after(3500, self._auto_reset_progress)
 
         # Disparo assíncrono de notificação Webhook (Teams, Discord, Slack, Telegram) se configurado
         if self.config.get("webhook_enabled", False):
