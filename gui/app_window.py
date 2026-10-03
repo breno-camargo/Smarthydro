@@ -41,11 +41,11 @@ class AppHidrometrosWindow:
             self.root.update_idletasks()
             s_w = self.root.winfo_screenwidth()
             s_h = self.root.winfo_screenheight()
-            pos_x = max(0, (s_w - 720) // 2)
-            pos_y = max(0, (s_h - 620) // 2)
-            self.root.geometry(f"720x620+{pos_x}+{pos_y}")
+            pos_x = max(0, (s_w - 750) // 2)
+            pos_y = max(0, (s_h - 635) // 2)
+            self.root.geometry(f"750x635+{pos_x}+{pos_y}")
         except Exception:
-            self.root.geometry("720x620")
+            self.root.geometry("750x635")
 
         self._set_window_icon()
 
@@ -108,38 +108,38 @@ class AppHidrometrosWindow:
             lbl_logo = tk.Label(frame_top, image=self.logo_img, bg=COLOR_BG_LIGHT)
             lbl_logo.pack(side=tk.LEFT, padx=(0, 14))
 
-        # Botões de Ação no canto superior direito (empacotados primeiro à direita para garantir espaço)
+        # Botões de Ação no canto superior direito
         frame_top_btns = tk.Frame(frame_top, bg=COLOR_BG_LIGHT)
-        frame_top_btns.pack(side=tk.RIGHT, anchor=tk.NE, pady=2)
+        frame_top_btns.pack(side=tk.RIGHT, anchor=tk.CENTER, pady=4)
 
         btn_settings = tk.Button(
             frame_top_btns, text="⚙️", command=self._open_settings,
             font=("Segoe UI Emoji", 11), bg="#EBF3E6", fg=COLOR_PRIMARY,
             activebackground=COLOR_ACCENT, activeforeground=COLOR_PRIMARY,
-            relief="flat", bd=1, highlightbackground=COLOR_ACCENT, highlightthickness=1,
-            width=3, pady=2, cursor="hand2"
+            relief="flat", bd=1, highlightbackground="#C5DCBA", highlightthickness=1,
+            width=3, pady=3, cursor="hand2"
         )
-        btn_settings.pack(side=tk.RIGHT, padx=(5, 0))
+        btn_settings.pack(side=tk.RIGHT, padx=3)
         create_tooltip(btn_settings, "Configurações do Sistema")
 
         btn_history = tk.Button(
             frame_top_btns, text="📈", command=self._open_annual_history,
             font=("Segoe UI Emoji", 11), bg="#EBF3E6", fg=COLOR_PRIMARY,
             activebackground=COLOR_ACCENT, activeforeground=COLOR_PRIMARY,
-            relief="flat", bd=1, highlightbackground=COLOR_ACCENT, highlightthickness=1,
-            width=3, pady=2, cursor="hand2"
+            relief="flat", bd=1, highlightbackground="#C5DCBA", highlightthickness=1,
+            width=3, pady=3, cursor="hand2"
         )
-        btn_history.pack(side=tk.RIGHT, padx=(5, 0))
+        btn_history.pack(side=tk.RIGHT, padx=3)
         create_tooltip(btn_history, "Histórico Anual de Telemetria (12 Meses)")
 
         btn_test_db = tk.Button(
             frame_top_btns, text="🔌", command=self._test_connection_action,
             font=("Segoe UI Emoji", 11), bg="#EBF3E6", fg=COLOR_PRIMARY,
             activebackground=COLOR_ACCENT, activeforeground=COLOR_PRIMARY,
-            relief="flat", bd=1, highlightbackground=COLOR_ACCENT, highlightthickness=1,
-            width=3, pady=2, cursor="hand2"
+            relief="flat", bd=1, highlightbackground="#C5DCBA", highlightthickness=1,
+            width=3, pady=3, cursor="hand2"
         )
-        btn_test_db.pack(side=tk.RIGHT)
+        btn_test_db.pack(side=tk.RIGHT, padx=3)
         create_tooltip(btn_test_db, "Testar Conexão com o Banco StruxureWare EBO")
 
         title_box = tk.Frame(frame_top, bg=COLOR_BG_LIGHT)
@@ -152,19 +152,21 @@ class AppHidrometrosWindow:
 
         # Seletor discreto do operador ativo
         frame_op_box = tk.Frame(title_box, bg=COLOR_BG_LIGHT)
-        frame_op_box.pack(anchor=tk.W, pady=(2, 0))
+        frame_op_box.pack(anchor=tk.W, pady=(3, 0))
 
         lbl_op_tag = tk.Label(frame_op_box, text="👤 Operador:", font=("Segoe UI", 8, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT)
         lbl_op_tag.pack(side=tk.LEFT)
 
-        self.cmb_active_op = ttk.Combobox(frame_op_box, state="readonly", width=38, font=("Segoe UI", 8))
+        self.cmb_active_op = ttk.Combobox(frame_op_box, state="readonly", width=46, font=("Segoe UI", 8))
         self.cmb_active_op.pack(side=tk.LEFT, padx=(4, 6))
         self.cmb_active_op.bind("<<ComboboxSelected>>", self._on_operator_combobox_change)
 
         btn_manage_ops = tk.Button(
             frame_op_box, text="👥 Gerenciar", command=self._open_operators_dialog,
             font=("Segoe UI", 7, "bold"), fg=COLOR_PRIMARY, bg="#EBF3E6",
-            activebackground=COLOR_ACCENT, relief="flat", padx=6, pady=1, cursor="hand2"
+            activebackground=COLOR_ACCENT, relief="flat", bd=1,
+            highlightbackground="#C5DCBA", highlightthickness=1,
+            padx=6, pady=1, cursor="hand2"
         )
         btn_manage_ops.pack(side=tk.LEFT)
         create_tooltip(btn_manage_ops, "Gerenciar perfis de operadores e assinaturas de e-mail")
@@ -190,7 +192,7 @@ class AppHidrometrosWindow:
 
         # Botões na direita
         frame_hero_actions = tk.Frame(frame_hero_top, bg=COLOR_BG_LIGHT)
-        frame_hero_actions.pack(side=tk.RIGHT, padx=(14, 0))
+        frame_hero_actions.pack(side=tk.RIGHT, padx=(10, 0))
 
         btn_hero_file = ttk.Button(
             frame_hero_actions,
@@ -208,8 +210,8 @@ class AppHidrometrosWindow:
         )
         self.btn_hero_sync.pack(side=tk.TOP, fill=tk.X)
 
-        self.lbl_hero_icon = tk.Label(frame_hero_top, text="📄", font=("Segoe UI", 20), bg=COLOR_BG_LIGHT, fg=COLOR_PRIMARY)
-        self.lbl_hero_icon.pack(side=tk.LEFT, padx=(0, 12))
+        self.lbl_hero_icon = tk.Label(frame_hero_top, text="📄", font=("Segoe UI", 18), bg=COLOR_BG_LIGHT, fg=COLOR_PRIMARY)
+        self.lbl_hero_icon.pack(side=tk.LEFT, padx=(0, 10))
 
         frame_hero_info = tk.Frame(frame_hero_top, bg=COLOR_BG_LIGHT)
         frame_hero_info.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -232,12 +234,12 @@ class AppHidrometrosWindow:
         div_params = tk.Frame(frame_sabesp_hero, height=1, bg="#E2EDD8")
         div_params.pack(fill=tk.X, pady=(7, 7))
 
-        # Linha de parâmetros do rateio (Início, Fim, Tarifa m³)
+        # Linha 1 de parâmetros do rateio (Início, Fim, Tarifa m³)
         frame_fields = tk.Frame(frame_sabesp_hero, bg=COLOR_BG_LIGHT)
-        frame_fields.pack(fill=tk.X, pady=(0, 4))
+        frame_fields.pack(fill=tk.X, pady=(0, 5))
 
-        lbl_ini = ttk.Label(frame_fields, text="Início:", font=("Segoe UI", 9, "bold"))
-        lbl_ini.pack(side=tk.LEFT, padx=(0, 4))
+        lbl_ini = ttk.Label(frame_fields, text="Início:", width=9, font=("Segoe UI", 9, "bold"))
+        lbl_ini.pack(side=tk.LEFT)
 
         self.cal_inicio = DateEntry(
             frame_fields, width=12, font=("Segoe UI", 9),
@@ -246,10 +248,10 @@ class AppHidrometrosWindow:
             selectbackground=COLOR_ACCENT, selectforeground="black",
             date_pattern="dd/mm/yyyy", locale="pt_BR", borderwidth=1
         )
-        self.cal_inicio.pack(side=tk.LEFT, padx=(0, 16))
+        self.cal_inicio.pack(side=tk.LEFT, padx=(0, 18))
 
-        lbl_fim = ttk.Label(frame_fields, text="Fim:", font=("Segoe UI", 9, "bold"))
-        lbl_fim.pack(side=tk.LEFT, padx=(0, 4))
+        lbl_fim = ttk.Label(frame_fields, text="Fim:", width=5, font=("Segoe UI", 9, "bold"))
+        lbl_fim.pack(side=tk.LEFT)
 
         self.cal_fim = DateEntry(
             frame_fields, width=12, font=("Segoe UI", 9),
@@ -258,28 +260,28 @@ class AppHidrometrosWindow:
             selectbackground=COLOR_ACCENT, selectforeground="black",
             date_pattern="dd/mm/yyyy", locale="pt_BR", borderwidth=1
         )
-        self.cal_fim.pack(side=tk.LEFT, padx=(0, 16))
+        self.cal_fim.pack(side=tk.LEFT, padx=(0, 18))
 
         lbl_val = ttk.Label(frame_fields, text="Tarifa m³ (R$):", font=("Segoe UI", 9, "bold"))
-        lbl_val.pack(side=tk.LEFT, padx=(0, 4))
+        lbl_val.pack(side=tk.LEFT, padx=(0, 6))
 
         self.ent_valor = ttk.Entry(frame_fields, font=("Segoe UI", 9), width=10)
         self.ent_valor.insert(0, str(self.config.get("default_m3_price", "63.68")))
         self.ent_valor.pack(side=tk.LEFT)
 
-        # Linha compacta de destino dos relatórios
+        # Linha 2 de parâmetros do rateio: Pasta de destino
         frame_out = tk.Frame(frame_sabesp_hero, bg=COLOR_BG_LIGHT)
-        frame_out.pack(fill=tk.X, pady=(3, 0))
+        frame_out.pack(fill=tk.X, pady=(2, 0))
 
-        lbl_dir = ttk.Label(frame_out, text="Salvar em:", font=("Segoe UI", 8, "bold"))
-        lbl_dir.pack(side=tk.LEFT, padx=(0, 6))
+        lbl_dir = ttk.Label(frame_out, text="Salvar em:", width=9, font=("Segoe UI", 9, "bold"))
+        lbl_dir.pack(side=tk.LEFT)
 
-        self.lbl_pasta = ttk.Entry(frame_out, font=("Segoe UI", 8))
+        self.lbl_pasta = ttk.Entry(frame_out, font=("Segoe UI", 9))
         self.lbl_pasta.insert(0, self.config.get("output_directory", ""))
-        self.lbl_pasta.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.lbl_pasta.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
 
-        btn_browse = ttk.Button(frame_out, text="Alterar...", width=8, command=self._browse_output_dir)
-        btn_browse.pack(side=tk.LEFT, padx=(6, 0))
+        btn_browse = ttk.Button(frame_out, text="Alterar...", width=9, command=self._browse_output_dir, style="Secondary.TButton")
+        btn_browse.pack(side=tk.RIGHT)
 
         # Preferências mantidas no config (configuráveis via ⚙)
         self.var_sort_desc = tk.BooleanVar(value=self.config.get("sort_by_consumption", True))
@@ -294,9 +296,12 @@ class AppHidrometrosWindow:
         frame_actions = tk.Frame(main_container, bg=COLOR_BG_LIGHT)
         frame_actions.pack(fill=tk.X, side=tk.BOTTOM, pady=(8, 0))
 
-        btn_open_folder = ttk.Button(
+        btn_open_folder = tk.Button(
             frame_actions, text="📁 Abrir Pasta", command=self._open_output_folder,
-            style="Secondary.TButton"
+            font=("Segoe UI", 9, "bold"), fg=COLOR_PRIMARY, bg="#EBF3E6",
+            activebackground=COLOR_ACCENT, activeforeground=COLOR_PRIMARY,
+            relief="flat", bd=1, highlightbackground="#C5DCBA", highlightthickness=1,
+            padx=14, pady=7, cursor="hand2"
         )
         btn_open_folder.pack(side=tk.LEFT)
 
@@ -309,34 +314,48 @@ class AppHidrometrosWindow:
             fg="white",
             activebackground=COLOR_PRIMARY_HOVER,
             activeforeground="white",
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 9, "bold"),
             relief="flat",
-            padx=16,
-            pady=8,
+            bd=1,
+            highlightbackground=COLOR_PRIMARY,
+            highlightthickness=1,
+            padx=18,
+            pady=7,
             cursor="hand2"
         )
         self.btn_sabesp_gerar.pack(side=tk.RIGHT)
 
         # Botão Secundário: Gerar com os dados já confirmados na tela
-        self.btn_gerar = ttk.Button(
+        self.btn_gerar = tk.Button(
             frame_actions,
             text="✔ Gerar c/ Dados da Tela",
             command=self._start_processing,
-            style="Secondary.TButton"
+            font=("Segoe UI", 9, "bold"),
+            fg=COLOR_PRIMARY,
+            bg="#EBF3E6",
+            activebackground=COLOR_ACCENT,
+            activeforeground=COLOR_PRIMARY,
+            relief="flat",
+            bd=1,
+            highlightbackground="#C5DCBA",
+            highlightthickness=1,
+            padx=14,
+            pady=7,
+            cursor="hand2"
         )
-        self.btn_gerar.pack(side=tk.RIGHT, padx=(0, 8))
+        self.btn_gerar.pack(side=tk.RIGHT, padx=(0, 10))
 
         # ─── BARRA DE PROGRESSO E STATUS (DOCK NO BOTTOM) ───
+        self.prog_bar = ttk.Progressbar(main_container, mode="determinate", maximum=100)
+        self.prog_bar.pack(fill=tk.X, side=tk.BOTTOM, pady=(0, 8))
+        self.prog_bar["value"] = 0
+
         self.lbl_status = tk.Label(
             main_container,
-            text="Pronto para gerar relatório. Selecione o período acima.",
+            text="Pronto para gerar relatório. Selecione o período acima ou use a busca automática no e-mail.",
             font=("Segoe UI", 8, "italic"), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT
         )
-        self.lbl_status.pack(fill=tk.X, side=tk.BOTTOM, pady=(4, 8))
-
-        self.prog_bar = ttk.Progressbar(main_container, mode="determinate", maximum=100)
-        self.prog_bar.pack(fill=tk.X, side=tk.BOTTOM, pady=(0, 4))
-        self.prog_bar["value"] = 0
+        self.lbl_status.pack(fill=tk.X, side=tk.BOTTOM, pady=(0, 3))
 
         # ─── HISTÓRICO DE RELATÓRIOS RECENTES (COMPACTO) ───
         self.frame_history_card = ttk.LabelFrame(main_container, text="  Últimos Relatórios Gerados  ", padding="12 8 12 8")
@@ -442,45 +461,42 @@ class AppHidrometrosWindow:
             pass
 
     def _build_kpi_bar(self, parent):
-        box1 = tk.Frame(parent, bg="#EBF3E6", bd=1, relief="solid", highlightbackground="#D3E4CB", highlightthickness=1, padx=10, pady=5)
-        box1.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 4))
-        tk.Label(box1, text="💧 HIDRÔMETROS MEDIDOS", font=("Segoe UI", 7, "bold"), fg=COLOR_PRIMARY, bg="#EBF3E6").pack(anchor="w")
-        self.lbl_kpi_salas = tk.Label(box1, text="-- m³", font=("Segoe UI", 10, "bold"), fg=COLOR_TEXT_MAIN, bg="#EBF3E6")
-        self.lbl_kpi_salas.pack(anchor="w")
+        box1 = tk.Frame(parent, bg="#EBF3E6", bd=1, relief="solid", highlightbackground="#D3E4CB", highlightthickness=1, padx=12, pady=6)
+        box1.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 4))
+        tk.Label(box1, text="💧 HIDRÔMETROS MEDIDOS", font=("Segoe UI", 8, "bold"), fg=COLOR_PRIMARY, bg="#EBF3E6").pack(anchor="w")
+        self.lbl_kpi_salas = tk.Label(box1, text="-- m³", font=("Segoe UI", 11, "bold"), fg=COLOR_TEXT_MAIN, bg="#EBF3E6")
+        self.lbl_kpi_salas.pack(anchor="w", pady=(2, 0))
 
-        box2 = tk.Frame(parent, bg="#EBF3E6", bd=1, relief="solid", highlightbackground="#D3E4CB", highlightthickness=1, padx=10, pady=5)
-        box2.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
-        tk.Label(box2, text="🏢 FATURA CONCESSIONÁRIA", font=("Segoe UI", 7, "bold"), fg=COLOR_PRIMARY, bg="#EBF3E6").pack(anchor="w")
-        self.lbl_kpi_sabesp = tk.Label(box2, text="-- m³", font=("Segoe UI", 10, "bold"), fg=COLOR_TEXT_MAIN, bg="#EBF3E6")
-        self.lbl_kpi_sabesp.pack(anchor="w")
+        box2 = tk.Frame(parent, bg="#EBF3E6", bd=1, relief="solid", highlightbackground="#D3E4CB", highlightthickness=1, padx=12, pady=6)
+        box2.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=4)
+        tk.Label(box2, text="🏢 FATURA CONCESSIONÁRIA", font=("Segoe UI", 8, "bold"), fg=COLOR_PRIMARY, bg="#EBF3E6").pack(anchor="w")
+        self.lbl_kpi_sabesp = tk.Label(box2, text="-- m³", font=("Segoe UI", 11, "bold"), fg=COLOR_TEXT_MAIN, bg="#EBF3E6")
+        self.lbl_kpi_sabesp.pack(anchor="w", pady=(2, 0))
 
-        box3 = tk.Frame(parent, bg="#EBF3E6", bd=1, relief="solid", highlightbackground="#D3E4CB", highlightthickness=1, padx=10, pady=5)
-        box3.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(4, 0))
-        tk.Label(box3, text="💰 TOTAL RATEADO", font=("Segoe UI", 7, "bold"), fg=COLOR_PRIMARY, bg="#EBF3E6").pack(anchor="w")
-        self.lbl_kpi_total = tk.Label(box3, text="R$ --", font=("Segoe UI", 10, "bold"), fg=COLOR_TEXT_MAIN, bg="#EBF3E6")
-        self.lbl_kpi_total.pack(anchor="w")
+        box3 = tk.Frame(parent, bg="#EBF3E6", bd=1, relief="solid", highlightbackground="#D3E4CB", highlightthickness=1, padx=12, pady=6)
+        box3.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(4, 0))
+        tk.Label(box3, text="💰 TOTAL RATEADO", font=("Segoe UI", 8, "bold"), fg=COLOR_PRIMARY, bg="#EBF3E6").pack(anchor="w")
+        self.lbl_kpi_total = tk.Label(box3, text="R$ --", font=("Segoe UI", 11, "bold"), fg=COLOR_TEXT_MAIN, bg="#EBF3E6")
+        self.lbl_kpi_total.pack(anchor="w", pady=(2, 0))
 
     def _update_sabesp_hero_card(self, data: dict):
         if not hasattr(self, "lbl_hero_title") or not data:
             return
         fn = data.get("arquivo_origem", "Fatura Sabesp")
-        ini = data.get("periodo_rateio_ini", "")
-        fim = data.get("periodo_rateio_fim", "")
-        rate = data.get("tarifa_faixa", 63.68)
+        disp_fn = fn if len(fn) <= 45 else fn[:42] + "..."
         tot = data.get("valor_total_fatura", 0.0)
         m3 = data.get("consumo_sabesp_m3", 0.0)
 
-        rate_str = f"{rate:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
         tot_str = f"{tot:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
         m3_str = f"{m3:,.0f}".replace(",", ".")
 
         self.lbl_hero_icon.config(text="✔", fg=COLOR_PRIMARY)
         self.lbl_hero_title.config(
-            text=f"Fatura Sabesp Ativa: {fn}"
+            text=f"Fatura Sabesp Ativa: {disp_fn}"
         )
         if hasattr(self, "lbl_hero_sub2"):
             self.lbl_hero_sub2.config(
-                text=f"Consumo Sabesp: {m3_str} m³   •   Total da Fatura: R$ {tot_str}   •   Tarifa Marginal: R$ {rate_str}/m³",
+                text=f"Consumo Faturado: {m3_str} m³   •   Total da Fatura: R$ {tot_str}",
                 fg=COLOR_TEXT_MUTED
             )
         if hasattr(self, "lbl_kpi_sabesp") and self.lbl_kpi_sabesp:
@@ -717,14 +733,14 @@ class AppHidrometrosWindow:
         if hasattr(self, "lbl_kpi_salas") and self.lbl_kpi_salas:
             if recent:
                 latest = recent[0]
-                tot_m3 = latest.get("total_m3", 0.0)
-                tot_rs = latest.get("total_rs", 0.0)
+                tot_m3 = latest.get("total_m3") or 0.0
+                tot_rs = latest.get("total_rs") or 0.0
                 m3_str = f"{tot_m3:,.1f}".replace(".", ",")
                 rs_str = f"{tot_rs:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
                 self.lbl_kpi_salas.config(text=f"{m3_str} m³")
                 self.lbl_kpi_total.config(text=f"R$ {rs_str}")
             if self.sabesp_data:
-                sab_m3 = self.sabesp_data.get("consumo_sabesp_m3", 0.0)
+                sab_m3 = self.sabesp_data.get("consumo_sabesp_m3") or 0.0
                 self.lbl_kpi_sabesp.config(text=f"{sab_m3:,.0f} m³".replace(".", ","))
 
         # Cria assinatura de estado para evitar reconstrução desnecessária de widgets da tela
@@ -915,7 +931,7 @@ class AppHidrometrosWindow:
 
     def _test_connection_action(self):
         """Testa a conexão com o banco de dados em segundo plano sem travar a interface."""
-        self.lbl_status.config(text="1/2: Testando conexão com o SQL Server (StruxureWare)...")
+        self.lbl_status.config(text="1/2: Testando conexão com o SQL Server (StruxureWare)...", fg=COLOR_TEXT_MUTED)
         self.prog_bar["value"] = 30
         self.root.update_idletasks()
 
@@ -924,11 +940,12 @@ class AppHidrometrosWindow:
             def _ui_done():
                 self.prog_bar["value"] = 100 if ok else 0
                 if ok:
-                    self.lbl_status.config(text="Conexão com o banco bem-sucedida.")
+                    self.lbl_status.config(text="✔ Conexão com o banco bem-sucedida.", fg=COLOR_PRIMARY)
                     messagebox.showinfo("Conexão OK", msg, parent=self.root)
                 else:
-                    self.lbl_status.config(text="Erro ao conectar ao banco de dados.")
+                    self.lbl_status.config(text="✖ Erro ao conectar ao banco de dados.", fg="#A83232")
                     messagebox.showerror("Falha na Conexão", msg, parent=self.root)
+                self.root.after(3500, self._auto_reset_progress)
             self.root.after(0, _ui_done)
 
         threading.Thread(target=_test_worker, daemon=True).start()
