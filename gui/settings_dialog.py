@@ -420,7 +420,9 @@ class SettingsDialog(tk.Toplevel):
             self.cmb_tab_operator.set(names[0])
 
         if active:
-            info_txt = f"• E-mail: {active.get('email', '')}\n• Telefone: {active.get('phone', 'Não informado')}\n• Status: {'★ Operador Padrão do Sistema (Usado no Agendamento)' if active.get('is_default') else 'Operador Secundário'}"
+            wpp = active.get("whatsapp_phone") or active.get("phone", "Não informado")
+            has_k = "Chave API Ativa" if (active.get("whatsapp_apikey") or cfg.get("webhook_whatsapp_apikey")) else "Sem chave API"
+            info_txt = f"• E-mail: {active.get('email', '')}\n• WhatsApp: {wpp} ({has_k})\n• Status: {'★ Operador Padrão do Sistema (Usado no Agendamento)' if active.get('is_default') else 'Operador Secundário'}"
             self.lbl_op_info.config(text=info_txt)
 
     def _on_tab_operator_change(self, event=None):
@@ -491,6 +493,12 @@ class SettingsDialog(tk.Toplevel):
             bg="#EBF3E6", fg=COLOR_PRIMARY, activebackground=COLOR_ACCENT,
             font=("Segoe UI", 8, "bold"), relief="flat", padx=8, pady=3,
             cursor="hand2", takefocus=False
+        )
+
+        self.lbl_wh_operator_note = tk.Label(
+            self.frame_wh_settings,
+            text="💡 Roteamento Inteligente: O WhatsApp segue automaticamente o Operador Ativo selecionado no topo da tela inicial. O número e chave abaixo servem como padrão global do sistema.",
+            font=("Segoe UI", 8, "italic"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT, wraplength=480, justify=tk.LEFT
         )
 
         # URL Webhook (para Teams, Discord, Slack, Genérico)
@@ -564,6 +572,7 @@ class SettingsDialog(tk.Toplevel):
         self.lbl_wh_apikey.grid_remove()
         self.ent_wh_apikey.grid_remove()
         self.btn_whatsapp_help.grid_remove()
+        self.lbl_wh_operator_note.grid_remove()
 
         if key == "whatsapp":
             self.lbl_wh_phone.grid(row=1, column=0, sticky=tk.W, pady=3)
@@ -571,6 +580,7 @@ class SettingsDialog(tk.Toplevel):
             self.lbl_wh_apikey.grid(row=2, column=0, sticky=tk.W, pady=3)
             self.ent_wh_apikey.grid(row=2, column=1, sticky=tk.EW, pady=3)
             self.btn_whatsapp_help.grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=(2, 4))
+            self.lbl_wh_operator_note.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=(2, 4))
         elif key == "telegram":
             self.lbl_wh_tele_token.grid(row=1, column=0, sticky=tk.W, pady=3)
             self.ent_wh_tele_token.grid(row=1, column=1, sticky=tk.EW, pady=3)

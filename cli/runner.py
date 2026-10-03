@@ -181,6 +181,8 @@ def run_cli():
                         "total_rs": tot_rs,
                         "anomalias": anoms or [],
                         "operador": op_str,
+                        "operador_telefone": active_op.get("whatsapp_phone") or active_op.get("phone", "") if active_op else "",
+                        "operador_email": active_op.get("email", "") if active_op else "",
                         "excel_file": os.path.basename(out_file),
                         "sabesp": sabesp_meta
                     }

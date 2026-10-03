@@ -239,6 +239,8 @@ def _format_generic_json(summary: dict) -> dict:
         "salas_medidas": summary.get("salas_medidas", 54),
         "anomalias_detectadas": len(summary.get("anomalias", [])),
         "operador": summary.get("operador"),
+        "operador_telefone": summary.get("operador_telefone", ""),
+        "operador_email": summary.get("operador_email", ""),
         "arquivo_excel": summary.get("excel_file"),
         "gerado_em": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
@@ -247,6 +249,7 @@ def _format_generic_json(summary: dict) -> dict:
 def send_report_webhook(summary: dict, config: dict = None) -> tuple[bool, str]:
     """
     Envia notificação via Webhook para a plataforma configurada.
+    Roteia automaticamente para o WhatsApp e credenciais do operador ativo atual.
     """
     if config is None:
         config = load_config()
@@ -254,15 +257,27 @@ def send_report_webhook(summary: dict, config: dict = None) -> tuple[bool, str]:
     if not config.get("webhook_enabled", False):
         return False, "Webhooks desativados nas configurações."
 
+    from core.config_manager import get_active_operator
+    active_op = get_active_operator(config)
+
     platform = config.get("webhook_platform", "whatsapp").lower()
     url = config.get("webhook_url", "").strip()
 
     if platform == "whatsapp":
-        phone_raw = config.get("webhook_whatsapp_phone", "")
+        # Roteamento automático: busca no perfil do operador ativo primeiro
+        op_phone = ""
+        op_apikey = ""
+        if active_op:
+            op_phone = (active_op.get("whatsapp_phone") or active_op.get("phone") or "").strip()
+            op_apikey = (active_op.get("whatsapp_apikey") or "").strip()
+
+        phone_raw = op_phone if op_phone else config.get("webhook_whatsapp_phone", "")
         phone = re.sub(r"[^\d]", "", phone_raw)
-        apikey = config.get("webhook_whatsapp_apikey", "").strip()
+        apikey = op_apikey if op_apikey else config.get("webhook_whatsapp_apikey", "").strip()
+
         if not phone or not apikey:
-            return False, "Número de WhatsApp ou Apikey do CallMeBot não configurados."
+            op_name = active_op.get("name", "Operador") if active_op else "Geral"
+            return False, f"WhatsApp ou Chave API CallMeBot não configurados para '{op_name}' (ou nas configurações gerais)."
 
         if len(phone) in (10, 11) and not phone.startswith("55"):
             phone = "55" + phone
@@ -302,7 +317,7 @@ def send_report_webhook(summary: dict, config: dict = None) -> tuple[bool, str]:
     return _make_http_post(url, payload)
 
 
-def send_test_webhook(platform: str, url: str, token: str = "", chat_id: str = "", whatsapp_phone: str = "", whatsapp_apikey: str = "") -> tuple[bool, str]:
+def send_test_webhook(platform: str, url: str, token: str = "", chat_id: str = "", whatsapp_phone: str = "", whatsapp_apikey: str = "", operator_name: str = "") -> tuple[bool, str]:
     """Envia uma mensagem de teste para validar a conexão com o webhook ou WhatsApp."""
     platform = platform.lower()
     now_str = datetime.now().strftime("%d/%m/%Y às %H:%M:%S")
@@ -313,7 +328,7 @@ def send_test_webhook(platform: str, url: str, token: str = "", chat_id: str = "
         "total_rs": 92348.73,
         "salas_medidas": 54,
         "anomalias": ["Sala 1402 (Teste)"],
-        "operador": "Teste de Notificação CompaSSS",
+        "operador": operator_name or "Teste de Notificação CompaSSS",
         "excel_file": "Rateio_Agua_Teste.xlsx"
     }
 
@@ -326,9 +341,10 @@ def send_test_webhook(platform: str, url: str, token: str = "", chat_id: str = "
         if len(phone) in (10, 11) and not phone.startswith("55"):
             phone = "55" + phone
 
+        op_info = f" para *{operator_name}*" if operator_name else ""
         test_msg = (
             f"🔔 *SmartHydro Praça Pamplona*\n\n"
-            f"Teste de notificação no WhatsApp realizado com sucesso em {now_str}!\n\n"
+            f"Teste de notificação no WhatsApp realizado com sucesso{op_info} em {now_str}!\n\n"
             f"💧 Sistema conectado e pronto para enviar os fechamentos mensais."
         )
         callme_url = f"https://api.callmebot.com/whatsapp.php?phone={phone}&text={urllib.parse.quote_plus(test_msg)}&apikey={apikey}"

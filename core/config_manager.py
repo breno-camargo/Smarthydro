@@ -14,6 +14,8 @@ DEFAULT_OPERATORS = [
         "role": "Técnico de Sistemas Prediais",
         "email": "breno.camargo@compasss.com.br",
         "phone": "+55 11 99012 7316",
+        "whatsapp_phone": "+55 11 99012 7316",
+        "whatsapp_apikey": "1275019",
         "smtp_user": "breno.camargo@compasss.com.br",
         "smtp_password": "",
         "is_default": True

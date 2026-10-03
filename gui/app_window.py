@@ -698,7 +698,12 @@ class AppHidrometrosWindow:
             set_active_operator(self.ops_map[val])
             self.config = load_config()
             op = get_active_operator(self.config)
-            self.lbl_status.config(text=f"Operador ativo alterado para: {op.get('name')}")
+            wpp = op.get("whatsapp_phone") or op.get("phone") or ""
+            wpp_txt = f" • WhatsApp: {wpp}" if wpp else ""
+            self.lbl_status.config(
+                text=f"Operador ativo: {op.get('name')}{wpp_txt}",
+                fg=COLOR_PRIMARY
+            )
 
     def _on_settings_saved(self, new_cfg):
         self.config = new_cfg
@@ -1068,6 +1073,8 @@ class AppHidrometrosWindow:
                         "total_rs": tot_rs,
                         "anomalias": anomalies or [],
                         "operador": op_str,
+                        "operador_telefone": active_op.get("whatsapp_phone") or active_op.get("phone", "") if active_op else "",
+                        "operador_email": active_op.get("email", "") if active_op else "",
                         "excel_file": os.path.basename(final_file),
                         "pdf_file": os.path.basename(pdf_file) if has_pdf else None,
                         "sabesp": self.sabesp_data

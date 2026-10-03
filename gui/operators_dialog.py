@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import re
+import threading
 
 from core.config_manager import (
     load_config, get_operators, get_active_operator,
@@ -30,7 +31,7 @@ class OperatorsDialog(tk.Toplevel):
 
         self._build_ui()
         self._load_operators_list()
-        center_modal(self, parent, 580, 525)
+        center_modal(self, parent, 610, 560)
 
     def _build_ui(self):
         main_box = ttk.Frame(self, padding="12 10 12 10")
@@ -39,15 +40,15 @@ class OperatorsDialog(tk.Toplevel):
         # ─── HEADER ───
         lbl_head = tk.Label(
             main_box,
-            text="👤 Perfis de Operador & Assinaturas de E-mail",
+            text="👤 Perfis de Operador, WhatsApp & Assinaturas",
             font=("Segoe UI", 11, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
         )
         lbl_head.pack(anchor=tk.W, pady=(0, 2))
 
         lbl_desc = tk.Label(
             main_box,
-            text="Cadastre os operadores que utilizam o sistema. Cada perfil possui seu próprio e-mail e assinatura corporativa.",
-            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT, wraplength=540, justify=tk.LEFT
+            text="Cadastre os operadores do sistema. Cada perfil possui seu próprio e-mail, número/chave de WhatsApp para alertas automáticos e assinatura corporativa.",
+            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT, wraplength=570, justify=tk.LEFT
         )
         lbl_desc.pack(anchor=tk.W, pady=(0, 8))
 
@@ -61,13 +62,13 @@ class OperatorsDialog(tk.Toplevel):
         self.tree.heading("nome", text="Nome Completo")
         self.tree.heading("cargo", text="Cargo / Função")
         self.tree.heading("email", text="E-mail de Envio")
-        self.tree.heading("telefone", text="Telefone / Ramal")
+        self.tree.heading("telefone", text="WhatsApp / Telefone")
 
         self.tree.column("padrao", width=65, anchor=tk.CENTER)
         self.tree.column("nome", width=120, anchor=tk.W)
         self.tree.column("cargo", width=115, anchor=tk.W)
         self.tree.column("email", width=145, anchor=tk.W)
-        self.tree.column("telefone", width=95, anchor=tk.W)
+        self.tree.column("telefone", width=115, anchor=tk.W)
 
         sb = ttk.Scrollbar(frame_table, orient=tk.VERTICAL, command=self.tree.yview)
         self.tree.configure(yscrollcommand=sb.set)
@@ -109,7 +110,7 @@ class OperatorsDialog(tk.Toplevel):
         self.ent_email = ttk.Entry(self.frame_form, font=("Segoe UI", 9), width=21)
         self.ent_email.grid(row=1, column=1, sticky=tk.W, pady=3, padx=(4, 12))
 
-        lbl_t = ttk.Label(self.frame_form, text="Telefone / Contato:", font=("Segoe UI", 9, "bold"))
+        lbl_t = ttk.Label(self.frame_form, text="WhatsApp (com DDD):", font=("Segoe UI", 9, "bold"))
         lbl_t.grid(row=1, column=2, sticky=tk.W, pady=3)
         self.ent_tel = ttk.Entry(self.frame_form, font=("Segoe UI", 9), width=21)
         self.ent_tel.grid(row=1, column=3, sticky=tk.W, pady=3, padx=(4, 0))
@@ -124,16 +125,26 @@ class OperatorsDialog(tk.Toplevel):
         self.ent_smtp_pwd = ttk.Entry(self.frame_form, font=("Segoe UI", 9), width=21, show="●")
         self.ent_smtp_pwd.grid(row=2, column=3, sticky=tk.W, pady=3, padx=(4, 0))
 
+        lbl_k = ttk.Label(self.frame_form, text="Chave CallMeBot Wpp:", font=("Segoe UI", 8))
+        lbl_k.grid(row=3, column=0, sticky=tk.W, pady=3)
+        self.ent_wpp_apikey = ttk.Entry(self.frame_form, font=("Segoe UI", 9), width=21)
+        self.ent_wpp_apikey.grid(row=3, column=1, sticky=tk.W, pady=3, padx=(4, 12))
+
+        self.btn_test_wpp = create_btn_secondary(
+            self.frame_form, "📲 Testar WhatsApp", self._test_operator_whatsapp, pady=2
+        )
+        self.btn_test_wpp.grid(row=3, column=2, columnspan=2, sticky=tk.W, pady=3)
+
         self.var_default = tk.BooleanVar(value=False)
         self.chk_def = ttk.Checkbutton(
             self.frame_form,
             text="Operador Padrão (usado em agendamentos automáticos e inicialização)",
             variable=self.var_default
         )
-        self.chk_def.grid(row=3, column=0, columnspan=4, sticky=tk.W, pady=(4, 4))
+        self.chk_def.grid(row=4, column=0, columnspan=4, sticky=tk.W, pady=(4, 4))
 
         frame_fbtns = tk.Frame(self.frame_form, bg=COLOR_BG_LIGHT)
-        frame_fbtns.grid(row=4, column=0, columnspan=4, sticky=tk.E, pady=(2, 0))
+        frame_fbtns.grid(row=5, column=0, columnspan=4, sticky=tk.E, pady=(2, 0))
 
         self.btn_save_op = create_btn_primary(
             frame_fbtns, "💾 Salvar Operador", self._save_operator_form, pady=4
@@ -161,9 +172,10 @@ class OperatorsDialog(tk.Toplevel):
             op_id = op.get("id")
             is_def = op.get("is_default", False)
             status_txt = "★ Padrão" if is_def else ("● Ativo" if op_id == active_id else "")
+            phone_disp = op.get("whatsapp_phone") or op.get("phone", "")
             iid = self.tree.insert(
                 "", tk.END,
-                values=(status_txt, op.get("name", ""), op.get("role", ""), op.get("email", ""), op.get("phone", "")),
+                values=(status_txt, op.get("name", ""), op.get("role", ""), op.get("email", ""), phone_disp),
                 tags=(op_id,)
             )
             if select_id and op_id == select_id:
@@ -214,7 +226,10 @@ class OperatorsDialog(tk.Toplevel):
         self.ent_email.insert(0, target.get("email", ""))
 
         self.ent_tel.delete(0, tk.END)
-        self.ent_tel.insert(0, target.get("phone", ""))
+        self.ent_tel.insert(0, target.get("whatsapp_phone") or target.get("phone", ""))
+
+        self.ent_wpp_apikey.delete(0, tk.END)
+        self.ent_wpp_apikey.insert(0, target.get("whatsapp_apikey", ""))
 
         self.ent_smtp_user.delete(0, tk.END)
         self.ent_smtp_user.insert(0, target.get("smtp_user", ""))
@@ -235,6 +250,7 @@ class OperatorsDialog(tk.Toplevel):
         self.ent_email.delete(0, tk.END)
         self.ent_tel.delete(0, tk.END)
         self.ent_tel.insert(0, "+55 11 ")
+        self.ent_wpp_apikey.delete(0, tk.END)
         self.ent_smtp_user.delete(0, tk.END)
         self.ent_smtp_pwd.delete(0, tk.END)
         self.var_default.set(False)
@@ -242,11 +258,48 @@ class OperatorsDialog(tk.Toplevel):
         self.frame_form.config(text="  Novo Operador  ")
         self.ent_nome.focus_set()
 
+    def _test_operator_whatsapp(self):
+        nome = self.ent_nome.get().strip() or "Operador"
+        phone = self.ent_tel.get().strip()
+        apikey = self.ent_wpp_apikey.get().strip()
+        cfg = load_config()
+        if not apikey:
+            apikey = cfg.get("webhook_whatsapp_apikey", "").strip()
+
+        if not phone:
+            messagebox.showwarning("WhatsApp", "Por favor, digite o número do WhatsApp com DDD.", parent=self)
+            self.ent_tel.focus_set()
+            return
+        if not apikey:
+            messagebox.showwarning(
+                "WhatsApp",
+                "Nenhuma Chave API CallMeBot informada para este operador nem nas configurações globais.\n\n"
+                "Para ativar gratuitamente no WhatsApp, envie 'I allow callmebot to send me messages' para o número oficial +34 694 242 562.",
+                parent=self
+            )
+            self.ent_wpp_apikey.focus_set()
+            return
+
+        self.btn_test_wpp.config(state=tk.DISABLED)
+        def _worker():
+            from core.webhook_notifier import send_test_webhook
+            ok, msg = send_test_webhook("whatsapp", "", "", "", phone, apikey, operator_name=nome)
+            def _ui():
+                self.btn_test_wpp.config(state=tk.NORMAL)
+                if ok:
+                    messagebox.showinfo("WhatsApp Enviado", f"Mensagem de teste enviada com sucesso para o WhatsApp de '{nome}' ({phone})!\n\n{msg}", parent=self)
+                else:
+                    messagebox.showerror("Falha no WhatsApp", f"Não foi possível enviar a mensagem para o WhatsApp de '{nome}':\n\n{msg}", parent=self)
+            self.after(0, _ui)
+
+        threading.Thread(target=_worker, daemon=True).start()
+
     def _save_operator_form(self):
         nome = self.ent_nome.get().strip()
         email = self.ent_email.get().strip()
         role = self.ent_cargo.get().strip() or "Técnico de Sistemas"
         phone = self.ent_tel.get().strip()
+        wpp_key = self.ent_wpp_apikey.get().strip()
         smtp_u = self.ent_smtp_user.get().strip() or email
         smtp_p = self.ent_smtp_pwd.get().strip()
         is_def = self.var_default.get()
@@ -265,6 +318,8 @@ class OperatorsDialog(tk.Toplevel):
             "role": role,
             "email": email,
             "phone": phone,
+            "whatsapp_phone": phone,
+            "whatsapp_apikey": wpp_key,
             "smtp_user": smtp_u,
             "smtp_password": smtp_p,
             "is_default": is_def
