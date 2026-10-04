@@ -181,32 +181,34 @@ class AppHidrometrosWindow:
         )
         self.frame_sabesp_hero.pack(fill=tk.X, pady=(0, 8))
 
-        # ── Linha 1: Caixa de Seleção do Modo de Medição ──
+        # ── Linha 1: Seletor Deslizante Moderno (Segmented Pill Switch) ──
         frame_mode_bar = tk.Frame(self.frame_sabesp_hero, bg=COLOR_BG_LIGHT)
-        frame_mode_bar.pack(fill=tk.X, pady=(0, 5))
+        frame_mode_bar.pack(fill=tk.X, pady=(0, 6))
 
         tk.Label(
             frame_mode_bar,
             text="Origem dos Dados:",
-            font=("Segoe UI", 8, "bold"),
+            font=("Segoe UI", 9, "bold"),
             fg=COLOR_PRIMARY,
             bg=COLOR_BG_LIGHT
-        ).pack(side=tk.LEFT, padx=(0, 8))
+        ).pack(side=tk.LEFT, padx=(0, 10))
 
         saved_mode = self.config.get("data_input_mode", "email")
-        self.cmb_input_mode = ttk.Combobox(
+        initial_idx = 1 if saved_mode == "manual" else 0
+
+        from gui.ui_helpers import SlidingSegmentedSwitch
+        self.switch_input_mode = SlidingSegmentedSwitch(
             frame_mode_bar,
-            values=[
-                "📥 Puxar pelo E-mail (Fatura Sabesp Automática)",
-                "✍️ Inserir Dados Manualmente (Datas e Tarifa)"
+            options=[
+                "📥 Puxar pelo E-mail (Automático)",
+                "✍️ Inserir Dados Manualmente"
             ],
-            state="readonly",
-            width=46,
-            font=("Segoe UI", 8, "bold")
+            initial_idx=initial_idx,
+            command=self._on_input_mode_changed,
+            width=480,
+            height=34
         )
-        self.cmb_input_mode.current(1 if saved_mode == "manual" else 0)
-        self.cmb_input_mode.pack(side=tk.LEFT)
-        self.cmb_input_mode.bind("<<ComboboxSelected>>", self._on_input_mode_changed)
+        self.switch_input_mode.pack(side=tk.LEFT)
 
         self.div_hero = tk.Frame(self.frame_sabesp_hero, height=1, bg="#E2EDD8")
         self.div_hero.pack(fill=tk.X, pady=(4, 6))
@@ -628,9 +630,10 @@ class AppHidrometrosWindow:
         if hasattr(self, "btn_sabesp_gerar") and self.sabesp_data:
             self.btn_sabesp_gerar.config(text="🚀 Gerar Relatório (Fatura Sabesp)")
 
-    def _on_input_mode_changed(self, event=None):
-        """Alterna a visualização entre Modo E-mail (automático) e Modo Manual."""
-        mode_idx = self.cmb_input_mode.current()
+    def _on_input_mode_changed(self, mode_idx=None):
+        """Alterna a visualização entre Modo E-mail (automático) e Modo Manual com animação deslizante."""
+        if mode_idx is None:
+            mode_idx = self.switch_input_mode.get_index()
         mode_str = "manual" if mode_idx == 1 else "email"
         self.config["data_input_mode"] = mode_str
         save_config(self.config)
@@ -638,9 +641,9 @@ class AppHidrometrosWindow:
 
     def _update_input_mode_visibility(self):
         """Oculta ou exibe dinamicamente os blocos da tela de acordo com o modo selecionado."""
-        if not hasattr(self, "cmb_input_mode"):
+        if not hasattr(self, "switch_input_mode"):
             return
-        mode_idx = self.cmb_input_mode.current()
+        mode_idx = self.switch_input_mode.get_index()
         is_manual = (mode_idx == 1)
 
         if is_manual:

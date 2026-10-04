@@ -319,3 +319,92 @@ def create_tooltip(widget, text):
     return ToolTip(widget, text)
 
 
+class SlidingSegmentedSwitch(tk.Canvas):
+    """
+    Controle deslizante moderno com efeito de pílula (segmented pill slider).
+    Renderiza trilho e indicador deslizante anti-aliasing via Pillow,
+    proporcionando transições suaves a 60 FPS com estilo corporativo CompaSSS.
+    """
+    def __init__(self, parent, options, initial_idx=0, command=None, width=470, height=36, bg_color=COLOR_BG_LIGHT):
+        super().__init__(parent, width=width, height=height, bg=bg_color, highlightthickness=0, cursor="hand2")
+        self.options = options
+        self.current_idx = initial_idx
+        self.command = command
+        self.w = width
+        self.h = height
+        self.n = len(options)
+        self.padding = 3
+        self.seg_w = (width - 2 * self.padding) / self.n
+        self.pill_w = int(self.seg_w)
+        self.pill_h = height - 2 * self.padding
+        self.thumb_x = self.padding + initial_idx * self.seg_w
+        self.target_x = self.thumb_x
+        self._animating = False
+
+        from PIL import Image, ImageDraw, ImageTk
+
+        # 1. Trilha do fundo suave (anti-aliasing)
+        im_track = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        d_tr = ImageDraw.Draw(im_track)
+        d_tr.rounded_rectangle([1, 1, width - 2, height - 2], radius=height // 2, fill="#E8F1E4", outline="#C5DCBA", width=1)
+        self.photo_track = ImageTk.PhotoImage(im_track)
+
+        # 2. Pílula deslizante ativa verde CompaSSS (anti-aliasing)
+        im_pill = Image.new("RGBA", (self.pill_w, self.pill_h), (0, 0, 0, 0))
+        d_pill = ImageDraw.Draw(im_pill)
+        d_pill.rounded_rectangle([0, 0, self.pill_w - 1, self.pill_h - 1], radius=self.pill_h // 2, fill=COLOR_PRIMARY)
+        self.photo_pill = ImageTk.PhotoImage(im_pill)
+
+        # Desenhar no canvas
+        self.create_image(0, 0, image=self.photo_track, anchor="nw")
+        self.pill_item = self.create_image(self.thumb_x, self.padding, image=self.photo_pill, anchor="nw")
+
+        # Rótulos de texto com ícones
+        self.text_items = []
+        for i, text in enumerate(self.options):
+            cx = self.padding + i * self.seg_w + self.seg_w / 2
+            cy = height / 2
+            color = "#FFFFFF" if (i == initial_idx) else COLOR_PRIMARY
+            t_item = self.create_text(cx, cy, text=text, fill=color, font=("Segoe UI", 9, "bold"))
+            self.text_items.append(t_item)
+
+        self.bind("<Button-1>", self._on_click)
+
+    def _on_click(self, event):
+        idx = int((event.x - self.padding) // self.seg_w)
+        idx = max(0, min(self.n - 1, idx))
+        if idx != self.current_idx:
+            self.set_index(idx)
+
+    def get_index(self):
+        return self.current_idx
+
+    def set_index(self, idx, trigger_cmd=True):
+        if idx == self.current_idx and abs(self.target_x - self.thumb_x) < 1:
+            return
+        self.current_idx = idx
+        self.target_x = self.padding + idx * self.seg_w
+        self._update_text_colors()
+        if not self._animating:
+            self._animating = True
+            self._animate_step()
+        if trigger_cmd and self.command:
+            self.command(self.current_idx)
+
+    def _update_text_colors(self):
+        for i, t_item in enumerate(self.text_items):
+            color = "#FFFFFF" if (i == self.current_idx) else COLOR_PRIMARY
+            self.itemconfig(t_item, fill=color)
+
+    def _animate_step(self):
+        dx = self.target_x - self.thumb_x
+        if abs(dx) < 1.5:
+            self.thumb_x = self.target_x
+            self.coords(self.pill_item, self.thumb_x, self.padding)
+            self._animating = False
+        else:
+            self.thumb_x += dx * 0.35
+            self.coords(self.pill_item, self.thumb_x, self.padding)
+            self.after(16, self._animate_step)
+
+
