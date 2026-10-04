@@ -63,6 +63,7 @@ class AppHidrometrosWindow:
         self._build_ui()
         self._set_default_dates()
         self._auto_check_latest_sabesp_cache()
+        self._update_input_mode_visibility()
         self._refresh_history()
         self._refresh_operators_ui()
 
@@ -169,7 +170,7 @@ class AppHidrometrosWindow:
         div.pack(fill=tk.X, pady=(0, 10))
 
         # ─── 1. CARD UNIFICADO: CICLO DE MEDIÇÃO & FATURA SABESP ───
-        frame_sabesp_hero = tk.LabelFrame(
+        self.frame_sabesp_hero = tk.LabelFrame(
             main_container,
             text="  📩 Ciclo de Medição & Fatura Sabesp  ",
             font=("Segoe UI", 9, "bold"),
@@ -178,13 +179,43 @@ class AppHidrometrosWindow:
             padx=14,
             pady=8
         )
-        frame_sabesp_hero.pack(fill=tk.X, pady=(0, 8))
+        self.frame_sabesp_hero.pack(fill=tk.X, pady=(0, 8))
 
-        frame_hero_top = tk.Frame(frame_sabesp_hero, bg=COLOR_BG_LIGHT)
-        frame_hero_top.pack(fill=tk.X)
+        # ── Linha 1: Caixa de Seleção do Modo de Medição ──
+        frame_mode_bar = tk.Frame(self.frame_sabesp_hero, bg=COLOR_BG_LIGHT)
+        frame_mode_bar.pack(fill=tk.X, pady=(0, 5))
 
-        # Botões na direita
-        frame_hero_actions = tk.Frame(frame_hero_top, bg=COLOR_BG_LIGHT)
+        tk.Label(
+            frame_mode_bar,
+            text="Origem dos Dados:",
+            font=("Segoe UI", 8, "bold"),
+            fg=COLOR_PRIMARY,
+            bg=COLOR_BG_LIGHT
+        ).pack(side=tk.LEFT, padx=(0, 8))
+
+        saved_mode = self.config.get("data_input_mode", "email")
+        self.cmb_input_mode = ttk.Combobox(
+            frame_mode_bar,
+            values=[
+                "📥 Puxar pelo E-mail (Fatura Sabesp Automática)",
+                "✍️ Inserir Dados Manualmente (Datas e Tarifa)"
+            ],
+            state="readonly",
+            width=46,
+            font=("Segoe UI", 8, "bold")
+        )
+        self.cmb_input_mode.current(1 if saved_mode == "manual" else 0)
+        self.cmb_input_mode.pack(side=tk.LEFT)
+        self.cmb_input_mode.bind("<<ComboboxSelected>>", self._on_input_mode_changed)
+
+        self.div_hero = tk.Frame(self.frame_sabesp_hero, height=1, bg="#E2EDD8")
+        self.div_hero.pack(fill=tk.X, pady=(4, 6))
+
+        # ── BLOCO A: MODO E-MAIL (Visível quando selecionado E-mail) ──
+        self.frame_hero_top = tk.Frame(self.frame_sabesp_hero, bg=COLOR_BG_LIGHT)
+
+        # Botões de ação no canto direito do bloco e-mail
+        frame_hero_actions = tk.Frame(self.frame_hero_top, bg=COLOR_BG_LIGHT)
         frame_hero_actions.pack(side=tk.RIGHT, padx=(10, 0))
 
         btn_hero_file = ttk.Button(
@@ -203,10 +234,10 @@ class AppHidrometrosWindow:
         )
         self.btn_hero_sync.pack(side=tk.TOP, fill=tk.X)
 
-        self.lbl_hero_icon = tk.Label(frame_hero_top, text="📄", font=("Segoe UI", 18), bg=COLOR_BG_LIGHT, fg=COLOR_PRIMARY)
+        self.lbl_hero_icon = tk.Label(self.frame_hero_top, text="📄", font=("Segoe UI", 18), bg=COLOR_BG_LIGHT, fg=COLOR_PRIMARY)
         self.lbl_hero_icon.pack(side=tk.LEFT, padx=(0, 10))
 
-        frame_hero_info = tk.Frame(frame_hero_top, bg=COLOR_BG_LIGHT)
+        frame_hero_info = tk.Frame(self.frame_hero_top, bg=COLOR_BG_LIGHT)
         frame_hero_info.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         self.lbl_hero_title = tk.Label(
@@ -223,57 +254,73 @@ class AppHidrometrosWindow:
         )
         self.lbl_hero_sub2.pack(fill=tk.X, pady=(2, 0))
 
-        # Divisor suave separando a fatura dos parâmetros do rateio
-        div_params = tk.Frame(frame_sabesp_hero, height=1, bg="#E2EDD8")
-        div_params.pack(fill=tk.X, pady=(7, 7))
+        # ── BLOCO B: MODO MANUAL (Visível apenas quando selecionado Manual) ──
+        self.frame_fields = tk.Frame(self.frame_sabesp_hero, bg=COLOR_BG_LIGHT)
 
-        # Linha 1 de parâmetros do rateio (Início, Fim, Tarifa m³)
-        frame_fields = tk.Frame(frame_sabesp_hero, bg=COLOR_BG_LIGHT)
-        frame_fields.pack(fill=tk.X, pady=(0, 5))
-
-        lbl_ini = ttk.Label(frame_fields, text="Início:", width=9, font=("Segoe UI", 9, "bold"))
+        lbl_ini = ttk.Label(self.frame_fields, text="Início:", width=8, font=("Segoe UI", 9, "bold"))
         lbl_ini.pack(side=tk.LEFT)
 
         self.cal_inicio = DateEntry(
-            frame_fields, width=12, font=("Segoe UI", 9),
+            self.frame_fields, width=12, font=("Segoe UI", 9),
             background=COLOR_PRIMARY, foreground="white",
             headersbackground=COLOR_PRIMARY, headersforeground="white",
             selectbackground=COLOR_ACCENT, selectforeground="black",
             date_pattern="dd/mm/yyyy", locale="pt_BR", borderwidth=1
         )
-        self.cal_inicio.pack(side=tk.LEFT, padx=(0, 18))
+        self.cal_inicio.pack(side=tk.LEFT, padx=(0, 14))
 
-        lbl_fim = ttk.Label(frame_fields, text="Fim:", width=5, font=("Segoe UI", 9, "bold"))
+        lbl_fim = ttk.Label(self.frame_fields, text="Fim:", width=5, font=("Segoe UI", 9, "bold"))
         lbl_fim.pack(side=tk.LEFT)
 
         self.cal_fim = DateEntry(
-            frame_fields, width=12, font=("Segoe UI", 9),
+            self.frame_fields, width=12, font=("Segoe UI", 9),
             background=COLOR_PRIMARY, foreground="white",
             headersbackground=COLOR_PRIMARY, headersforeground="white",
             selectbackground=COLOR_ACCENT, selectforeground="black",
             date_pattern="dd/mm/yyyy", locale="pt_BR", borderwidth=1
         )
-        self.cal_fim.pack(side=tk.LEFT, padx=(0, 18))
+        self.cal_fim.pack(side=tk.LEFT, padx=(0, 14))
 
-        lbl_val = ttk.Label(frame_fields, text="Tarifa m³ (R$):", font=("Segoe UI", 9, "bold"))
+        lbl_val = ttk.Label(self.frame_fields, text="Tarifa m³ (R$):", font=("Segoe UI", 9, "bold"))
         lbl_val.pack(side=tk.LEFT, padx=(0, 6))
 
-        self.ent_valor = ttk.Entry(frame_fields, font=("Segoe UI", 9), width=10)
+        self.ent_valor = ttk.Entry(self.frame_fields, font=("Segoe UI", 9), width=9)
         self.ent_valor.insert(0, str(self.config.get("default_m3_price", "63.68")))
         self.ent_valor.pack(side=tk.LEFT)
 
-        # Linha 2 de parâmetros do rateio: Pasta de destino
-        frame_out = tk.Frame(frame_sabesp_hero, bg=COLOR_BG_LIGHT)
-        frame_out.pack(fill=tk.X, pady=(2, 0))
+        # Botão opcional no modo manual: importar dados de um PDF da Sabesp
+        self.frame_manual_hint = tk.Frame(self.frame_sabesp_hero, bg=COLOR_BG_LIGHT)
+        btn_import_manual_pdf = tk.Button(
+            self.frame_manual_hint,
+            text="📁 Preencher datas e tarifa a partir de PDF da Sabesp...",
+            command=self._open_sabesp_dialog,
+            font=("Segoe UI", 8),
+            fg=COLOR_PRIMARY,
+            bg="#EBF3E6",
+            activebackground=COLOR_ACCENT,
+            activeforeground=COLOR_PRIMARY,
+            relief="flat",
+            bd=1,
+            highlightbackground="#C5DCBA",
+            highlightthickness=1,
+            cursor="hand2",
+            padx=8,
+            pady=2
+        )
+        btn_import_manual_pdf.pack(side=tk.LEFT)
 
-        lbl_dir = ttk.Label(frame_out, text="Salvar em:", width=9, font=("Segoe UI", 9, "bold"))
+        # ── BLOCO COMUM: PASTA DE DESTINO ──
+        self.frame_out = tk.Frame(self.frame_sabesp_hero, bg=COLOR_BG_LIGHT)
+        self.frame_out.pack(fill=tk.X, pady=(4, 0))
+
+        lbl_dir = ttk.Label(self.frame_out, text="Salvar em:", width=9, font=("Segoe UI", 9, "bold"))
         lbl_dir.pack(side=tk.LEFT)
 
-        self.lbl_pasta = ttk.Entry(frame_out, font=("Segoe UI", 9))
+        self.lbl_pasta = ttk.Entry(self.frame_out, font=("Segoe UI", 9))
         self.lbl_pasta.insert(0, self.config.get("output_directory", ""))
         self.lbl_pasta.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
 
-        btn_browse = ttk.Button(frame_out, text="Alterar...", width=9, command=self._browse_output_dir, style="Secondary.TButton")
+        btn_browse = ttk.Button(self.frame_out, text="Alterar...", width=9, command=self._browse_output_dir, style="Secondary.TButton")
         btn_browse.pack(side=tk.RIGHT)
 
         # Preferências mantidas no config (configuráveis via ⚙)
@@ -286,11 +333,11 @@ class AppHidrometrosWindow:
         self._build_kpi_bar(self.frame_kpi)
 
         # ─── 3. BOTÕES DE AÇÃO INFERIORES ───
-        frame_actions = tk.Frame(main_container, bg=COLOR_BG_LIGHT)
-        frame_actions.pack(fill=tk.X, side=tk.BOTTOM, pady=(8, 0))
+        self.frame_actions = tk.Frame(main_container, bg=COLOR_BG_LIGHT)
+        self.frame_actions.pack(fill=tk.X, side=tk.BOTTOM, pady=(8, 0))
 
         btn_open_folder = tk.Button(
-            frame_actions, text="📁 Abrir Pasta", command=self._open_output_folder,
+            self.frame_actions, text="📁 Abrir Pasta", command=self._open_output_folder,
             font=("Segoe UI", 9, "bold"), fg=COLOR_PRIMARY, bg="#EBF3E6",
             activebackground=COLOR_ACCENT, activeforeground=COLOR_PRIMARY,
             relief="flat", bd=1, highlightbackground="#C5DCBA", highlightthickness=1,
@@ -298,11 +345,11 @@ class AppHidrometrosWindow:
         )
         btn_open_folder.pack(side=tk.LEFT)
 
-        # BOTÃO PRINCIPAL VERDE COMPASSS: O E-MAIL É A ESTRELA!
+        # BOTÃO PRINCIPAL MODO E-MAIL
         self.btn_sabesp_gerar = tk.Button(
-            frame_actions,
+            self.frame_actions,
             text="🚀 Puxar do E-mail e Gerar Excel",
-            command=self._one_click_email_and_generate,
+            command=self._on_email_mode_primary_action,
             bg=COLOR_PRIMARY,
             fg="white",
             activebackground=COLOR_PRIMARY_HOVER,
@@ -318,25 +365,25 @@ class AppHidrometrosWindow:
         )
         self.btn_sabesp_gerar.pack(side=tk.RIGHT)
 
-        # Botão Secundário: Gerar com os dados já confirmados na tela
+        # BOTÃO PRINCIPAL MODO MANUAL
         self.btn_gerar = tk.Button(
-            frame_actions,
-            text="✔ Gerar c/ Dados da Tela",
+            self.frame_actions,
+            text="📊 Gerar Relatório de Água",
             command=self._start_processing,
             font=("Segoe UI", 9, "bold"),
-            fg=COLOR_PRIMARY,
-            bg="#EBF3E6",
-            activebackground=COLOR_ACCENT,
-            activeforeground=COLOR_PRIMARY,
+            bg=COLOR_PRIMARY,
+            fg="white",
+            activebackground=COLOR_PRIMARY_HOVER,
+            activeforeground="white",
             relief="flat",
             bd=1,
-            highlightbackground="#C5DCBA",
+            highlightbackground=COLOR_PRIMARY,
             highlightthickness=1,
-            padx=14,
+            padx=18,
             pady=7,
             cursor="hand2"
         )
-        self.btn_gerar.pack(side=tk.RIGHT, padx=(0, 10))
+        self.btn_gerar.pack(side=tk.RIGHT)
 
         # ─── BARRA DE PROGRESSO E STATUS (DOCK NO BOTTOM) ───
         self.prog_bar = ttk.Progressbar(main_container, mode="determinate", maximum=100)
@@ -560,6 +607,7 @@ class AppHidrometrosWindow:
         disp_fn = fn if len(fn) <= 45 else fn[:42] + "..."
         tot = data.get("valor_total_fatura", 0.0)
         m3 = data.get("consumo_sabesp_m3", 0.0)
+        rate = data.get("tarifa_faixa") or 63.68
 
         tot_str = f"{tot:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
         m3_str = f"{m3:,.0f}".replace(",", ".")
@@ -569,11 +617,72 @@ class AppHidrometrosWindow:
             text=f"Fatura Sabesp Ativa: {disp_fn}"
         )
         if hasattr(self, "lbl_hero_sub2"):
+            ini_str = data.get("periodo_rateio_ini", "")
+            fim_str = data.get("periodo_rateio_fim", "")
+            cycle_txt = f"   •   Ciclo: {ini_str} a {fim_str}" if (ini_str and fim_str) else ""
             self.lbl_hero_sub2.config(
-                text=f"Consumo Faturado: {m3_str} m³   •   Total da Fatura: R$ {tot_str}",
+                text=f"Consumo: {m3_str} m³   •   Fatura: R$ {tot_str}   •   Tarifa: R$ {rate:.2f}/m³{cycle_txt}",
                 fg=COLOR_TEXT_MUTED
             )
         self._update_kpi_bar_values()
+        if hasattr(self, "btn_sabesp_gerar") and self.sabesp_data:
+            self.btn_sabesp_gerar.config(text="🚀 Gerar Relatório (Fatura Sabesp)")
+
+    def _on_input_mode_changed(self, event=None):
+        """Alterna a visualização entre Modo E-mail (automático) e Modo Manual."""
+        mode_idx = self.cmb_input_mode.current()
+        mode_str = "manual" if mode_idx == 1 else "email"
+        self.config["data_input_mode"] = mode_str
+        save_config(self.config)
+        self._update_input_mode_visibility()
+
+    def _update_input_mode_visibility(self):
+        """Oculta ou exibe dinamicamente os blocos da tela de acordo com o modo selecionado."""
+        if not hasattr(self, "cmb_input_mode"):
+            return
+        mode_idx = self.cmb_input_mode.current()
+        is_manual = (mode_idx == 1)
+
+        if is_manual:
+            # Modo Manual: esconde o bloco de e-mail e exibe as entradas manuais de dados
+            if hasattr(self, "frame_hero_top"):
+                self.frame_hero_top.pack_forget()
+            if hasattr(self, "frame_fields") and hasattr(self, "frame_out"):
+                self.frame_fields.pack(fill=tk.X, pady=(0, 4), before=self.frame_out)
+            if hasattr(self, "frame_manual_hint") and hasattr(self, "frame_out"):
+                self.frame_manual_hint.pack(fill=tk.X, pady=(0, 4), before=self.frame_out)
+            if hasattr(self, "btn_sabesp_gerar"):
+                self.btn_sabesp_gerar.pack_forget()
+            if hasattr(self, "btn_gerar"):
+                self.btn_gerar.pack(side=tk.RIGHT)
+            self.lbl_status.config(text="Modo manual: informe o período e a tarifa para gerar o rateio.", fg=COLOR_TEXT_MAIN)
+        else:
+            # Modo E-mail: esconde todas as opções manuais e exibe o bloco de sincronização
+            if hasattr(self, "frame_fields"):
+                self.frame_fields.pack_forget()
+            if hasattr(self, "frame_manual_hint"):
+                self.frame_manual_hint.pack_forget()
+            if hasattr(self, "frame_hero_top") and hasattr(self, "frame_out"):
+                self.frame_hero_top.pack(fill=tk.X, pady=(0, 4), before=self.frame_out)
+            if hasattr(self, "btn_gerar"):
+                self.btn_gerar.pack_forget()
+            if hasattr(self, "btn_sabesp_gerar"):
+                if self.sabesp_data:
+                    self.btn_sabesp_gerar.config(text="🚀 Gerar Relatório (Fatura Sabesp)")
+                else:
+                    self.btn_sabesp_gerar.config(text="🚀 Puxar do E-mail e Gerar Excel")
+                self.btn_sabesp_gerar.pack(side=tk.RIGHT)
+            if self.sabesp_data:
+                self.lbl_status.config(text="✔ Fatura Sabesp sincronizada! Pronto para gerar o rateio.", fg=COLOR_PRIMARY)
+            else:
+                self.lbl_status.config(text="Modo e-mail: fatura da Sabesp será obtida automaticamente.", fg=COLOR_TEXT_MAIN)
+
+    def _on_email_mode_primary_action(self):
+        """No modo e-mail, se a fatura já estiver carregada na tela, gera direto. Se não, busca no e-mail e gera."""
+        if self.sabesp_data:
+            self._start_processing()
+        else:
+            self._one_click_email_and_generate()
 
     def _one_click_email_and_generate(self):
         """FLUXO PRINCIPAL: Conecta ao e-mail, puxa a fatura, preenche e gera o relatório Excel na hora!"""
