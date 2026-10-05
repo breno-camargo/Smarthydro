@@ -22,6 +22,7 @@ from gui.operators_dialog import OperatorsDialog
 from gui.ui_helpers import (
     apply_window_icon, center_modal, setup_common_styles,
     create_btn_primary, create_btn_secondary, create_btn_danger,
+    bind_button_hover, create_card_frame, create_modern_badge, create_tooltip,
     COLOR_PRIMARY, COLOR_PRIMARY_HOVER, COLOR_ACCENT, COLOR_BG_LIGHT,
     COLOR_TEXT_MAIN, COLOR_TEXT_MUTED, COLOR_CARD_BG, COLOR_CARD_BORDER
 )
@@ -53,8 +54,8 @@ class SettingsDialog(tk.Toplevel):
             except Exception:
                 pass
 
-        # Centralizar perfeitamente sobre a janela principal (580x560 sobre 640x600 = 30px horizontal, 20px vertical)
-        center_modal(self, parent, 580, 560)
+        # Centralizar perfeitamente sobre a janela principal com dimensões ideais
+        center_modal(self, parent, 610, 590)
 
     def _configure_notebook_style(self):
         self.style = ttk.Style(self)
@@ -63,12 +64,27 @@ class SettingsDialog(tk.Toplevel):
         self.style.configure(
             "Settings.TNotebook.Tab",
             font=("Segoe UI", 9, "bold"),
-            padding=[8, 5]
+            padding=[10, 5]
         )
 
     def _build_ui(self):
-        container = ttk.Frame(self, padding="14 8 14 10")
+        container = ttk.Frame(self, padding="14 10 14 10")
         container.pack(fill=tk.BOTH, expand=True)
+
+        # ─── HEADER BANNER CORPORATIVO ───
+        frame_header = tk.Frame(container, bg=COLOR_BG_LIGHT)
+        frame_header.pack(fill=tk.X, pady=(0, 6))
+
+        lbl_hdr_title = tk.Label(
+            frame_header, text="⚙️  Configurações do Sistema",
+            font=("Segoe UI", 12, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
+        )
+        lbl_hdr_title.pack(anchor=tk.W)
+        lbl_hdr_sub = tk.Label(
+            frame_header, text="Parâmetros de Conexão • Servidor E-mail • Operadores • Notificações & Backup",
+            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT
+        )
+        lbl_hdr_sub.pack(anchor=tk.W)
 
         # ─── BOTÕES DE AÇÃO INFERIORES (Fixos no rodapé com prioridade total de espaço) ───
         frame_btns = tk.Frame(container, bg=COLOR_BG_LIGHT)
@@ -356,40 +372,84 @@ class SettingsDialog(tk.Toplevel):
         btn_open_tmpl_file.pack(side=tk.LEFT)
 
     def _build_tab_operators(self, parent):
-        parent.columnconfigure(1, weight=1)
-
         lbl_sec = tk.Label(
             parent, text="Perfis de Operadores & Assinaturas Corporativas",
             font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
         )
-        lbl_sec.grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 2))
+        lbl_sec.pack(anchor=tk.W, pady=(0, 2))
 
         lbl_desc = tk.Label(
             parent,
             text="Alterne o operador ativo ou gerencie múltiplos perfis. Cada operador possui seu próprio e-mail e assinatura corporativa nos relatórios.",
-            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT, wraplength=480, justify=tk.LEFT
+            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT, wraplength=540, justify=tk.LEFT
         )
-        lbl_desc.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(0, 10))
+        lbl_desc.pack(anchor=tk.W, pady=(0, 10))
 
-        # Card de Resumo do Operador Ativo
-        self.frame_active_card = tk.LabelFrame(
-            parent, text="  Operador Ativo no Momento  ",
-            bg=COLOR_BG_LIGHT, fg=COLOR_PRIMARY, font=("Segoe UI", 9, "bold"),
+        # Card de Resumo do Operador Ativo Moderno
+        self.frame_active_card = tk.Frame(
+            parent, bg="#FFFFFF", highlightbackground="#D5E5C9", highlightthickness=1,
             padx=14, pady=12
         )
-        self.frame_active_card.grid(row=2, column=0, columnspan=2, sticky=tk.EW, pady=(0, 12))
-        self.frame_active_card.columnconfigure(1, weight=1)
+        self.frame_active_card.pack(fill=tk.X, pady=(0, 10))
 
-        ttk.Label(self.frame_active_card, text="Operador Selecionado:").grid(row=0, column=0, sticky=tk.W, pady=4)
-        self.cmb_tab_operator = ttk.Combobox(self.frame_active_card, state="readonly", width=34)
-        self.cmb_tab_operator.grid(row=0, column=1, sticky=tk.W, pady=4, padx=(8, 0))
+        # Linha 1: Seletor
+        f_sel = tk.Frame(self.frame_active_card, bg="#FFFFFF")
+        f_sel.pack(fill=tk.X, pady=(0, 8))
+
+        tk.Label(
+            f_sel, text="👤 Selecionar Operador Ativo:", font=("Segoe UI", 9, "bold"),
+            fg=COLOR_PRIMARY, bg="#FFFFFF"
+        ).pack(side=tk.LEFT, padx=(0, 8))
+
+        self.cmb_tab_operator = ttk.Combobox(f_sel, state="readonly", width=36)
+        self.cmb_tab_operator.pack(side=tk.LEFT)
         self.cmb_tab_operator.bind("<<ComboboxSelected>>", self._on_tab_operator_change)
 
-        self.lbl_op_info = tk.Label(
-            self.frame_active_card, text="",
-            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT, justify=tk.LEFT
+        div_op = tk.Frame(self.frame_active_card, height=1, bg="#E8F1E4")
+        div_op.pack(fill=tk.X, pady=(4, 8))
+
+        # Detalhes do Perfil
+        f_prof = tk.Frame(self.frame_active_card, bg="#FFFFFF")
+        f_prof.pack(fill=tk.X)
+
+        f_name_row = tk.Frame(f_prof, bg="#FFFFFF")
+        f_name_row.pack(fill=tk.X, anchor=tk.W)
+
+        self.lbl_op_name = tk.Label(
+            f_name_row, text="", font=("Segoe UI", 10, "bold"),
+            fg=COLOR_TEXT_MAIN, bg="#FFFFFF"
         )
-        self.lbl_op_info.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(8, 0))
+        self.lbl_op_name.pack(side=tk.LEFT, padx=(0, 8))
+
+        self.badge_op_status = tk.Label(
+            f_name_row, text="", font=("Segoe UI", 8, "bold"),
+            padx=6, pady=1
+        )
+        self.badge_op_status.pack(side=tk.LEFT)
+
+        self.lbl_op_role = tk.Label(
+            f_prof, text="", font=("Segoe UI", 8),
+            fg=COLOR_TEXT_MUTED, bg="#FFFFFF"
+        )
+        self.lbl_op_role.pack(anchor=tk.W, pady=(2, 6))
+
+        # Badges de E-mail e WhatsApp
+        f_badges = tk.Frame(f_prof, bg="#FFFFFF")
+        f_badges.pack(fill=tk.X, anchor=tk.W)
+
+        self.lbl_op_email = tk.Label(
+            f_badges, text="", font=("Segoe UI", 8),
+            fg=COLOR_TEXT_MAIN, bg="#F0F5EC", padx=8, pady=3,
+            highlightbackground="#D5E2CF", highlightthickness=1
+        )
+        self.lbl_op_email.pack(side=tk.LEFT, padx=(0, 8))
+
+        self.lbl_op_wpp = tk.Label(
+            f_badges, text="", font=("Segoe UI", 8),
+            fg=COLOR_PRIMARY, bg="#EBF4E5", padx=8, pady=3,
+            highlightbackground="#C5DCBA", highlightthickness=1
+        )
+        self.lbl_op_wpp.pack(side=tk.LEFT)
 
         # Botão para abrir o gerenciador completo
         btn_open_mgr = create_btn_secondary(
@@ -398,7 +458,7 @@ class SettingsDialog(tk.Toplevel):
             self._open_operators_manager,
             pady=5
         )
-        btn_open_mgr.grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=(8, 4))
+        btn_open_mgr.pack(anchor=tk.W, pady=(4, 0))
 
         self._refresh_tab_operators()
 
@@ -423,8 +483,17 @@ class SettingsDialog(tk.Toplevel):
         if active:
             wpp = active.get("whatsapp_phone") or active.get("phone", "Não informado")
             has_k = "Chave API Ativa" if (active.get("whatsapp_apikey") or cfg.get("webhook_whatsapp_apikey")) else "Sem chave API"
-            info_txt = f"• E-mail: {active.get('email', '')}\n• WhatsApp: {wpp} ({has_k})\n• Status: {'★ Operador Padrão do Sistema (Usado no Agendamento)' if active.get('is_default') else 'Operador Secundário'}"
-            self.lbl_op_info.config(text=info_txt)
+
+            self.lbl_op_name.config(text=active.get('name', 'Operador'))
+            self.lbl_op_role.config(text=f"Função: {active.get('role', 'Técnico')} • Condomínio Praça Pamplona")
+
+            if active.get('is_default'):
+                self.badge_op_status.config(text="★ Operador Padrão (Agendamento Automático)", fg="#225E1A", bg="#E0F0D8")
+            else:
+                self.badge_op_status.config(text="● Operador Secundário", fg=COLOR_TEXT_MUTED, bg="#F0F4EC")
+
+            self.lbl_op_email.config(text=f"✉ {active.get('email', 'Sem e-mail')}")
+            self.lbl_op_wpp.config(text=f"📲 WhatsApp: {wpp} ({has_k})")
 
     def _on_tab_operator_change(self, event=None):
         val = self.cmb_tab_operator.get()
@@ -495,6 +564,7 @@ class SettingsDialog(tk.Toplevel):
             font=("Segoe UI", 8, "bold"), relief="flat", padx=8, pady=3,
             cursor="hand2", takefocus=False
         )
+        bind_button_hover(self.btn_whatsapp_help, "#EBF3E6", "#D3E4CB")
 
         self.lbl_wh_operator_note = tk.Label(
             self.frame_wh_settings,
@@ -628,18 +698,23 @@ class SettingsDialog(tk.Toplevel):
         lbl_desc = tk.Label(
             parent,
             text="Gere cópias completas de todos os parâmetros, operadores e modelos para transferir entre computadores ou recuperar com segurança.",
-            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT, wraplength=520, justify=tk.LEFT
+            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT, wraplength=540, justify=tk.LEFT
         )
         lbl_desc.pack(anchor=tk.W, pady=(0, 8))
 
         # Card 1: Exportar Backup
-        card_exp = ttk.LabelFrame(parent, text="  1. Exportar Backup Completo  ", padding="12 8 12 10")
+        card_exp = tk.Frame(parent, bg="#FFFFFF", highlightbackground="#D5E2CF", highlightthickness=1, padx=14, pady=10)
         card_exp.pack(fill=tk.X, pady=(0, 8))
 
-        lbl_exp_info = ttk.Label(
+        tk.Label(
+            card_exp, text="💾 1. Exportar Backup Completo",
+            font=("Segoe UI", 9, "bold"), fg=COLOR_PRIMARY, bg="#FFFFFF"
+        ).pack(anchor=tk.W, pady=(0, 3))
+
+        lbl_exp_info = tk.Label(
             card_exp,
             text="Cria um arquivo comprimido (.zip) contendo config.json, todos os perfis de operadores cadastrados, senhas salvas e modelo de e-mail.",
-            wraplength=500
+            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg="#FFFFFF", wraplength=520, justify=tk.LEFT
         )
         lbl_exp_info.pack(anchor=tk.W, pady=(0, 6))
 
@@ -651,13 +726,18 @@ class SettingsDialog(tk.Toplevel):
         btn_exp.pack(anchor=tk.W)
 
         # Card 2: Restaurar Backup
-        card_imp = ttk.LabelFrame(parent, text="  2. Restaurar Backup  ", padding="12 8 12 10")
+        card_imp = tk.Frame(parent, bg="#FFFFFF", highlightbackground="#D5E2CF", highlightthickness=1, padx=14, pady=10)
         card_imp.pack(fill=tk.X, pady=(0, 8))
 
-        lbl_imp_info = ttk.Label(
+        tk.Label(
+            card_imp, text="📂 2. Restaurar Backup de Configurações",
+            font=("Segoe UI", 9, "bold"), fg=COLOR_PRIMARY, bg="#FFFFFF"
+        ).pack(anchor=tk.W, pady=(0, 3))
+
+        lbl_imp_info = tk.Label(
             card_imp,
             text="Carrega as configurações de um arquivo .zip exportado anteriormente. O sistema cria automaticamente uma cópia de segurança antes de aplicar.",
-            wraplength=500
+            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg="#FFFFFF", wraplength=520, justify=tk.LEFT
         )
         lbl_imp_info.pack(anchor=tk.W, pady=(0, 6))
 
@@ -669,8 +749,13 @@ class SettingsDialog(tk.Toplevel):
         btn_imp.pack(anchor=tk.W)
 
         # Card 3: Atalho da pasta de dados
-        card_data = ttk.LabelFrame(parent, text="  3. Pasta de Arquivos do Sistema  ", padding="12 8 12 10")
+        card_data = tk.Frame(parent, bg="#FFFFFF", highlightbackground="#D5E2CF", highlightthickness=1, padx=14, pady=10)
         card_data.pack(fill=tk.X)
+
+        tk.Label(
+            card_data, text="📁 3. Pasta de Arquivos do Sistema",
+            font=("Segoe UI", 9, "bold"), fg=COLOR_PRIMARY, bg="#FFFFFF"
+        ).pack(anchor=tk.W, pady=(0, 3))
 
         btn_open_data = create_btn_secondary(
             card_data, "📁 Abrir Pasta Raiz do Software no Windows Explorer",
@@ -776,7 +861,14 @@ class SettingsDialog(tk.Toplevel):
             card, text="Condomínio Praça Pamplona • Telemetria StruxureWare EBO",
             font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg="#FFFFFF"
         )
-        lbl_sub.pack(pady=(1, 6))
+        lbl_sub.pack(pady=(1, 4))
+
+        badge_ver = tk.Label(
+            card, text="★ Versão 3.1 • Edição Executiva CompaSSS",
+            font=("Segoe UI", 8, "bold"), fg="#225E1A", bg="#E0F0D8",
+            padx=8, pady=2
+        )
+        badge_ver.pack(pady=(0, 6))
 
         div = tk.Frame(card, height=1, bg="#D5E5C9")
         div.pack(fill=tk.X, pady=(0, 8))
@@ -792,7 +884,7 @@ class SettingsDialog(tk.Toplevel):
             ("Empreendimento:", "Condomínio Praça Pamplona", False),
             ("Integração BMS:", "Schneider Electric StruxureWare EBO (SQL Server)", False),
             ("Linguagem & Motor:", "Python 3.11 • Tkinter • openpyxl", False),
-            ("Versão:", "2.1 (Edição Executiva 2026)", False),
+            ("Versão:", "3.1 (Edição Executiva 2026)", False),
         ]
 
         for r_idx, (label, val, is_bold) in enumerate(info_items):
