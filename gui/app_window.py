@@ -1,7 +1,8 @@
 import os
 import sys
+import re
 import threading
-from datetime import date
+from datetime import date, datetime
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from tkcalendar import DateEntry
@@ -1064,29 +1065,37 @@ class AppHidrometrosWindow:
 
             lbl_f = tk.Label(
                 frame_info, text=disp_name, font=("Segoe UI", 9, "bold"),
-                fg=COLOR_TEXT_MAIN, bg="#FFFFFF", width=23, anchor="w", cursor="hand2"
+                fg=COLOR_TEXT_MAIN, bg="#FFFFFF", width=22, anchor="w", cursor="hand2"
             )
             lbl_f.grid(row=0, column=1, sticky=tk.W)
             lbl_f.bind("<Button-1>", lambda e, p=f_path: self._open_specific_file(p))
             create_tooltip(lbl_f, f"Clique para abrir:\n{f_path}")
 
             # Data de geração
-            dt_txt = f"• {dt_ger}" if dt_ger else ""
+            ano_atual = str(datetime.now().year)
+            if dt_ger:
+                dt_ger_clean = dt_ger.replace(f"/{ano_atual}", "").strip()
+                dt_txt = f"• Gerado: {dt_ger_clean}"
+            else:
+                dt_txt = ""
+
             lbl_d = tk.Label(
                 frame_info, text=dt_txt, font=("Segoe UI", 8),
-                fg=COLOR_TEXT_MUTED, bg="#FFFFFF", width=17, anchor="w"
+                fg=COLOR_TEXT_MUTED, bg="#FFFFFF", width=18, anchor="w"
             )
-            lbl_d.grid(row=0, column=2, padx=(2, 6), sticky=tk.W)
+            lbl_d.grid(row=0, column=2, padx=(2, 4), sticky=tk.W)
+            if dt_ger:
+                create_tooltip(lbl_d, f"Relatório gerado em {dt_ger}")
 
-            # Badge de envio (Sempre exibido em todas as linhas para simetria visual uniforme)
+            # Badge de envio (Exibe com clareza a data e horário exato do envio por e-mail)
             sent_time = send_log.get(f_name)
             if sent_time:
                 clean_sent = sent_time.replace("às às", "às").strip()
-                if "às" in clean_sent:
-                    hora = clean_sent.split("às")[-1].strip()
-                    badge_text = f"✉ Enviado ({hora})"
+                short_sent = clean_sent.replace(f"/{ano_atual}", "").strip()
+                if "às" in short_sent or " " in short_sent:
+                    badge_text = f"✉ Enviado em {short_sent}"
                 else:
-                    badge_text = "✉ Enviado"
+                    badge_text = f"✉ Enviado ({short_sent})"
                 badge_bg = "#E8F4E5"
                 badge_fg = "#2A6320"
                 badge_border = "#B8DCB2"
