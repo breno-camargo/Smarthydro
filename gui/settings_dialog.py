@@ -8,7 +8,8 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 
 from core.config_manager import (
-    load_config, save_config, get_operators, get_active_operator, set_active_operator
+    load_config, save_config, get_operators, get_active_operator, set_active_operator,
+    get_default_condominio_emails
 )
 from core.database import get_available_odbc_drivers, test_db_connection
 from core.report_generator import open_template_in_excel
@@ -278,26 +279,37 @@ class SettingsDialog(tk.Toplevel):
             parent, text="Separe múltiplos e-mails por ponto-e-vírgula (;)",
             font=("Segoe UI", 8, "italic"), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT
         )
-        lbl_hint_to.grid(row=3, column=1, sticky=tk.W, pady=(0, 4))
+        lbl_hint_to.grid(row=3, column=1, sticky=tk.W, pady=(0, 3))
+
+        # Botão para restaurar e-mails oficiais do Condomínio Praça Pamplona
+        frame_em_actions = tk.Frame(parent, bg=COLOR_BG_LIGHT)
+        frame_em_actions.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=(2, 4))
+
+        btn_restore_def = create_btn_secondary(
+            frame_em_actions, "🔄 Restaurar E-mails Padrão (Praça Pamplona)",
+            self._restore_default_emails, pady=2, padx=10
+        )
+        btn_restore_def.pack(side=tk.LEFT)
+        create_tooltip(btn_restore_def, "Restaura os e-mails oficiais da Gerente e lista Cc do Condomínio Praça Pamplona")
 
         # Separador 1
         sep_e1 = tk.Frame(parent, height=1, bg=COLOR_ACCENT)
-        sep_e1.grid(row=4, column=0, columnspan=2, sticky=tk.EW, pady=6)
+        sep_e1.grid(row=5, column=0, columnspan=2, sticky=tk.EW, pady=6)
 
         # ─── SEÇÃO 2: SERVIDOR SMTP (UOL PRO) ───
         lbl_sec_smtp = tk.Label(
             parent, text="Sua Conta de E-mail (UOL Pro / Remetente)",
             font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
         )
-        lbl_sec_smtp.grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(0, 4))
+        lbl_sec_smtp.grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=(0, 4))
 
-        ttk.Label(parent, text="Servidor SMTP:").grid(row=6, column=0, sticky=tk.W, pady=3)
+        ttk.Label(parent, text="Servidor SMTP:").grid(row=7, column=0, sticky=tk.W, pady=3)
         self.ent_smtp_host = ttk.Entry(parent, width=36)
-        self.ent_smtp_host.grid(row=6, column=1, sticky=tk.EW, pady=3)
+        self.ent_smtp_host.grid(row=7, column=1, sticky=tk.EW, pady=3)
 
-        ttk.Label(parent, text="Porta / Criptografia:").grid(row=7, column=0, sticky=tk.W, pady=3)
+        ttk.Label(parent, text="Porta / Criptografia:").grid(row=8, column=0, sticky=tk.W, pady=3)
         frame_port_sec = ttk.Frame(parent)
-        frame_port_sec.grid(row=7, column=1, sticky=tk.W, pady=3)
+        frame_port_sec.grid(row=8, column=1, sticky=tk.W, pady=3)
 
         self.cmb_smtp_preset = ttk.Combobox(
             frame_port_sec,
@@ -314,7 +326,7 @@ class SettingsDialog(tk.Toplevel):
 
         # Painel para configuração personalizada (oculto quando usando presets padrão)
         self.frame_custom_port = ttk.Frame(parent)
-        self.frame_custom_port.grid(row=8, column=1, sticky=tk.W, pady=(2, 4))
+        self.frame_custom_port.grid(row=9, column=1, sticky=tk.W, pady=(2, 4))
 
         ttk.Label(self.frame_custom_port, text="Porta:").pack(side=tk.LEFT)
         self.ent_smtp_port = ttk.Entry(self.frame_custom_port, width=6)
@@ -328,30 +340,30 @@ class SettingsDialog(tk.Toplevel):
         self.chk_smtp_ssl = ttk.Checkbutton(self.frame_custom_port, text="SSL Direto", variable=self.var_smtp_ssl)
         self.chk_smtp_ssl.pack(side=tk.LEFT)
 
-        ttk.Label(parent, text="Seu E-mail (Remetente):").grid(row=9, column=0, sticky=tk.W, pady=3)
+        ttk.Label(parent, text="Seu E-mail (Remetente):").grid(row=10, column=0, sticky=tk.W, pady=3)
         self.ent_smtp_user = ttk.Entry(parent, width=36)
-        self.ent_smtp_user.grid(row=9, column=1, sticky=tk.EW, pady=3)
+        self.ent_smtp_user.grid(row=10, column=1, sticky=tk.EW, pady=3)
 
-        ttk.Label(parent, text="Senha do seu E-mail:").grid(row=10, column=0, sticky=tk.W, pady=3)
+        ttk.Label(parent, text="Senha do seu E-mail:").grid(row=11, column=0, sticky=tk.W, pady=3)
         self.ent_smtp_pass = ttk.Entry(parent, width=36, show="*")
-        self.ent_smtp_pass.grid(row=10, column=1, sticky=tk.EW, pady=3)
+        self.ent_smtp_pass.grid(row=11, column=1, sticky=tk.EW, pady=3)
 
         btn_test_smtp = create_btn_secondary(parent, "🔌 Testar Conexão com seu E-mail", self._test_smtp, pady=3, padx=10)
-        btn_test_smtp.grid(row=11, column=0, columnspan=2, sticky=tk.W, pady=(4, 6))
+        btn_test_smtp.grid(row=12, column=0, columnspan=2, sticky=tk.W, pady=(4, 6))
 
         # Separador 2
         sep_e2 = tk.Frame(parent, height=1, bg=COLOR_ACCENT)
-        sep_e2.grid(row=12, column=0, columnspan=2, sticky=tk.EW, pady=4)
+        sep_e2.grid(row=13, column=0, columnspan=2, sticky=tk.EW, pady=4)
 
         # ─── SEÇÃO 3: MODELO DE E-MAIL ───
         lbl_sec_tmpl_e = tk.Label(
             parent, text="Personalização do Modelo de E-mail",
             font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
         )
-        lbl_sec_tmpl_e.grid(row=13, column=0, columnspan=2, sticky=tk.W, pady=(0, 4))
+        lbl_sec_tmpl_e.grid(row=14, column=0, columnspan=2, sticky=tk.W, pady=(0, 4))
 
         frame_tmpl_btns = ttk.Frame(parent)
-        frame_tmpl_btns.grid(row=14, column=0, columnspan=2, sticky=tk.W, pady=(2, 0))
+        frame_tmpl_btns.grid(row=15, column=0, columnspan=2, sticky=tk.W, pady=(2, 0))
 
         btn_edit_email_tmpl = create_btn_secondary(
             frame_tmpl_btns, "✏ Personalizar Modelo",
@@ -505,35 +517,48 @@ class SettingsDialog(tk.Toplevel):
         OperatorsDialog(self, on_change_callback=self._refresh_tab_operators)
 
     def _build_tab_webhooks(self, parent):
-        """Constrói a aba de configuração de Webhooks para Teams, Discord, Slack e Telegram."""
-        parent.columnconfigure(1, weight=1)
-
+        """Constrói a aba de configuração de Webhooks para Teams, Discord, Slack e Telegram com design moderno de cards."""
         lbl_sec = tk.Label(
-            parent, text="Notificações em Tempo Real (Webhooks)",
+            parent, text="Notificações em Tempo Real (Webhooks & WhatsApp)",
             font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
         )
-        lbl_sec.grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 2))
+        lbl_sec.pack(anchor=tk.W, pady=(0, 2))
 
         lbl_desc = tk.Label(
             parent,
-            text="Envie resumos automáticos do fechamento mensal para canais de equipe no Microsoft Teams, Discord, Slack ou Telegram.",
-            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT, wraplength=520, justify=tk.LEFT
+            text="Envie alertas automáticos do fechamento mensal para seu WhatsApp ou canais de equipe (Microsoft Teams, Discord, Slack ou Telegram).",
+            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT, wraplength=540, justify=tk.LEFT
         )
-        lbl_desc.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(0, 8))
+        lbl_desc.pack(anchor=tk.W, pady=(0, 8))
+
+        # Card 1: Ativação com Badge
+        card_toggle = create_card_frame(parent, padx=12, pady=8)
+        card_toggle.pack(fill=tk.X, pady=(0, 8))
 
         self.var_webhook_enabled = tk.BooleanVar(value=False)
         self.chk_webhook_enabled = ttk.Checkbutton(
-            parent, text="Ativar Notificações via Webhook ao concluir relatório",
-            variable=self.var_webhook_enabled
+            card_toggle, text="Ativar Notificações via Webhook ao concluir relatório",
+            variable=self.var_webhook_enabled, command=self._update_wh_status_badge
         )
-        self.chk_webhook_enabled.grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(0, 6))
+        self.chk_webhook_enabled.pack(side=tk.LEFT)
 
-        # Painel de parâmetros do webhook
-        self.frame_wh_settings = ttk.LabelFrame(parent, text="  Configuração da Plataforma  ", padding="12 10 12 10")
-        self.frame_wh_settings.grid(row=3, column=0, columnspan=2, sticky=tk.EW, pady=(0, 8))
-        self.frame_wh_settings.columnconfigure(1, weight=1)
+        self.lbl_wh_badge = tk.Label(
+            card_toggle, text="○ INATIVO", font=("Segoe UI", 8, "bold"),
+            fg=COLOR_TEXT_MUTED, bg="#F0F0F0", padx=8, pady=2
+        )
+        self.lbl_wh_badge.pack(side=tk.RIGHT)
 
-        ttk.Label(self.frame_wh_settings, text="Plataforma:").grid(row=0, column=0, sticky=tk.W, pady=3)
+        # Card 2: Configuração da Plataforma
+        self.card_wh_config = create_card_frame(parent, padx=14, pady=10)
+        self.card_wh_config.pack(fill=tk.X, pady=(0, 8))
+        self.card_wh_config.columnconfigure(1, weight=1)
+
+        tk.Label(
+            self.card_wh_config, text="Configuração da Plataforma",
+            font=("Segoe UI", 9, "bold"), fg=COLOR_PRIMARY, bg="#FFFFFF"
+        ).grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 6))
+
+        tk.Label(self.card_wh_config, text="Plataforma:", font=("Segoe UI", 9), bg="#FFFFFF").grid(row=1, column=0, sticky=tk.W, pady=3)
         self.wh_platform_names = [
             "WhatsApp (CallMeBot Grátis / Notificação Direta)",
             "Microsoft Teams (Incoming Webhook)",
@@ -544,20 +569,20 @@ class SettingsDialog(tk.Toplevel):
         ]
         self.wh_platform_keys = ["whatsapp", "teams", "discord", "slack", "telegram", "generic"]
         self.cmb_wh_platform = ttk.Combobox(
-            self.frame_wh_settings, values=self.wh_platform_names, state="readonly", width=34
+            self.card_wh_config, values=self.wh_platform_names, state="readonly", width=34
         )
-        self.cmb_wh_platform.grid(row=0, column=1, sticky=tk.EW, pady=3)
+        self.cmb_wh_platform.grid(row=1, column=1, sticky=tk.EW, pady=3)
         self.cmb_wh_platform.bind("<<ComboboxSelected>>", self._on_wh_platform_change)
 
-        # Campos específicos para WhatsApp (CallMeBot)
-        self.lbl_wh_phone = ttk.Label(self.frame_wh_settings, text="Seu WhatsApp (com DDD):")
-        self.ent_wh_phone = ttk.Entry(self.frame_wh_settings, width=36)
+        # Campos WhatsApp
+        self.lbl_wh_phone = tk.Label(self.card_wh_config, text="Seu WhatsApp (com DDD):", font=("Segoe UI", 9), bg="#FFFFFF")
+        self.ent_wh_phone = ttk.Entry(self.card_wh_config, width=36)
 
-        self.lbl_wh_apikey = ttk.Label(self.frame_wh_settings, text="Chave API (ApiKey):")
-        self.ent_wh_apikey = ttk.Entry(self.frame_wh_settings, width=36)
+        self.lbl_wh_apikey = tk.Label(self.card_wh_config, text="Chave API (ApiKey):", font=("Segoe UI", 9), bg="#FFFFFF")
+        self.ent_wh_apikey = ttk.Entry(self.card_wh_config, width=36)
 
         self.btn_whatsapp_help = tk.Button(
-            self.frame_wh_settings,
+            self.card_wh_config,
             text="📲 Como ativar e receber a chave grátis no WhatsApp (30 seg)",
             command=self._open_callmebot_help,
             bg="#EBF3E6", fg=COLOR_PRIMARY, activebackground=COLOR_ACCENT,
@@ -567,50 +592,63 @@ class SettingsDialog(tk.Toplevel):
         bind_button_hover(self.btn_whatsapp_help, "#EBF3E6", "#D3E4CB")
 
         self.lbl_wh_operator_note = tk.Label(
-            self.frame_wh_settings,
+            self.card_wh_config,
             text="💡 Roteamento Inteligente: O WhatsApp segue automaticamente o Operador Ativo selecionado no topo da tela inicial. O número e chave abaixo servem como padrão global do sistema.",
-            font=("Segoe UI", 8, "italic"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT, wraplength=480, justify=tk.LEFT
+            font=("Segoe UI", 8, "italic"), fg=COLOR_PRIMARY, bg="#F7FAF5",
+            highlightbackground="#D5E5C9", highlightthickness=1, padx=8, pady=4,
+            wraplength=480, justify=tk.LEFT
         )
 
-        # URL Webhook (para Teams, Discord, Slack, Genérico)
-        self.lbl_wh_url = ttk.Label(self.frame_wh_settings, text="URL do Webhook:")
-        self.ent_wh_url = ttk.Entry(self.frame_wh_settings, width=36)
+        # URL Webhook (Teams, Discord, Slack, Genérico)
+        self.lbl_wh_url = tk.Label(self.card_wh_config, text="URL do Webhook:", font=("Segoe UI", 9), bg="#FFFFFF")
+        self.ent_wh_url = ttk.Entry(self.card_wh_config, width=36)
 
-        # Campos específicos para Telegram
-        self.lbl_wh_tele_token = ttk.Label(self.frame_wh_settings, text="Token do Bot:")
-        self.ent_wh_tele_token = ttk.Entry(self.frame_wh_settings, width=36)
+        # Campos Telegram
+        self.lbl_wh_tele_token = tk.Label(self.card_wh_config, text="Token do Bot:", font=("Segoe UI", 9), bg="#FFFFFF")
+        self.ent_wh_tele_token = ttk.Entry(self.card_wh_config, width=36)
 
-        self.lbl_wh_tele_chat = ttk.Label(self.frame_wh_settings, text="Chat ID / Grupo:")
-        self.ent_wh_tele_chat = ttk.Entry(self.frame_wh_settings, width=36)
+        self.lbl_wh_tele_chat = tk.Label(self.card_wh_config, text="Chat ID / Grupo:", font=("Segoe UI", 9), bg="#FFFFFF")
+        self.ent_wh_tele_chat = ttk.Entry(self.card_wh_config, width=36)
+
+        # Separador interno sutil
+        sep_wh = tk.Frame(self.card_wh_config, height=1, bg="#E6EFE2")
+        sep_wh.grid(row=6, column=0, columnspan=2, sticky=tk.EW, pady=(8, 6))
 
         # Opções adicionais
         self.var_wh_scheduled = tk.BooleanVar(value=True)
         chk_wh_sch = ttk.Checkbutton(
-            self.frame_wh_settings, text="Disparar também em execuções automáticas do Agendador (dia 29)",
+            self.card_wh_config, text="Disparar também em execuções automáticas do Agendador (dia 29)",
             variable=self.var_wh_scheduled
         )
-        chk_wh_sch.grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(6, 2))
+        chk_wh_sch.grid(row=7, column=0, columnspan=2, sticky=tk.W, pady=(2, 2))
 
         self.var_wh_anomalies = tk.BooleanVar(value=True)
         chk_wh_anom = ttk.Checkbutton(
-            self.frame_wh_settings, text="Destacar alertas de suspeita de vazamento / anomalia na mensagem",
+            self.card_wh_config, text="Destacar alertas de suspeita de vazamento / anomalia na mensagem",
             variable=self.var_wh_anomalies
         )
-        chk_wh_anom.grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=(0, 6))
+        chk_wh_anom.grid(row=8, column=0, columnspan=2, sticky=tk.W, pady=(2, 2))
 
-        # Botão de Teste
-        frame_test_wh = tk.Frame(parent, bg=COLOR_BG_LIGHT)
-        frame_test_wh.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=(4, 0))
+        # Card 3: Disparo de Teste
+        card_test = create_card_frame(parent, padx=12, pady=8)
+        card_test.pack(fill=tk.X)
 
         self.btn_test_webhook = create_btn_secondary(
-            frame_test_wh, "🔔 Enviar Mensagem de Teste", self._test_webhook_action, pady=3, padx=10
+            card_test, "🔔 Enviar Mensagem de Teste", self._test_webhook_action, pady=3, padx=12
         )
         self.btn_test_webhook.pack(side=tk.LEFT, padx=(0, 10))
 
         self.lbl_wh_test_status = tk.Label(
-            frame_test_wh, text="", font=("Segoe UI", 8, "italic"), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT
+            card_test, text="", font=("Segoe UI", 8, "italic"), fg=COLOR_TEXT_MUTED, bg="#FFFFFF"
         )
         self.lbl_wh_test_status.pack(side=tk.LEFT)
+
+    def _update_wh_status_badge(self):
+        if hasattr(self, "lbl_wh_badge"):
+            if self.var_webhook_enabled.get():
+                self.lbl_wh_badge.config(text="● ATIVO", fg="#2A6320", bg="#E8F4E5")
+            else:
+                self.lbl_wh_badge.config(text="○ INATIVO", fg=COLOR_TEXT_MUTED, bg="#F0F0F0")
 
     def _open_callmebot_help(self):
         url = "https://api.whatsapp.com/send?phone=34694242562&text=I%20allow%20callmebot%20to%20send%20me%20messages"
@@ -646,20 +684,20 @@ class SettingsDialog(tk.Toplevel):
         self.lbl_wh_operator_note.grid_remove()
 
         if key == "whatsapp":
-            self.lbl_wh_phone.grid(row=1, column=0, sticky=tk.W, pady=3)
-            self.ent_wh_phone.grid(row=1, column=1, sticky=tk.EW, pady=3)
-            self.lbl_wh_apikey.grid(row=2, column=0, sticky=tk.W, pady=3)
-            self.ent_wh_apikey.grid(row=2, column=1, sticky=tk.EW, pady=3)
-            self.btn_whatsapp_help.grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=(2, 4))
-            self.lbl_wh_operator_note.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=(2, 4))
+            self.lbl_wh_phone.grid(row=2, column=0, sticky=tk.W, pady=3)
+            self.ent_wh_phone.grid(row=2, column=1, sticky=tk.EW, pady=3)
+            self.lbl_wh_apikey.grid(row=3, column=0, sticky=tk.W, pady=3)
+            self.ent_wh_apikey.grid(row=3, column=1, sticky=tk.EW, pady=3)
+            self.btn_whatsapp_help.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=(2, 4))
+            self.lbl_wh_operator_note.grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(2, 4))
         elif key == "telegram":
-            self.lbl_wh_tele_token.grid(row=1, column=0, sticky=tk.W, pady=3)
-            self.ent_wh_tele_token.grid(row=1, column=1, sticky=tk.EW, pady=3)
-            self.lbl_wh_tele_chat.grid(row=2, column=0, sticky=tk.W, pady=3)
-            self.ent_wh_tele_chat.grid(row=2, column=1, sticky=tk.EW, pady=3)
+            self.lbl_wh_tele_token.grid(row=2, column=0, sticky=tk.W, pady=3)
+            self.ent_wh_tele_token.grid(row=2, column=1, sticky=tk.EW, pady=3)
+            self.lbl_wh_tele_chat.grid(row=3, column=0, sticky=tk.W, pady=3)
+            self.ent_wh_tele_chat.grid(row=3, column=1, sticky=tk.EW, pady=3)
         else:
-            self.lbl_wh_url.grid(row=1, column=0, sticky=tk.W, pady=3)
-            self.ent_wh_url.grid(row=1, column=1, sticky=tk.EW, pady=3)
+            self.lbl_wh_url.grid(row=2, column=0, sticky=tk.W, pady=3)
+            self.ent_wh_url.grid(row=2, column=1, sticky=tk.EW, pady=3)
 
     def _test_webhook_action(self):
         idx = self.cmb_wh_platform.current()
@@ -964,6 +1002,21 @@ class SettingsDialog(tk.Toplevel):
             parent=self
         )
 
+    def _restore_default_emails(self):
+        """Restaura instantaneamente os destinatários oficiais do Condomínio Praça Pamplona."""
+        to_email, cc_emails = get_default_condominio_emails()
+        self.ent_recipients.delete(0, tk.END)
+        self.ent_recipients.insert(0, to_email)
+        self.ent_cc.delete(0, tk.END)
+        self.ent_cc.insert(0, cc_emails)
+        messagebox.showinfo(
+            "E-mails Padrão Restaurados",
+            f"✔ Destinatários oficiais do Condomínio Praça Pamplona restaurados com sucesso!\n\n"
+            f"Para (Gerente):\n• {to_email}\n\n"
+            f"Em Cópia (Cc):\n" + "\n".join(f"• {e.strip()}" for e in cc_emails.split(";") if e.strip()),
+            parent=self
+        )
+
     def _on_smtp_preset_change(self, event=None):
         idx = self.cmb_smtp_preset.current()
         if idx == 0:
@@ -1154,6 +1207,7 @@ class SettingsDialog(tk.Toplevel):
         self.var_wh_scheduled.set(self.config.get("webhook_notify_scheduled", True))
         self.var_wh_anomalies.set(self.config.get("webhook_notify_anomalies", True))
         self._on_wh_platform_change()
+        self._update_wh_status_badge()
 
     def _browse_dir(self):
         selected = filedialog.askdirectory(initialdir=self.ent_dir.get() or os.path.expanduser("~"))

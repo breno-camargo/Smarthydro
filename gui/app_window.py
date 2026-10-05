@@ -410,8 +410,14 @@ class AppHidrometrosWindow:
         self.lbl_status.pack(fill=tk.X, side=tk.BOTTOM, pady=(0, 3))
 
         # ─── HISTÓRICO DE RELATÓRIOS RECENTES (COMPACTO) ───
-        self.frame_history_card = ttk.LabelFrame(main_container, text="  Últimos Relatórios Gerados  ", padding="12 8 12 8")
-        self.frame_history_card.pack(fill=tk.X, side=tk.TOP, pady=(2, 8))
+        self.frame_history_card = tk.Frame(main_container, bg=COLOR_BG_LIGHT)
+        self.frame_history_card.pack(fill=tk.X, side=tk.TOP, pady=(2, 6))
+
+        lbl_hist_head = tk.Label(
+            self.frame_history_card, text="Últimos Relatórios Gerados",
+            font=("Segoe UI", 9, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
+        )
+        lbl_hist_head.pack(anchor=tk.W, pady=(0, 3))
 
         self.frame_history_list = tk.Frame(self.frame_history_card, bg=COLOR_BG_LIGHT)
         self.frame_history_list.pack(fill=tk.X, expand=True)
@@ -965,7 +971,7 @@ class AppHidrometrosWindow:
 
             # Padronizar nome: retirar .xlsx e permitir exibição do nome completo sem cortes
             clean_name = f_name[:-5] if f_name.lower().endswith(".xlsx") else f_name
-            max_len = 34
+            max_len = 26
             disp_name = clean_name[:max_len] + "..." if len(clean_name) > max_len else clean_name
 
             # Card Container com fundo branco e borda suave
@@ -983,84 +989,92 @@ class AppHidrometrosWindow:
             pdf_p = item.get("pdf_path", "")
             has_pdf = item.get("has_pdf") and os.path.exists(pdf_p)
 
-            # Botão moderno de exclusão (🗑️) com hover suave avermelhado
-            btn_del = tk.Button(
-                card, text="🗑️", font=("Segoe UI Emoji", 8), fg="#999999", bg="#FFFFFF",
-                activeforeground="#C9302C", activebackground="#FDEAEA", relief="flat",
-                bd=0, padx=4, pady=1, cursor="hand2",
-                command=lambda x=f_path, p=pdf_p: self._delete_specific_file(x, p)
-            )
-            btn_del.pack(side=tk.RIGHT, padx=(4, 0))
-            bind_button_hover(btn_del, "#FFFFFF", "#FDEAEA", normal_fg="#999999", hover_fg="#C9302C")
-            create_tooltip(btn_del, "Excluir este relatório do histórico")
-
-            # Disparo de e-mail com botão pill moderno
-            btn_email = tk.Button(
-                card, text="✉ E-mail", font=("Segoe UI", 8, "bold"),
-                fg=COLOR_PRIMARY, bg="#EBF3E6", activebackground="#D3E4CB", activeforeground=COLOR_PRIMARY,
-                relief="flat", bd=1, highlightbackground="#C5DCBA", highlightthickness=1,
-                padx=7, pady=1, cursor="hand2",
-                command=lambda x=f_path, p=pdf_p: self._send_email_action(x, p)
-            )
-            btn_email.pack(side=tk.RIGHT, padx=(4, 2))
-            bind_button_hover(btn_email, "#EBF3E6", "#D3E4CB")
-            create_tooltip(btn_email, "Enviar relatório e anexos por e-mail")
-
-            # Visualização do PDF (se gerado)
-            if has_pdf:
-                btn_pdf = tk.Button(
-                    card, text="📕 PDF", font=("Segoe UI", 8, "bold"),
-                    fg="#9C3127", bg="#FDF2F2", activebackground="#FCE4E4", activeforeground="#9C3127",
-                    relief="flat", bd=1, highlightbackground="#F5C6CB", highlightthickness=1,
-                    padx=7, pady=1, cursor="hand2",
-                    command=lambda p=pdf_p: self._open_specific_file(p)
-                )
-                btn_pdf.pack(side=tk.RIGHT, padx=(4, 0))
-                bind_button_hover(btn_pdf, "#FDF2F2", "#FCE4E4")
-                create_tooltip(btn_pdf, "Abrir Relatório Oficial em PDF")
+            # ─── BOTÕES DE AÇÃO À DIREITA (ORDEM FIXA E ALINHADA) ───
+            frame_row_actions = tk.Frame(card, bg="#FFFFFF")
+            frame_row_actions.pack(side=tk.RIGHT)
 
             # Abertura da planilha Excel
             btn_open = tk.Button(
-                card, text="📊 Excel", font=("Segoe UI", 8, "bold"),
+                frame_row_actions, text="📊 Excel", font=("Segoe UI", 8, "bold"),
                 fg=COLOR_PRIMARY, bg="#EBF3E6", activebackground="#D3E4CB", activeforeground=COLOR_PRIMARY,
                 relief="flat", bd=1, highlightbackground="#C5DCBA", highlightthickness=1,
                 padx=7, pady=1, cursor="hand2",
                 command=lambda p=f_path: self._open_specific_file(p)
             )
-            btn_open.pack(side=tk.RIGHT, padx=(4, 0))
+            btn_open.pack(side=tk.LEFT, padx=(0, 4))
             bind_button_hover(btn_open, "#EBF3E6", "#D3E4CB")
             create_tooltip(btn_open, "Abrir Planilha de Medição no Excel")
 
-            # Lado esquerdo: Ícone de documento + Título clicável + Data + Status de envio
-            lbl_left = tk.Frame(card, bg="#FFFFFF")
-            lbl_left.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            # Visualização do PDF (se gerado)
+            if has_pdf:
+                btn_pdf = tk.Button(
+                    frame_row_actions, text="📕 PDF", font=("Segoe UI", 8, "bold"),
+                    fg="#9C3127", bg="#FDF2F2", activebackground="#FCE4E4", activeforeground="#9C3127",
+                    relief="flat", bd=1, highlightbackground="#F5C6CB", highlightthickness=1,
+                    padx=7, pady=1, cursor="hand2",
+                    command=lambda p=pdf_p: self._open_specific_file(p)
+                )
+                btn_pdf.pack(side=tk.LEFT, padx=(0, 4))
+                bind_button_hover(btn_pdf, "#FDF2F2", "#FCE4E4")
+                create_tooltip(btn_pdf, "Abrir Relatório Oficial em PDF")
 
-            lbl_doc_icon = tk.Label(lbl_left, text="📄", font=("Segoe UI Emoji", 9), bg="#FFFFFF", fg=COLOR_PRIMARY)
-            lbl_doc_icon.pack(side=tk.LEFT, padx=(0, 5))
+            # Disparo de e-mail com botão pill moderno
+            btn_email = tk.Button(
+                frame_row_actions, text="✉ E-mail", font=("Segoe UI", 8, "bold"),
+                fg=COLOR_PRIMARY, bg="#EBF3E6", activebackground="#D3E4CB", activeforeground=COLOR_PRIMARY,
+                relief="flat", bd=1, highlightbackground="#C5DCBA", highlightthickness=1,
+                padx=7, pady=1, cursor="hand2",
+                command=lambda x=f_path, p=pdf_p: self._send_email_action(x, p)
+            )
+            btn_email.pack(side=tk.LEFT, padx=(0, 4))
+            bind_button_hover(btn_email, "#EBF3E6", "#D3E4CB")
+            create_tooltip(btn_email, "Enviar relatório e anexos por e-mail")
+
+            # Botão moderno de exclusão (🗑️) com hover suave avermelhado
+            btn_del = tk.Button(
+                frame_row_actions, text="🗑️", font=("Segoe UI Emoji", 8), fg="#999999", bg="#FFFFFF",
+                activeforeground="#C9302C", activebackground="#FDEAEA", relief="flat",
+                bd=0, padx=4, pady=1, cursor="hand2",
+                command=lambda x=f_path, p=pdf_p: self._delete_specific_file(x, p)
+            )
+            btn_del.pack(side=tk.LEFT)
+            bind_button_hover(btn_del, "#FFFFFF", "#FDEAEA", normal_fg="#999999", hover_fg="#C9302C")
+            create_tooltip(btn_del, "Excluir este relatório do histórico")
+
+            # ─── INFORMAÇÕES À ESQUERDA (GRID COM LARGURAS FIXAS) ───
+            frame_info = tk.Frame(card, bg="#FFFFFF")
+            frame_info.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            frame_info.columnconfigure(3, weight=1)
+
+            lbl_doc_icon = tk.Label(frame_info, text="📄", font=("Segoe UI Emoji", 9), bg="#FFFFFF", fg=COLOR_PRIMARY)
+            lbl_doc_icon.grid(row=0, column=0, padx=(2, 6), sticky=tk.W)
 
             lbl_f = tk.Label(
-                lbl_left, text=disp_name, font=("Segoe UI", 9, "bold"),
-                fg=COLOR_TEXT_MAIN, bg="#FFFFFF", anchor="w", cursor="hand2"
+                frame_info, text=disp_name, font=("Segoe UI", 9, "bold"),
+                fg=COLOR_TEXT_MAIN, bg="#FFFFFF", width=25, anchor="w", cursor="hand2"
             )
-            lbl_f.pack(side=tk.LEFT)
+            lbl_f.grid(row=0, column=1, sticky=tk.W)
             lbl_f.bind("<Button-1>", lambda e, p=f_path: self._open_specific_file(p))
             create_tooltip(lbl_f, f"Clique para abrir:\n{f_path}")
 
             # Data de geração
-            if dt_ger:
-                lbl_d = tk.Label(
-                    lbl_left, text=f"• {dt_ger}", font=("Segoe UI", 8),
-                    fg=COLOR_TEXT_MUTED, bg="#FFFFFF"
-                )
-                lbl_d.pack(side=tk.LEFT, padx=(6, 0))
+            dt_txt = f"• {dt_ger}" if dt_ger else ""
+            lbl_d = tk.Label(
+                frame_info, text=dt_txt, font=("Segoe UI", 8),
+                fg=COLOR_TEXT_MUTED, bg="#FFFFFF", width=18, anchor="w"
+            )
+            lbl_d.grid(row=0, column=2, padx=(4, 6), sticky=tk.W)
 
+            # Badge de envio
             sent_time = send_log.get(f_name)
             if sent_time:
-                f_sent = tk.Frame(lbl_left, bg="#E8F4E5", highlightbackground="#B8DCB2", highlightthickness=1, bd=0)
-                f_sent.pack(side=tk.LEFT, padx=(8, 0))
+                clean_sent = sent_time.replace("às às", "às").strip()
+                badge_text = f"✉ Enviado em {clean_sent}" if "às" in clean_sent else f"✉ Enviado às {clean_sent}"
+                f_sent = tk.Frame(frame_info, bg="#E8F4E5", highlightbackground="#B8DCB2", highlightthickness=1, bd=0)
+                f_sent.grid(row=0, column=3, sticky=tk.W, padx=(2, 4))
                 lbl_sent = tk.Label(
-                    f_sent, text=f"✉ Enviado às {sent_time}", font=("Segoe UI", 7, "bold"),
-                    fg="#2A6320", bg="#E8F4E5", padx=6, pady=0
+                    f_sent, text=badge_text, font=("Segoe UI", 7, "bold"),
+                    fg="#2A6320", bg="#E8F4E5", padx=6, pady=1
                 )
                 lbl_sent.pack()
 

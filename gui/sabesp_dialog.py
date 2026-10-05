@@ -22,8 +22,8 @@ class SabespImportDialog(tk.Toplevel):
     def __init__(self, parent, config: dict, on_apply_callback=None, on_generate_callback=None, target_month=None, target_year=None):
         super().__init__(parent)
         self.title("Fatura Sabesp — Preenchimento Inteligente")
-        self.geometry("630x530")
-        self.minsize(580, 480)
+        self.geometry("650x590")
+        self.minsize(640, 560)
         self.configure(bg=COLOR_BG_LIGHT)
         self.transient(parent)
         self.grab_set()
@@ -44,8 +44,8 @@ class SabespImportDialog(tk.Toplevel):
 
     def _center_window(self):
         self.update_idletasks()
-        w = 630
-        h = 530
+        w = 650
+        h = 590
         x = max(0, self.master.winfo_x() + (self.master.winfo_width() - w) // 2)
         y = max(0, self.master.winfo_y() + (self.master.winfo_height() - h) // 2)
         self.geometry(f"{w}x{h}+{x}+{y}")
@@ -61,9 +61,9 @@ class SabespImportDialog(tk.Toplevel):
                 self._process_pdf(latest)
 
     def _build_ui(self):
-        # Top banner
+        # 1. Top banner
         header = tk.Frame(self, bg=COLOR_PRIMARY, height=55)
-        header.pack(fill=tk.X)
+        header.pack(fill=tk.X, side=tk.TOP)
         header.pack_propagate(False)
 
         lbl_icon = tk.Label(header, text="📄", font=("Segoe UI", 22), bg=COLOR_PRIMARY, fg="white")
@@ -76,8 +76,35 @@ class SabespImportDialog(tk.Toplevel):
         lbl_sub = tk.Label(title_frame, text="Conecta na caixa de e-mail e extrai datas e tarifas da concessionária", font=("Segoe UI", 8), bg=COLOR_PRIMARY, fg="#D8E8D0")
         lbl_sub.pack(anchor=tk.W)
 
-        # Content Frame
-        container = tk.Frame(self, bg=COLOR_BG_LIGHT, padx=15, pady=12)
+        # 2. Bottom Bar (Fixa no rodapé antes do container para NUNCA ser deformada!)
+        bottom_bar = tk.Frame(self, bg=COLOR_BG_LIGHT)
+        bottom_bar.pack(fill=tk.X, side=tk.BOTTOM, padx=16, pady=12)
+
+        self.btn_cancel = create_btn_secondary(bottom_bar, "Fechar", self.destroy, padx=14, pady=6)
+        self.btn_cancel.pack(side=tk.LEFT)
+
+        self.btn_apply_generate = create_btn_primary(
+            bottom_bar,
+            "🚀 Aplicar e Gerar Relatório",
+            self._on_apply_and_generate,
+            padx=16, pady=6, state=tk.DISABLED
+        )
+        self.btn_apply_generate.pack(side=tk.RIGHT)
+
+        self.btn_apply = create_btn_secondary(
+            bottom_bar,
+            "✔ Apenas Aplicar Parâmetros",
+            self._on_apply,
+            padx=14, pady=6, state=tk.DISABLED
+        )
+        self.btn_apply.pack(side=tk.RIGHT, padx=(0, 8))
+
+        # Divisor suave antes da barra inferior
+        div_foot = tk.Frame(self, height=1, bg=COLOR_CARD_BORDER)
+        div_foot.pack(fill=tk.X, side=tk.BOTTOM)
+
+        # 3. Content Frame (Expande no espaço central restante)
+        container = tk.Frame(self, bg=COLOR_BG_LIGHT, padx=15, pady=10)
         container.pack(fill=tk.BOTH, expand=True)
 
         # Action Buttons frame (Select File or Search in Email)
@@ -105,7 +132,7 @@ class SabespImportDialog(tk.Toplevel):
 
         # Result Card Frame
         self.f_card = tk.LabelFrame(container, text="Dados Reconhecidos da Sabesp", font=("Segoe UI", 9, "bold"), bg=COLOR_BG_LIGHT, fg=COLOR_TEXT_MAIN, padx=12, pady=10)
-        self.f_card.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        self.f_card.pack(fill=tk.BOTH, expand=True)
 
         # Initial prompt inside card
         self.lbl_empty = ttk.Label(
@@ -117,33 +144,6 @@ class SabespImportDialog(tk.Toplevel):
 
         # Data grid (hidden until loaded)
         self.f_grid = tk.Frame(self.f_card, bg=COLOR_BG_LIGHT)
-
-        # Divisor suave antes da barra inferior
-        div_foot = tk.Frame(self, height=1, bg=COLOR_CARD_BORDER)
-        div_foot.pack(fill=tk.X, side=tk.BOTTOM)
-
-        # Bottom Bar
-        bottom_bar = tk.Frame(self, bg=COLOR_BG_LIGHT)
-        bottom_bar.pack(fill=tk.X, side=tk.BOTTOM, padx=14, pady=10)
-
-        self.btn_cancel = create_btn_secondary(bottom_bar, "Fechar", self.destroy, pady=6)
-        self.btn_cancel.pack(side=tk.RIGHT)
-
-        self.btn_apply_generate = create_btn_primary(
-            bottom_bar,
-            "🚀 Aplicar e Gerar Relatório",
-            self._on_apply_and_generate,
-            pady=6, state=tk.DISABLED
-        )
-        self.btn_apply_generate.pack(side=tk.RIGHT, padx=(0, 8))
-
-        self.btn_apply = create_btn_secondary(
-            bottom_bar,
-            "✔ Apenas Aplicar Parâmetros",
-            self._on_apply,
-            pady=6, state=tk.DISABLED
-        )
-        self.btn_apply.pack(side=tk.RIGHT, padx=(0, 8))
 
         self.var_tarifa_escolhida = tk.StringVar(value="faixa")
 

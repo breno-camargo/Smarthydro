@@ -22,6 +22,21 @@ DEFAULT_OPERATORS = [
     }
 ]
 
+DEFAULT_CONDOMINIO_EMAIL_TO = "gerente.pamplona@zangari.com.br"
+DEFAULT_CONDOMINIO_EMAIL_CC = (
+    "assistente.pamplona2@zangari.com.br; "
+    "almir@zangari.com.br; "
+    "gabriel.domingos@compasss.com.br; "
+    "victor.carvalho@compasss.com.br; "
+    "breno.camargo@compasss.com.br"
+)
+
+
+def get_default_condominio_emails():
+    """Retorna os e-mails oficiais de destinatários do Condomínio Praça Pamplona (Para, Cc)."""
+    return DEFAULT_CONDOMINIO_EMAIL_TO, DEFAULT_CONDOMINIO_EMAIL_CC
+
+
 DEFAULT_CONFIG = {
     "server": "WELLCARE-PC\\SQLEXPRESS",
     "database": "StruxureWareReportsDB",
