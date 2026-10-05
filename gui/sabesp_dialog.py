@@ -19,7 +19,7 @@ from gui.ui_helpers import (
 
 
 class SabespImportDialog(tk.Toplevel):
-    def __init__(self, parent, config: dict, on_apply_callback=None, on_generate_callback=None, target_month=None, target_year=None):
+    def __init__(self, parent, config: dict, on_apply_callback=None, on_generate_callback=None, target_month=None, target_year=None, initial_pdf_path=None):
         super().__init__(parent)
         self.title("Fatura Sabesp — Preenchimento Inteligente")
         self.geometry("650x590")
@@ -36,11 +36,15 @@ class SabespImportDialog(tk.Toplevel):
         self.on_generate_callback = on_generate_callback
         self.target_month = target_month
         self.target_year = target_year
+        self.initial_pdf_path = initial_pdf_path
         self.sabesp_data = None
 
         self._center_window()
         self._build_ui()
-        self._auto_check_existing_or_email()
+        if self.initial_pdf_path and os.path.exists(self.initial_pdf_path):
+            self._process_pdf(self.initial_pdf_path)
+        else:
+            self._auto_check_existing_or_email()
 
     def _center_window(self):
         self.update_idletasks()
@@ -73,7 +77,7 @@ class SabespImportDialog(tk.Toplevel):
         title_frame.pack(side=tk.LEFT, fill=tk.Y, pady=6)
         lbl_title = tk.Label(title_frame, text="Leitor Inteligente de Fatura Sabesp", font=("Segoe UI", 12, "bold"), bg=COLOR_PRIMARY, fg="white")
         lbl_title.pack(anchor=tk.W)
-        lbl_sub = tk.Label(title_frame, text="Conecta na caixa de e-mail e extrai datas e tarifas da concessionária", font=("Segoe UI", 8), bg=COLOR_PRIMARY, fg="#D8E8D0")
+        lbl_sub = tk.Label(title_frame, text="Leitura Inteligente e Aplicação de Tarifas da Concessionária", font=("Segoe UI", 8), bg=COLOR_PRIMARY, fg="#D8E8D0")
         lbl_sub.pack(anchor=tk.W)
 
         # 2. Bottom Bar (Fixa no rodapé antes do container para NUNCA ser deformada!)
@@ -107,28 +111,23 @@ class SabespImportDialog(tk.Toplevel):
         container = tk.Frame(self, bg=COLOR_BG_LIGHT, padx=15, pady=10)
         container.pack(fill=tk.BOTH, expand=True)
 
-        # Action Buttons frame (Select File or Search in Email)
-        f_actions = tk.LabelFrame(container, text="Origem da Conta de Água", font=("Segoe UI", 9, "bold"), bg=COLOR_BG_LIGHT, fg=COLOR_TEXT_MAIN, padx=10, pady=8)
-        f_actions.pack(fill=tk.X, pady=(0, 10))
+        # Barra do Arquivo Selecionado (limpo, sem redundância com a busca por e-mail da tela inicial)
+        f_file_bar = tk.Frame(container, bg="#FFFFFF", highlightbackground=COLOR_CARD_BORDER, highlightthickness=1, padx=12, pady=7)
+        f_file_bar.pack(fill=tk.X, pady=(0, 10))
 
-        btn_email = create_btn_primary(
-            f_actions,
-            "📩 Buscar no E-mail (IMAP)",
-            self._on_search_email,
-            pady=6
+        lbl_file_icon = tk.Label(f_file_bar, text="📄", font=("Segoe UI", 12), bg="#FFFFFF", fg=COLOR_PRIMARY)
+        lbl_file_icon.pack(side=tk.LEFT, padx=(0, 6))
+
+        self.lbl_selected_file = tk.Label(
+            f_file_bar, text="Fatura Sabesp: Aguardando seleção...",
+            font=("Segoe UI", 9, "bold"), fg=COLOR_TEXT_MAIN, bg="#FFFFFF"
         )
-        btn_email.pack(side=tk.LEFT, padx=(0, 10))
+        self.lbl_selected_file.pack(side=tk.LEFT)
 
-        btn_file = create_btn_secondary(
-            f_actions,
-            "📁 Escolher PDF Local...",
-            self._on_select_file,
-            pady=6
+        btn_change_file = create_btn_secondary(
+            f_file_bar, "📁 Trocar Arquivo...", self._on_select_file, pady=2, padx=10
         )
-        btn_file.pack(side=tk.LEFT)
-
-        self.lbl_loading = ttk.Label(f_actions, text="", font=("Segoe UI", 8, "italic"), foreground=COLOR_TEXT_MUTED)
-        self.lbl_loading.pack(side=tk.LEFT, padx=15)
+        btn_change_file.pack(side=tk.RIGHT)
 
         # Result Card Frame
         self.f_card = tk.LabelFrame(container, text="Dados Reconhecidos da Sabesp", font=("Segoe UI", 9, "bold"), bg=COLOR_BG_LIGHT, fg=COLOR_TEXT_MAIN, padx=12, pady=10)
@@ -137,7 +136,7 @@ class SabespImportDialog(tk.Toplevel):
         # Initial prompt inside card
         self.lbl_empty = ttk.Label(
             self.f_card,
-            text="Nenhuma fatura carregada ainda.\nClique em 'Buscar no E-mail' acima ou selecione um PDF.",
+            text="Nenhuma fatura carregada ainda.\nSelecione um PDF da Sabesp para analisar.",
             font=("Segoe UI", 9), justify=tk.CENTER, foreground=COLOR_TEXT_MUTED
         )
         self.lbl_empty.pack(expand=True, pady=30)
@@ -157,32 +156,14 @@ class SabespImportDialog(tk.Toplevel):
             return
         self._process_pdf(f)
 
-    def _on_search_email(self):
-        self.lbl_loading.config(text="Buscando faturas na caixa de entrada...")
-        self.update_idletasks()
-
-        def _worker():
-            ok, msg, pdf_path = search_sabesp_in_email(
-                self.config,
-                target_month=self.target_month,
-                target_year=self.target_year
-            )
-            self.after(0, lambda: self._on_email_search_done(ok, msg, pdf_path))
-
-        threading.Thread(target=_worker, daemon=True).start()
-
-    def _on_email_search_done(self, ok, msg, pdf_path):
-        self.lbl_loading.config(text="")
-        if not ok or not pdf_path:
-            messagebox.showinfo("Busca de E-mail", msg, parent=self)
-            return
-        self._process_pdf(pdf_path)
-
     def _process_pdf(self, pdf_path: str):
         ok, msg, data = parse_sabesp_pdf(pdf_path)
         if not ok:
             messagebox.showerror("Erro ao Processar Fatura", msg, parent=self)
             return
+
+        if hasattr(self, "lbl_selected_file"):
+            self.lbl_selected_file.config(text=f"Fatura: {os.path.basename(pdf_path)}")
 
         self.sabesp_data = data
         self._render_data_card(data)

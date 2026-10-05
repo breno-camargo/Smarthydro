@@ -56,7 +56,7 @@ class SettingsDialog(tk.Toplevel):
                 pass
 
         # Centralizar perfeitamente sobre a janela principal com dimensões ideais
-        center_modal(self, parent, 610, 590)
+        center_modal(self, parent, 630, 610)
 
     def _configure_notebook_style(self):
         self.style = ttk.Style(self)
@@ -138,134 +138,135 @@ class SettingsDialog(tk.Toplevel):
         self._build_tab_dev(tab_dev)
 
     def _build_tab_db(self, parent):
-        parent.columnconfigure(1, weight=1)
+        """Constrói a aba de banco de dados com cards modernos e organizados."""
+        # Card 1: Conexão ao SQL Server
+        card_sql = create_card_frame(parent, padx=12, pady=8)
+        card_sql.pack(fill=tk.X, pady=(0, 6))
+        card_sql.columnconfigure(1, weight=1)
 
-        # ─── SEÇÃO 1: CONEXÃO AO SQL SERVER ───
-        lbl_sec_db = tk.Label(
-            parent, text="Conexão ao SQL Server (StruxureWare)",
-            font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
-        )
-        lbl_sec_db.grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 2))
+        tk.Label(
+            card_sql, text="🗄️ Conexão ao SQL Server (StruxureWare EBO)",
+            font=("Segoe UI", 9, "bold"), fg=COLOR_PRIMARY, bg="#FFFFFF"
+        ).grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 4))
 
-        ttk.Label(parent, text="Servidor/Instância:").grid(row=1, column=0, sticky=tk.W, pady=2)
-        self.ent_server = ttk.Entry(parent, width=36)
+        tk.Label(card_sql, text="Servidor/Instância:", font=("Segoe UI", 9), bg="#FFFFFF").grid(row=1, column=0, sticky=tk.W, pady=2)
+        self.ent_server = ttk.Entry(card_sql, width=36)
         self.ent_server.grid(row=1, column=1, sticky=tk.EW, pady=2)
 
-        ttk.Label(parent, text="Banco de Dados:").grid(row=2, column=0, sticky=tk.W, pady=2)
-        self.ent_database = ttk.Entry(parent, width=36)
+        tk.Label(card_sql, text="Banco de Dados:", font=("Segoe UI", 9), bg="#FFFFFF").grid(row=2, column=0, sticky=tk.W, pady=2)
+        self.ent_database = ttk.Entry(card_sql, width=36)
         self.ent_database.grid(row=2, column=1, sticky=tk.EW, pady=2)
 
-        ttk.Label(parent, text="Driver ODBC:").grid(row=3, column=0, sticky=tk.W, pady=2)
+        tk.Label(card_sql, text="Driver ODBC:", font=("Segoe UI", 9), bg="#FFFFFF").grid(row=3, column=0, sticky=tk.W, pady=2)
         drivers = get_available_odbc_drivers()
         if not drivers:
             drivers = ["ODBC Driver 17 for SQL Server", "SQL Server"]
-        self.cmb_driver = ttk.Combobox(parent, values=drivers, state="readonly", width=34)
+        self.cmb_driver = ttk.Combobox(card_sql, values=drivers, state="readonly", width=34)
         self.cmb_driver.grid(row=3, column=1, sticky=tk.EW, pady=2)
 
         # Autenticação
         self.var_trusted = tk.BooleanVar(value=True)
         self.chk_trusted = ttk.Checkbutton(
-            parent, text="Usar Autenticação Integrada do Windows (Trusted)",
+            card_sql, text="Usar Autenticação Integrada do Windows (Trusted)",
             variable=self.var_trusted, command=self._toggle_auth
         )
-        self.chk_trusted.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=(2, 1))
+        self.chk_trusted.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=(3, 1))
 
         self.lbl_trusted_hint = tk.Label(
-            parent,
+            card_sql,
             text="🔒 Autenticação integrada do Windows ativa (usuário e senha dispensados).",
-            font=("Segoe UI", 8, "italic"),
-            fg=COLOR_PRIMARY,
-            bg=COLOR_BG_LIGHT
+            font=("Segoe UI", 8, "italic"), fg=COLOR_PRIMARY, bg="#FFFFFF"
         )
 
-        self.frame_auth = ttk.Frame(parent)
+        self.frame_auth = tk.Frame(card_sql, bg="#FFFFFF")
         self.frame_auth.grid(row=5, column=0, columnspan=2, sticky=tk.EW, pady=1)
 
-        ttk.Label(self.frame_auth, text="Usuário:").grid(row=0, column=0, sticky=tk.W, pady=1)
+        tk.Label(self.frame_auth, text="Usuário:", font=("Segoe UI", 9), bg="#FFFFFF").grid(row=0, column=0, sticky=tk.W, pady=1)
         self.ent_user = ttk.Entry(self.frame_auth, width=15)
         self.ent_user.grid(row=0, column=1, sticky=tk.W, padx=4, pady=1)
 
-        ttk.Label(self.frame_auth, text="Senha:").grid(row=0, column=2, sticky=tk.W, padx=(12, 0), pady=1)
+        tk.Label(self.frame_auth, text="Senha:", font=("Segoe UI", 9), bg="#FFFFFF").grid(row=0, column=2, sticky=tk.W, padx=(12, 0), pady=1)
         self.ent_pass = ttk.Entry(self.frame_auth, width=15, show="*")
         self.ent_pass.grid(row=0, column=3, sticky=tk.W, padx=4, pady=1)
 
-        btn_test_db = create_btn_secondary(parent, "🔌 Testar Conexão SQL", self._test_connection, pady=3, padx=10)
-        btn_test_db.grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=(2, 4))
+        f_sql_btns = tk.Frame(card_sql, bg="#FFFFFF")
+        f_sql_btns.grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=(4, 0))
+        btn_test_db = create_btn_secondary(f_sql_btns, "🔌 Testar Conexão SQL", self._test_connection, pady=2, padx=10)
+        btn_test_db.pack(side=tk.LEFT)
 
-        # Separador 1
-        sep1 = tk.Frame(parent, height=1, bg=COLOR_ACCENT)
-        sep1.grid(row=7, column=0, columnspan=2, sticky=tk.EW, pady=3)
+        # Card 2: Pasta Padrão & Modelo Excel
+        card_rep = create_card_frame(parent, padx=12, pady=8)
+        card_rep.pack(fill=tk.X, pady=(0, 6))
+        card_rep.columnconfigure(1, weight=1)
 
-        # ─── SEÇÃO 2: PASTA PADRÃO & MODELO EXCEL ───
-        lbl_sec_rep = tk.Label(
-            parent, text="Pasta Padrão & Modelo Excel",
-            font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
-        )
-        lbl_sec_rep.grid(row=8, column=0, columnspan=2, sticky=tk.W, pady=(0, 2))
+        tk.Label(
+            card_rep, text="📂 Pasta Padrão & Modelo Excel",
+            font=("Segoe UI", 9, "bold"), fg=COLOR_PRIMARY, bg="#FFFFFF"
+        ).grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 4))
 
-        ttk.Label(parent, text="Pasta de Saída:").grid(row=9, column=0, sticky=tk.W, pady=2)
-        frame_dir = ttk.Frame(parent)
-        frame_dir.grid(row=9, column=1, sticky=tk.EW, pady=2)
+        tk.Label(card_rep, text="Pasta de Saída:", font=("Segoe UI", 9), bg="#FFFFFF").grid(row=1, column=0, sticky=tk.W, pady=2)
+        frame_dir = tk.Frame(card_rep, bg="#FFFFFF")
+        frame_dir.grid(row=1, column=1, sticky=tk.EW, pady=2)
         self.ent_dir = ttk.Entry(frame_dir, width=24)
         self.ent_dir.pack(side=tk.LEFT, fill=tk.X, expand=True)
         btn_browse_dir = create_btn_secondary(frame_dir, "Alterar...", self._browse_dir, pady=2, padx=8)
         btn_browse_dir.pack(side=tk.LEFT, padx=(4, 0))
 
         btn_edit_model = create_btn_secondary(
-            parent, "✏ Abrir Modelo no Excel para Edição (modelo_relatorio.xlsx)",
-            self._edit_template_action, pady=3, padx=10
+            card_rep, "✏ Abrir Modelo no Excel para Edição (modelo_relatorio.xlsx)",
+            self._edit_template_action, pady=2, padx=10
         )
-        btn_edit_model.grid(row=10, column=0, columnspan=2, sticky=tk.W, pady=(2, 4))
+        btn_edit_model.grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(4, 0))
 
-        # Separador 2
-        sep2 = tk.Frame(parent, height=1, bg=COLOR_ACCENT)
-        sep2.grid(row=11, column=0, columnspan=2, sticky=tk.EW, pady=3)
+        # Card 3: Preferências Gerais
+        card_pref = create_card_frame(parent, padx=12, pady=8)
+        card_pref.pack(fill=tk.X)
 
-        # ─── SEÇÃO 3: PREFERÊNCIAS DO RELATÓRIO ───
-        lbl_sec_pref = tk.Label(
-            parent, text="Preferências Gerais do Relatório",
-            font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
-        )
-        lbl_sec_pref.grid(row=12, column=0, columnspan=2, sticky=tk.W, pady=(0, 2))
+        tk.Label(
+            card_pref, text="⚙️ Preferências Gerais do Relatório",
+            font=("Segoe UI", 9, "bold"), fg=COLOR_PRIMARY, bg="#FFFFFF"
+        ).pack(anchor=tk.W, pady=(0, 3))
 
         self.var_open_excel = tk.BooleanVar(value=True)
         self.chk_open_excel = ttk.Checkbutton(
-            parent, text="Abrir planilha no Microsoft Excel automaticamente após geração",
+            card_pref, text="Abrir planilha no Microsoft Excel automaticamente após geração",
             variable=self.var_open_excel
         )
-        self.chk_open_excel.grid(row=13, column=0, columnspan=2, sticky=tk.W, pady=1)
+        self.chk_open_excel.pack(anchor=tk.W, pady=1)
 
         self.var_sort_consumption = tk.BooleanVar(value=True)
         self.chk_sort_consumption = ttk.Checkbutton(
-            parent, text="Ordenar unidades por maior consumo no relatório (ranking decrescente)",
+            card_pref, text="Ordenar unidades por maior consumo no relatório (ranking decrescente)",
             variable=self.var_sort_consumption
         )
-        self.chk_sort_consumption.grid(row=14, column=0, columnspan=2, sticky=tk.W, pady=1)
+        self.chk_sort_consumption.pack(anchor=tk.W, pady=1)
 
         btn_scheduler = create_btn_secondary(
-            parent,
+            card_pref,
             "⏰ Configurar Agendamento Automático no Windows (Executar dia 29 silencioso)",
-            self._open_scheduler, pady=3, padx=10
+            self._open_scheduler, pady=2, padx=10
         )
-        btn_scheduler.grid(row=15, column=0, columnspan=2, sticky=tk.W, pady=(3, 0))
+        btn_scheduler.pack(anchor=tk.W, pady=(4, 0))
 
     def _build_tab_email(self, parent):
-        parent.columnconfigure(1, weight=1)
+        """Constrói a aba de e-mail com cards modernos para destinatários, SMTP e modelo."""
+        # Card 1: Destinatários Oficiais
+        card_dest = create_card_frame(parent, padx=12, pady=8)
+        card_dest.pack(fill=tk.X, pady=(0, 6))
+        card_dest.columnconfigure(1, weight=1)
 
-        # ─── SEÇÃO 1: DESTINATÁRIOS E MÉTODO ───
-        lbl_sec_em = tk.Label(
-            parent, text="Destinatários Padrão & Método de Envio",
-            font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
-        )
-        lbl_sec_em.grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 4))
+        tk.Label(
+            card_dest, text="🏢 Destinatários Padrão (Condomínio Praça Pamplona)",
+            font=("Segoe UI", 9, "bold"), fg=COLOR_PRIMARY, bg="#FFFFFF"
+        ).grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 4))
 
-        ttk.Label(parent, text="E-mail da Gerente (Para):").grid(row=1, column=0, sticky=tk.W, pady=3)
-        self.ent_recipients = ttk.Entry(parent, width=36)
-        self.ent_recipients.grid(row=1, column=1, sticky=tk.EW, pady=3)
+        tk.Label(card_dest, text="E-mail da Gerente (Para):", font=("Segoe UI", 9), bg="#FFFFFF").grid(row=1, column=0, sticky=tk.W, pady=2)
+        self.ent_recipients = ttk.Entry(card_dest, width=36)
+        self.ent_recipients.grid(row=1, column=1, sticky=tk.EW, pady=2)
 
-        ttk.Label(parent, text="Em Cópia Padrão (Cc):").grid(row=2, column=0, sticky=tk.W, pady=3)
-        frame_cc = ttk.Frame(parent)
-        frame_cc.grid(row=2, column=1, sticky=tk.EW, pady=3)
+        tk.Label(card_dest, text="Em Cópia Padrão (Cc):", font=("Segoe UI", 9), bg="#FFFFFF").grid(row=2, column=0, sticky=tk.W, pady=2)
+        frame_cc = tk.Frame(card_dest, bg="#FFFFFF")
+        frame_cc.grid(row=2, column=1, sticky=tk.EW, pady=2)
 
         self.ent_cc = ttk.Entry(frame_cc, width=28)
         self.ent_cc.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -276,40 +277,35 @@ class SettingsDialog(tk.Toplevel):
         btn_view_cc.pack(side=tk.LEFT, padx=(4, 0))
 
         lbl_hint_to = tk.Label(
-            parent, text="Separe múltiplos e-mails por ponto-e-vírgula (;)",
-            font=("Segoe UI", 8, "italic"), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT
+            card_dest, text="Separe múltiplos e-mails por ponto-e-vírgula (;)",
+            font=("Segoe UI", 8, "italic"), fg=COLOR_TEXT_MUTED, bg="#FFFFFF"
         )
-        lbl_hint_to.grid(row=3, column=1, sticky=tk.W, pady=(0, 3))
-
-        # Botão para restaurar e-mails oficiais do Condomínio Praça Pamplona
-        frame_em_actions = tk.Frame(parent, bg=COLOR_BG_LIGHT)
-        frame_em_actions.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=(2, 4))
+        lbl_hint_to.grid(row=3, column=1, sticky=tk.W, pady=(0, 2))
 
         btn_restore_def = create_btn_secondary(
-            frame_em_actions, "🔄 Restaurar E-mails Padrão (Praça Pamplona)",
+            card_dest, "🔄 Restaurar E-mails Padrão (Praça Pamplona)",
             self._restore_default_emails, pady=2, padx=10
         )
-        btn_restore_def.pack(side=tk.LEFT)
+        btn_restore_def.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=(3, 0))
         create_tooltip(btn_restore_def, "Restaura os e-mails oficiais da Gerente e lista Cc do Condomínio Praça Pamplona")
 
-        # Separador 1
-        sep_e1 = tk.Frame(parent, height=1, bg=COLOR_ACCENT)
-        sep_e1.grid(row=5, column=0, columnspan=2, sticky=tk.EW, pady=6)
+        # Card 2: Servidor SMTP UOL Pro
+        card_smtp = create_card_frame(parent, padx=12, pady=8)
+        card_smtp.pack(fill=tk.X, pady=(0, 6))
+        card_smtp.columnconfigure(1, weight=1)
 
-        # ─── SEÇÃO 2: SERVIDOR SMTP (UOL PRO) ───
-        lbl_sec_smtp = tk.Label(
-            parent, text="Sua Conta de E-mail (UOL Pro / Remetente)",
-            font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
-        )
-        lbl_sec_smtp.grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=(0, 4))
+        tk.Label(
+            card_smtp, text="✉️ Sua Conta de E-mail (UOL Pro / Remetente)",
+            font=("Segoe UI", 9, "bold"), fg=COLOR_PRIMARY, bg="#FFFFFF"
+        ).grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 4))
 
-        ttk.Label(parent, text="Servidor SMTP:").grid(row=7, column=0, sticky=tk.W, pady=3)
-        self.ent_smtp_host = ttk.Entry(parent, width=36)
-        self.ent_smtp_host.grid(row=7, column=1, sticky=tk.EW, pady=3)
+        tk.Label(card_smtp, text="Servidor SMTP:", font=("Segoe UI", 9), bg="#FFFFFF").grid(row=1, column=0, sticky=tk.W, pady=2)
+        self.ent_smtp_host = ttk.Entry(card_smtp, width=36)
+        self.ent_smtp_host.grid(row=1, column=1, sticky=tk.EW, pady=2)
 
-        ttk.Label(parent, text="Porta / Criptografia:").grid(row=8, column=0, sticky=tk.W, pady=3)
-        frame_port_sec = ttk.Frame(parent)
-        frame_port_sec.grid(row=8, column=1, sticky=tk.W, pady=3)
+        tk.Label(card_smtp, text="Porta / Criptografia:", font=("Segoe UI", 9), bg="#FFFFFF").grid(row=2, column=0, sticky=tk.W, pady=2)
+        frame_port_sec = tk.Frame(card_smtp, bg="#FFFFFF")
+        frame_port_sec.grid(row=2, column=1, sticky=tk.W, pady=2)
 
         self.cmb_smtp_preset = ttk.Combobox(
             frame_port_sec,
@@ -324,11 +320,10 @@ class SettingsDialog(tk.Toplevel):
         self.cmb_smtp_preset.pack(side=tk.LEFT)
         self.cmb_smtp_preset.bind("<<ComboboxSelected>>", self._on_smtp_preset_change)
 
-        # Painel para configuração personalizada (oculto quando usando presets padrão)
-        self.frame_custom_port = ttk.Frame(parent)
-        self.frame_custom_port.grid(row=9, column=1, sticky=tk.W, pady=(2, 4))
+        self.frame_custom_port = tk.Frame(card_smtp, bg="#FFFFFF")
+        self.frame_custom_port.grid(row=3, column=1, sticky=tk.W, pady=(2, 2))
 
-        ttk.Label(self.frame_custom_port, text="Porta:").pack(side=tk.LEFT)
+        tk.Label(self.frame_custom_port, text="Porta:", font=("Segoe UI", 9), bg="#FFFFFF").pack(side=tk.LEFT)
         self.ent_smtp_port = ttk.Entry(self.frame_custom_port, width=6)
         self.ent_smtp_port.pack(side=tk.LEFT, padx=(4, 10))
 
@@ -340,46 +335,44 @@ class SettingsDialog(tk.Toplevel):
         self.chk_smtp_ssl = ttk.Checkbutton(self.frame_custom_port, text="SSL Direto", variable=self.var_smtp_ssl)
         self.chk_smtp_ssl.pack(side=tk.LEFT)
 
-        ttk.Label(parent, text="Seu E-mail (Remetente):").grid(row=10, column=0, sticky=tk.W, pady=3)
-        self.ent_smtp_user = ttk.Entry(parent, width=36)
-        self.ent_smtp_user.grid(row=10, column=1, sticky=tk.EW, pady=3)
+        tk.Label(card_smtp, text="Seu E-mail (Remetente):", font=("Segoe UI", 9), bg="#FFFFFF").grid(row=4, column=0, sticky=tk.W, pady=2)
+        self.ent_smtp_user = ttk.Entry(card_smtp, width=36)
+        self.ent_smtp_user.grid(row=4, column=1, sticky=tk.EW, pady=2)
 
-        ttk.Label(parent, text="Senha do seu E-mail:").grid(row=11, column=0, sticky=tk.W, pady=3)
-        self.ent_smtp_pass = ttk.Entry(parent, width=36, show="*")
-        self.ent_smtp_pass.grid(row=11, column=1, sticky=tk.EW, pady=3)
+        tk.Label(card_smtp, text="Senha do seu E-mail:", font=("Segoe UI", 9), bg="#FFFFFF").grid(row=5, column=0, sticky=tk.W, pady=2)
+        self.ent_smtp_pass = ttk.Entry(card_smtp, width=36, show="*")
+        self.ent_smtp_pass.grid(row=5, column=1, sticky=tk.EW, pady=2)
 
-        btn_test_smtp = create_btn_secondary(parent, "🔌 Testar Conexão com seu E-mail", self._test_smtp, pady=3, padx=10)
-        btn_test_smtp.grid(row=12, column=0, columnspan=2, sticky=tk.W, pady=(4, 6))
+        btn_test_smtp = create_btn_secondary(card_smtp, "🔌 Testar Conexão com seu E-mail", self._test_smtp, pady=2, padx=10)
+        btn_test_smtp.grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=(4, 0))
 
-        # Separador 2
-        sep_e2 = tk.Frame(parent, height=1, bg=COLOR_ACCENT)
-        sep_e2.grid(row=13, column=0, columnspan=2, sticky=tk.EW, pady=4)
+        # Card 3: Modelo de E-mail
+        card_tmpl = create_card_frame(parent, padx=12, pady=8)
+        card_tmpl.pack(fill=tk.X)
 
-        # ─── SEÇÃO 3: MODELO DE E-MAIL ───
-        lbl_sec_tmpl_e = tk.Label(
-            parent, text="Personalização do Modelo de E-mail",
-            font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
-        )
-        lbl_sec_tmpl_e.grid(row=14, column=0, columnspan=2, sticky=tk.W, pady=(0, 4))
+        tk.Label(
+            card_tmpl, text="🎨 Personalização do Modelo de E-mail",
+            font=("Segoe UI", 9, "bold"), fg=COLOR_PRIMARY, bg="#FFFFFF"
+        ).pack(anchor=tk.W, pady=(0, 4))
 
-        frame_tmpl_btns = ttk.Frame(parent)
-        frame_tmpl_btns.grid(row=15, column=0, columnspan=2, sticky=tk.W, pady=(2, 0))
+        frame_tmpl_btns = tk.Frame(card_tmpl, bg="#FFFFFF")
+        frame_tmpl_btns.pack(fill=tk.X)
 
         btn_edit_email_tmpl = create_btn_secondary(
             frame_tmpl_btns, "✏ Personalizar Modelo",
-            self._open_email_template_editor, pady=3, padx=10
+            self._open_email_template_editor, pady=2, padx=10
         )
         btn_edit_email_tmpl.pack(side=tk.LEFT, padx=(0, 6))
 
         btn_preview_tmpl = create_btn_secondary(
             frame_tmpl_btns, "👁 Ver Prévia no Navegador",
-            self._preview_email_action, pady=3, padx=10
+            self._preview_email_action, pady=2, padx=10
         )
         btn_preview_tmpl.pack(side=tk.LEFT, padx=(0, 6))
 
         btn_open_tmpl_file = create_btn_secondary(
             frame_tmpl_btns, "📂 Bloco de Notas",
-            self._open_template_in_notepad, pady=3, padx=10
+            self._open_template_in_notepad, pady=2, padx=10
         )
         btn_open_tmpl_file.pack(side=tk.LEFT)
 

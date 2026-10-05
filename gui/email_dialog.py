@@ -52,20 +52,27 @@ class SendEmailDialog(tk.Toplevel):
 
         # Destinatários e modo de teste
         self.is_test_mode = False
-        self.saved_official_to = self.config.get("email_recipients", "") or DEFAULT_CONDOMINIO_EMAIL_TO
-        self.saved_official_cc = self.config.get("email_cc", "") or DEFAULT_CONDOMINIO_EMAIL_CC
+        to_cfg = self.config.get("email_recipients", "")
+        # Se o salvo for o e-mail de teste pessoal, restaura o oficial do condomínio como padrão oficial
+        if to_cfg and "zangari" in to_cfg.lower():
+            self.saved_official_to = to_cfg
+        else:
+            self.saved_official_to = DEFAULT_CONDOMINIO_EMAIL_TO
+
+        cc_cfg = self.config.get("email_cc", "")
+        self.saved_official_cc = cc_cfg if cc_cfg else DEFAULT_CONDOMINIO_EMAIL_CC
         self.test_email = self.config.get("test_email", "breno.hsc75@gmail.com")
 
         self._build_ui()
-        center_modal(self, parent, 640, 620)
+        center_modal(self, parent, 660, 660)
 
     def _build_ui(self):
-        container = ttk.Frame(self, padding="16 14 16 14")
+        container = ttk.Frame(self, padding="18 16 18 16")
         container.pack(fill=tk.BOTH, expand=True)
 
-        # ─── 1. CABEÇALHO ───
+        # ─── 1. CABEÇALHO MODERNO ───
         frame_head = tk.Frame(container, bg=COLOR_BG_LIGHT)
-        frame_head.pack(fill=tk.X, pady=(0, 6))
+        frame_head.pack(fill=tk.X, pady=(0, 8))
 
         tk.Label(
             frame_head, text="✉️ Disparo de Relatório Mensal",
@@ -79,7 +86,7 @@ class SendEmailDialog(tk.Toplevel):
 
         # ─── 2. CARD DE MÉTRICAS DO RELATÓRIO ───
         card_metrics = create_card_frame(container, padx=10, pady=8)
-        card_metrics.pack(fill=tk.X, pady=(0, 8))
+        card_metrics.pack(fill=tk.X, pady=(0, 10))
 
         f_name = os.path.basename(self.xlsx_path)
         p_txt = self.summary.get("periodo") or "Período automático"
@@ -112,16 +119,53 @@ class SendEmailDialog(tk.Toplevel):
         tk.Label(f_k4, text="💰 TOTAL RATEADO", font=("Segoe UI", 7, "bold"), fg=COLOR_PRIMARY, bg="#F6FAF4").pack(anchor="w")
         tk.Label(f_k4, text=f"R$ {tot_rs}", font=("Segoe UI", 8, "bold"), fg=COLOR_PRIMARY, bg="#F6FAF4").pack(anchor="w")
 
-        # ─── 3. REMETENTE / OPERADOR ───
-        frame_op = tk.Frame(container, bg=COLOR_BG_LIGHT)
-        frame_op.pack(fill=tk.X, pady=(0, 6))
+        # ─── 3. CARD DE DESTINATÁRIOS & CONFIGURAÇÃO DO ENVIO ───
+        card_dest = create_card_frame(container, padx=14, pady=10)
+        card_dest.pack(fill=tk.X, pady=(0, 10))
 
-        tk.Label(frame_op, text="Remetente:", font=("Segoe UI", 9, "bold"), bg=COLOR_BG_LIGHT, fg=COLOR_TEXT_MAIN).pack(side=tk.LEFT)
+        # Título do Card e Seletor de Modo
+        f_dest_hdr = tk.Frame(card_dest, bg="#FFFFFF")
+        f_dest_hdr.pack(fill=tk.X, pady=(0, 8))
 
+        tk.Label(
+            f_dest_hdr, text="📬 Destinatários do Relatório",
+            font=("Segoe UI", 9, "bold"), fg=COLOR_PRIMARY, bg="#FFFFFF"
+        ).pack(side=tk.LEFT)
+
+        # Botões do Seletor de Modo (Oficial vs Teste)
+        f_mode_btns = tk.Frame(f_dest_hdr, bg="#FFFFFF")
+        f_mode_btns.pack(side=tk.RIGHT)
+
+        self.btn_mode_official = create_btn_secondary(
+            f_mode_btns, "🏢 Modo Oficial", self._set_official_mode, pady=3, padx=10
+        )
+        self.btn_mode_official.pack(side=tk.LEFT, padx=(0, 6))
+        create_tooltip(self.btn_mode_official, "Preenche a lista oficial do condomínio (Gerente e equipe Zangari/CompaSSS)")
+
+        self.btn_mode_test = create_btn_secondary(
+            f_mode_btns, "🧪 Modo Teste (Para Mim)", self._set_test_mode, pady=3, padx=10
+        )
+        self.btn_mode_test.pack(side=tk.LEFT)
+        create_tooltip(self.btn_mode_test, "Envia exclusivamente para o seu e-mail pessoal para testes, sem afetar o condomínio")
+
+        # Banner Indicador do Modo Ativo
+        self.lbl_mode_badge = tk.Label(
+            card_dest,
+            text="🏢 MODO OFICIAL ATIVO — Relatório será enviado para a gerência e equipe do condomínio.",
+            font=("Segoe UI", 8, "bold"), fg="#2A6320", bg="#E8F4E5",
+            highlightbackground="#B8DCB2", highlightthickness=1, padx=10, pady=4
+        )
+        self.lbl_mode_badge.pack(fill=tk.X, pady=(0, 8))
+
+        # Remetente (Operador)
+        f_rem = tk.Frame(card_dest, bg="#FFFFFF")
+        f_rem.pack(fill=tk.X, pady=(0, 6))
+
+        tk.Label(f_rem, text="Remetente:", font=("Segoe UI", 8, "bold"), bg="#FFFFFF", fg=COLOR_TEXT_MAIN, width=12, anchor="w").pack(side=tk.LEFT)
         self.ops_map = {f"{op.get('name')} <{op.get('email')}>": op for op in self.operators}
         op_names = list(self.ops_map.keys())
-        self.cmb_op = ttk.Combobox(frame_op, values=op_names, state="readonly", font=("Segoe UI", 9), width=44)
-        self.cmb_op.pack(side=tk.LEFT, padx=(6, 0))
+        self.cmb_op = ttk.Combobox(f_rem, values=op_names, state="readonly", font=("Segoe UI", 9))
+        self.cmb_op.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         curr_op_name = None
         for name, op in self.ops_map.items():
@@ -132,71 +176,46 @@ class SendEmailDialog(tk.Toplevel):
             self.cmb_op.set(curr_op_name)
         elif op_names:
             self.cmb_op.set(op_names[0])
-
         self.cmb_op.bind("<<ComboboxSelected>>", self._on_operator_change)
 
-        # ─── 4. DESTINATÁRIOS COM MODO OFICIAL / TESTE ───
-        frame_to_hdr = tk.Frame(container, bg=COLOR_BG_LIGHT)
-        frame_to_hdr.pack(fill=tk.X, pady=(2, 3))
+        # Destinatário Principal (Para)
+        f_to = tk.Frame(card_dest, bg="#FFFFFF")
+        f_to.pack(fill=tk.X, pady=(0, 6))
+        tk.Label(f_to, text="Para (Gerente):", font=("Segoe UI", 8, "bold"), bg="#FFFFFF", fg=COLOR_TEXT_MAIN, width=12, anchor="w").pack(side=tk.LEFT)
+        self.ent_to = ttk.Entry(f_to, font=("Segoe UI", 9))
+        self.ent_to.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.ent_to.insert(0, self.saved_official_to)
 
-        tk.Label(frame_to_hdr, text="Destinatários do E-mail:", font=("Segoe UI", 9, "bold"), bg=COLOR_BG_LIGHT, fg=COLOR_TEXT_MAIN).pack(side=tk.LEFT)
-
-        btn_test_mode = create_btn_secondary(
-            frame_to_hdr, "🧪 Enviar Apenas para Mim (Teste)", self._set_test_mode, pady=2, padx=8
-        )
-        btn_test_mode.pack(side=tk.RIGHT, padx=(4, 0))
-        create_tooltip(btn_test_mode, "Preenche seu e-mail pessoal e limpa a cópia oficial sem alterar suas configurações salvas.")
-
-        btn_official_mode = create_btn_secondary(
-            frame_to_hdr, "🏢 Destinatários Oficiais", self._set_official_mode, pady=2, padx=8
-        )
-        btn_official_mode.pack(side=tk.RIGHT)
-        create_tooltip(btn_official_mode, "Restaura os e-mails oficiais da Gerente e a lista Cc do Condomínio Praça Pamplona.")
-
-        # Badge indicador do modo ativo
-        self.lbl_mode_badge = tk.Label(
-            container, text="🏢 MODO OFICIAL — Condomínio Praça Pamplona",
-            font=("Segoe UI", 8, "bold"), fg="#2A6320", bg="#E8F4E5",
-            highlightbackground="#B8DCB2", highlightthickness=1, padx=8, pady=2
-        )
-        self.lbl_mode_badge.pack(anchor=tk.W, pady=(0, 4))
-
-        tk.Label(container, text="Para (Gerente):", font=("Segoe UI", 8, "bold"), bg=COLOR_BG_LIGHT, fg=COLOR_TEXT_MUTED).pack(anchor=tk.W)
-        self.ent_to = ttk.Entry(container, font=("Segoe UI", 9))
-        self.ent_to.pack(fill=tk.X, pady=(0, 3))
-        if self.saved_official_to:
-            self.ent_to.insert(0, self.saved_official_to)
-        else:
-            self.ent_to.insert(0, DEFAULT_CONDOMINIO_EMAIL_TO)
-
-        tk.Label(container, text="Em Cópia Padrão (Cc):", font=("Segoe UI", 8, "bold"), bg=COLOR_BG_LIGHT, fg=COLOR_TEXT_MUTED).pack(anchor=tk.W)
-        self.ent_cc = ttk.Entry(container, font=("Segoe UI", 9))
-        self.ent_cc.pack(fill=tk.X, pady=(0, 2))
-        if self.saved_official_cc:
-            self.ent_cc.insert(0, self.saved_official_cc)
-        else:
-            self.ent_cc.insert(0, DEFAULT_CONDOMINIO_EMAIL_CC)
+        # Em Cópia (Cc)
+        f_cc = tk.Frame(card_dest, bg="#FFFFFF")
+        f_cc.pack(fill=tk.X, pady=(0, 4))
+        tk.Label(f_cc, text="Em Cópia (Cc):", font=("Segoe UI", 8, "bold"), bg="#FFFFFF", fg=COLOR_TEXT_MAIN, width=12, anchor="w").pack(side=tk.LEFT)
+        self.ent_cc = ttk.Entry(f_cc, font=("Segoe UI", 9))
+        self.ent_cc.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.ent_cc.insert(0, self.saved_official_cc)
 
         lbl_to_hint = tk.Label(
-            container, text="Separe múltiplos e-mails por ponto-e-vírgula (;)",
-            font=("Segoe UI", 8, "italic"), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT
+            card_dest, text="Dica: Separe múltiplos e-mails por ponto-e-vírgula (;)",
+            font=("Segoe UI", 8, "italic"), fg=COLOR_TEXT_MUTED, bg="#FFFFFF"
         )
-        lbl_to_hint.pack(anchor=tk.W, pady=(0, 6))
+        lbl_to_hint.pack(anchor=tk.W, padx=(95, 0), pady=(0, 6))
 
-        # ─── 5. ASSUNTO ───
-        tk.Label(container, text="Assunto:", font=("Segoe UI", 8, "bold"), bg=COLOR_BG_LIGHT, fg=COLOR_TEXT_MUTED).pack(anchor=tk.W)
-        self.ent_subj = ttk.Entry(container, font=("Segoe UI", 9))
-        self.ent_subj.pack(fill=tk.X, pady=(0, 8))
+        # Assunto
+        f_subj = tk.Frame(card_dest, bg="#FFFFFF")
+        f_subj.pack(fill=tk.X, pady=(0, 2))
+        tk.Label(f_subj, text="Assunto:", font=("Segoe UI", 8, "bold"), bg="#FFFFFF", fg=COLOR_TEXT_MAIN, width=12, anchor="w").pack(side=tk.LEFT)
+        self.ent_subj = ttk.Entry(f_subj, font=("Segoe UI", 9))
+        self.ent_subj.pack(side=tk.LEFT, fill=tk.X, expand=True)
         self.ent_subj.insert(0, self.rendered_subj)
 
-        # ─── 6. ANEXOS INCLUSOS (CARD MODERNO) ───
-        card_att = create_card_frame(container, padx=12, pady=6)
-        card_att.pack(fill=tk.X, pady=(0, 8))
+        # ─── 4. CARD DE ANEXOS INCLUSOS ───
+        card_att = create_card_frame(container, padx=14, pady=8)
+        card_att.pack(fill=tk.X, pady=(0, 10))
 
         tk.Label(
             card_att, text="📎 Arquivos Anexos Inclusos",
             font=("Segoe UI", 8, "bold"), fg=COLOR_PRIMARY, bg="#FFFFFF"
-        ).pack(anchor=tk.W, pady=(0, 3))
+        ).pack(anchor=tk.W, pady=(0, 4))
 
         self.var_att_xlsx = tk.BooleanVar(value=True)
         chk_xlsx = ttk.Checkbutton(
@@ -204,7 +223,7 @@ class SendEmailDialog(tk.Toplevel):
             text=f"📊 Planilha Excel (.xlsx)  •  {os.path.basename(self.xlsx_path)}",
             variable=self.var_att_xlsx
         )
-        chk_xlsx.pack(anchor=tk.W, pady=1)
+        chk_xlsx.pack(anchor=tk.W, pady=2)
 
         self.var_att_pdf = tk.BooleanVar(value=bool(self.pdf_path))
         pdf_label = (
@@ -217,9 +236,9 @@ class SendEmailDialog(tk.Toplevel):
             variable=self.var_att_pdf,
             state=tk.NORMAL if self.pdf_path else tk.DISABLED
         )
-        chk_pdf.pack(anchor=tk.W, pady=1)
+        chk_pdf.pack(anchor=tk.W, pady=2)
 
-        # ─── 7. PROGRESSO E STATUS ───
+        # ─── 5. PROGRESSO E STATUS ───
         self.lbl_status = tk.Label(
             container, text="", font=("Segoe UI", 9, "bold"),
             fg=COLOR_PRIMARY, bg=COLOR_BG_LIGHT
@@ -227,14 +246,14 @@ class SendEmailDialog(tk.Toplevel):
         self.lbl_status.pack(anchor=tk.W, pady=(0, 2))
 
         self.prog_bar = ModernProgressBar(container, height=10)
-        self.prog_bar.pack(fill=tk.X, pady=(0, 8))
+        self.prog_bar.pack(fill=tk.X, pady=(0, 10))
 
-        # ─── 8. BOTÕES DE AÇÃO INFERIORES ───
+        # ─── 6. BOTÕES DE AÇÃO INFERIORES ───
         frame_bottom = tk.Frame(container, bg=COLOR_BG_LIGHT)
-        frame_bottom.pack(fill=tk.X, pady=(2, 0))
+        frame_bottom.pack(fill=tk.X)
 
         btn_preview = create_btn_secondary(frame_bottom, "👁 Prévia HTML", self._preview_email, pady=6)
-        btn_preview.pack(side=tk.LEFT, padx=(0, 6))
+        btn_preview.pack(side=tk.LEFT, padx=(0, 8))
 
         btn_edit_template = create_btn_secondary(frame_bottom, "✏ Editar Modelo", self._edit_template, pady=6)
         btn_edit_template.pack(side=tk.LEFT)
@@ -261,12 +280,12 @@ class SendEmailDialog(tk.Toplevel):
         self.ent_cc.insert(0, cc_val)
 
         self.lbl_mode_badge.config(
-            text="🏢 MODO OFICIAL — Condomínio Praça Pamplona",
+            text="🏢 MODO OFICIAL ATIVO — Relatório será enviado para a gerência e equipe do condomínio.",
             fg="#2A6320", bg="#E8F4E5", highlightbackground="#B8DCB2"
         )
 
     def _set_test_mode(self):
-        """Ativa o modo de teste enviando apenas para o endereço de teste."""
+        """Ativa o modo de teste enviando apenas para o endereço de teste pessoal."""
         self.is_test_mode = True
         curr_to = self.ent_to.get().strip()
         curr_cc = self.ent_cc.get().strip()
@@ -279,7 +298,7 @@ class SendEmailDialog(tk.Toplevel):
         self.ent_cc.delete(0, tk.END)
 
         self.lbl_mode_badge.config(
-            text="🧪 MODO TESTE ATIVO — Destinatários oficiais desativados",
+            text="🧪 MODO TESTE ATIVO — O relatório será enviado exclusivamente para seu e-mail pessoal.",
             fg="#9C4410", bg="#FEF3EB", highlightbackground="#F8D7BE"
         )
 

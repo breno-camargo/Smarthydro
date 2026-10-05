@@ -480,8 +480,17 @@ class AppHidrometrosWindow:
         except Exception:
             pass
 
-    def _open_sabesp_dialog(self):
-        """Abre o diálogo inteligente de importação e leitura de fatura da Sabesp."""
+    def _choose_pdf_directly(self):
+        """Abre diretamente o explorador de arquivos para escolher o PDF da Sabesp."""
+        from tkinter import filedialog
+        pdf_path = filedialog.askopenfilename(
+            title="Selecionar Fatura Sabesp em PDF",
+            filetypes=[("Fatura Sabesp (PDF)", "*.pdf"), ("Todos os Arquivos", "*.*")],
+            parent=self.root
+        )
+        if not pdf_path:
+            return
+
         target_m = None
         target_y = None
         try:
@@ -500,8 +509,13 @@ class AppHidrometrosWindow:
             on_apply_callback=self._apply_sabesp_data,
             on_generate_callback=self._start_processing,
             target_month=target_m,
-            target_year=target_y
+            target_year=target_y,
+            initial_pdf_path=pdf_path
         )
+
+    def _open_sabesp_dialog(self):
+        """Abre diretamente o explorador de arquivos para selecionar a fatura da Sabesp."""
+        self._choose_pdf_directly()
 
     def _auto_check_latest_sabesp_cache(self):
         """Verifica se há fatura recente baixada no cache temp_sabesp e já pré-carrega no Hero Card."""
@@ -1041,17 +1055,16 @@ class AppHidrometrosWindow:
             bind_button_hover(btn_del, "#FFFFFF", "#FDEAEA", normal_fg="#999999", hover_fg="#C9302C")
             create_tooltip(btn_del, "Excluir este relatório do histórico")
 
-            # ─── INFORMAÇÕES À ESQUERDA (GRID COM LARGURAS FIXAS) ───
+            # ─── INFORMAÇÕES À ESQUERDA (GRID COM LARGURAS FIXAS E ALINHAMENTO PERFEITO) ───
             frame_info = tk.Frame(card, bg="#FFFFFF")
             frame_info.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            frame_info.columnconfigure(3, weight=1)
 
             lbl_doc_icon = tk.Label(frame_info, text="📄", font=("Segoe UI Emoji", 9), bg="#FFFFFF", fg=COLOR_PRIMARY)
             lbl_doc_icon.grid(row=0, column=0, padx=(2, 6), sticky=tk.W)
 
             lbl_f = tk.Label(
                 frame_info, text=disp_name, font=("Segoe UI", 9, "bold"),
-                fg=COLOR_TEXT_MAIN, bg="#FFFFFF", width=25, anchor="w", cursor="hand2"
+                fg=COLOR_TEXT_MAIN, bg="#FFFFFF", width=23, anchor="w", cursor="hand2"
             )
             lbl_f.grid(row=0, column=1, sticky=tk.W)
             lbl_f.bind("<Button-1>", lambda e, p=f_path: self._open_specific_file(p))
@@ -1061,22 +1074,39 @@ class AppHidrometrosWindow:
             dt_txt = f"• {dt_ger}" if dt_ger else ""
             lbl_d = tk.Label(
                 frame_info, text=dt_txt, font=("Segoe UI", 8),
-                fg=COLOR_TEXT_MUTED, bg="#FFFFFF", width=18, anchor="w"
+                fg=COLOR_TEXT_MUTED, bg="#FFFFFF", width=17, anchor="w"
             )
-            lbl_d.grid(row=0, column=2, padx=(4, 6), sticky=tk.W)
+            lbl_d.grid(row=0, column=2, padx=(2, 6), sticky=tk.W)
 
-            # Badge de envio
+            # Badge de envio (Sempre exibido em todas as linhas para simetria visual uniforme)
             sent_time = send_log.get(f_name)
             if sent_time:
                 clean_sent = sent_time.replace("às às", "às").strip()
-                badge_text = f"✉ Enviado em {clean_sent}" if "às" in clean_sent else f"✉ Enviado às {clean_sent}"
-                f_sent = tk.Frame(frame_info, bg="#E8F4E5", highlightbackground="#B8DCB2", highlightthickness=1, bd=0)
-                f_sent.grid(row=0, column=3, sticky=tk.W, padx=(2, 4))
-                lbl_sent = tk.Label(
-                    f_sent, text=badge_text, font=("Segoe UI", 7, "bold"),
-                    fg="#2A6320", bg="#E8F4E5", padx=6, pady=1
-                )
-                lbl_sent.pack()
+                if "às" in clean_sent:
+                    hora = clean_sent.split("às")[-1].strip()
+                    badge_text = f"✉ Enviado ({hora})"
+                else:
+                    badge_text = "✉ Enviado"
+                badge_bg = "#E8F4E5"
+                badge_fg = "#2A6320"
+                badge_border = "#B8DCB2"
+                tooltip_txt = f"Enviado por e-mail em {clean_sent}"
+            else:
+                badge_text = "⏳ Não enviado"
+                badge_bg = "#F4F5F7"
+                badge_fg = "#6C757D"
+                badge_border = "#DCE1E7"
+                tooltip_txt = "Relatório gerado mas ainda não disparado por e-mail"
+
+            f_sent = tk.Frame(frame_info, bg=badge_bg, highlightbackground=badge_border, highlightthickness=1, bd=0)
+            f_sent.grid(row=0, column=3, sticky=tk.W, padx=(2, 4))
+            lbl_sent = tk.Label(
+                f_sent, text=badge_text, font=("Segoe UI", 7, "bold"),
+                fg=badge_fg, bg=badge_bg, padx=6, pady=1
+            )
+            lbl_sent.pack()
+            create_tooltip(f_sent, tooltip_txt)
+            create_tooltip(lbl_sent, tooltip_txt)
 
             # Hover sutil no card
             def _on_enter_card(e, c=card):
@@ -1293,6 +1323,18 @@ class AppHidrometrosWindow:
         if has_pdf:
             status_txt += " (+ PDF)"
         self.lbl_status.config(text=status_txt, fg=COLOR_PRIMARY)
+
+        # Remove registro de envio prévio caso o relatório tenha sido regerado
+        try:
+            f_name = os.path.basename(final_file)
+            send_log = self.config.get("report_send_log", {})
+            if f_name in send_log:
+                send_log.pop(f_name, None)
+                self.config["report_send_log"] = send_log
+                save_config(self.config)
+        except Exception:
+            pass
+
         self._refresh_history(force=True)
 
         # Reseta suavemente a barra de progresso após 3.5 segundos para não ficar estática em 100%
