@@ -304,6 +304,51 @@ class AnnualHistoryDialog(tk.Toplevel):
             # Rótulo do mês na base
             self.canvas.create_text(x_center, y2 + 10, text=m["mes_label"].split("/")[0], font=("Segoe UI", 7, "bold"), fill=COLOR_TEXT_MAIN, anchor=tk.CENTER)
 
+            # Efeito hover interativo na barra
+            def _on_bar_enter(event, b_id=bar_id, c=bar_hover_color, info=m, is_p=is_pico):
+                self.canvas.itemconfig(b_id, fill=c, outline=c)
+                self._show_chart_tooltip(event, info, is_p)
+
+            def _on_bar_leave(event, b_id=bar_id, c=bar_color):
+                self.canvas.itemconfig(b_id, fill=c, outline=c)
+                self._hide_chart_tooltip()
+
+            self.canvas.tag_bind(bar_id, "<Enter>", _on_bar_enter)
+            self.canvas.tag_bind(bar_id, "<Leave>", _on_bar_leave)
+
+    def _show_chart_tooltip(self, event, info, is_pico):
+        self._hide_chart_tooltip()
+        try:
+            x = self.canvas.winfo_rootx() + event.x + 10
+            y = self.canvas.winfo_rooty() + event.y - 35
+
+            self.tooltip_window = tw = tk.Toplevel(self)
+            tw.wm_overrideredirect(True)
+            tw.wm_geometry(f"+{x}+{y}")
+            tw.attributes("-topmost", True)
+
+            pico_str = "  •  🚨 MÊS DE PICO" if is_pico else ""
+            txt = f"{info['mes_label']}{pico_str}\nConsumo: {info['consumo_m3']:,.1f} m³\nFaturamento: R$ {info.get('valor_rs', 0):,.2f}"
+
+            lbl = tk.Label(
+                tw, text=txt, justify=tk.LEFT,
+                background="#25351E", foreground="#FFFFFF",
+                relief=tk.FLAT, borderwidth=0,
+                padx=8, pady=5,
+                font=("Segoe UI", 8, "bold")
+            )
+            lbl.pack()
+        except Exception:
+            pass
+
+    def _hide_chart_tooltip(self):
+        if self.tooltip_window:
+            try:
+                self.tooltip_window.destroy()
+            except Exception:
+                pass
+            self.tooltip_window = None
+
     def _export_excel(self):
         if not self.history_data:
             return

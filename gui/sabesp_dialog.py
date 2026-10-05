@@ -225,35 +225,85 @@ class SabespImportDialog(tk.Toplevel):
         sep = ttk.Separator(self.f_grid, orient=tk.HORIZONTAL)
         sep.grid(row=4, column=0, columnspan=2, sticky=tk.EW, pady=8)
 
-        # 5. Opções de Tarifa para o Rateio
+        # 5. Opções de Tarifa para o Rateio (Cards Interativos Modernos)
         lbl_opt = ttk.Label(self.f_grid, text="Tarifa do m³ para aplicar no rateio:", font=("Segoe UI", 9, "bold"))
         lbl_opt.grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(0, 4))
 
-        tar_faixa_txt = f"Tarifa da Faixa Sabesp (> 50 m³): R$ {d.get('tarifa_faixa'):.2f} (Água R$ {d.get('tarifa_agua'):.2f} + Esgoto R$ {d.get('tarifa_esgoto'):.2f}) [Padrão Pamplona]"
-        r_faixa = tk.Radiobutton(
-            self.f_grid,
-            text=tar_faixa_txt,
-            variable=self.var_tarifa_escolhida,
-            value="faixa",
-            font=("Segoe UI", 9, "bold"),
-            fg=COLOR_PRIMARY,
-            bg=COLOR_BG_LIGHT,
-            activebackground=COLOR_BG_LIGHT
-        )
-        r_faixa.grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=2)
+        frame_cards = tk.Frame(self.f_grid, bg=COLOR_BG_LIGHT)
+        frame_cards.grid(row=6, column=0, columnspan=2, sticky=tk.EW, pady=2)
 
-        tar_media_txt = f"Custo Médio Efetivo da Fatura: R$ {d.get('tarifa_media'):.2f} (Total Fatura ÷ Total m³ Sabesp)"
-        r_media = tk.Radiobutton(
-            self.f_grid,
-            text=tar_media_txt,
-            variable=self.var_tarifa_escolhida,
-            value="media",
-            font=("Segoe UI", 9),
-            fg=COLOR_TEXT_MAIN,
-            bg=COLOR_BG_LIGHT,
-            activebackground=COLOR_BG_LIGHT
-        )
-        r_media.grid(row=7, column=0, columnspan=2, sticky=tk.W, pady=2)
+        def _select_tariff(val):
+            self.var_tarifa_escolhida.set(val)
+            _update_card_styles()
+
+        def _update_card_styles():
+            is_faixa = self.var_tarifa_escolhida.get() == "faixa"
+            c_bg_f = "#EBF4E5" if is_faixa else "#FFFFFF"
+            card_faixa.config(
+                bg=c_bg_f,
+                highlightbackground=COLOR_PRIMARY if is_faixa else "#D5E2CF",
+                highlightthickness=2 if is_faixa else 1
+            )
+            lbl_icon_f.config(text="◉" if is_faixa else "○", fg=COLOR_PRIMARY if is_faixa else "#888888", bg=c_bg_f)
+            box_f.config(bg=c_bg_f)
+            f_line1.config(bg=c_bg_f)
+            lbl_txt_f.config(bg=c_bg_f, fg=COLOR_PRIMARY if is_faixa else COLOR_TEXT_MAIN)
+            lbl_sub_f.config(bg=c_bg_f)
+
+            c_bg_m = "#EBF4E5" if not is_faixa else "#FFFFFF"
+            card_media.config(
+                bg=c_bg_m,
+                highlightbackground=COLOR_PRIMARY if not is_faixa else "#D5E2CF",
+                highlightthickness=2 if not is_faixa else 1
+            )
+            lbl_icon_m.config(text="◉" if not is_faixa else "○", fg=COLOR_PRIMARY if not is_faixa else "#888888", bg=c_bg_m)
+            box_m.config(bg=c_bg_m)
+            lbl_txt_m.config(bg=c_bg_m, fg=COLOR_PRIMARY if not is_faixa else COLOR_TEXT_MAIN)
+            lbl_sub_m.config(bg=c_bg_m)
+
+        # Card 1: Faixa Sabesp (> 50 m³)
+        card_faixa = tk.Frame(frame_cards, bg="#FFFFFF", highlightbackground="#D5E2CF", highlightthickness=1, padx=8, pady=5, cursor="hand2")
+        card_faixa.pack(fill=tk.X, pady=(0, 4))
+
+        lbl_icon_f = tk.Label(card_faixa, text="◉", font=("Segoe UI", 11, "bold"), fg=COLOR_PRIMARY, bg="#FFFFFF", cursor="hand2")
+        lbl_icon_f.pack(side=tk.LEFT, padx=(0, 8))
+
+        box_f = tk.Frame(card_faixa, bg="#FFFFFF", cursor="hand2")
+        box_f.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        f_line1 = tk.Frame(box_f, bg="#FFFFFF", cursor="hand2")
+        f_line1.pack(fill=tk.X)
+        lbl_txt_f = tk.Label(f_line1, text=f"Tarifa da Faixa Sabesp (> 50 m³): R$ {d.get('tarifa_faixa'):.2f} / m³", font=("Segoe UI", 9, "bold"), fg=COLOR_PRIMARY, bg="#FFFFFF", cursor="hand2")
+        lbl_txt_f.pack(side=tk.LEFT)
+        badge_rec = tk.Label(f_line1, text="★ Padrão Praça Pamplona", font=("Segoe UI", 7, "bold"), fg="#225E1A", bg="#E0F0D8", padx=5, pady=0)
+        badge_rec.pack(side=tk.LEFT, padx=(6, 0))
+
+        lbl_sub_f = tk.Label(box_f, text=f"Composição oficial: Água R$ {d.get('tarifa_agua'):.2f} + Esgoto R$ {d.get('tarifa_esgoto'):.2f}", font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg="#FFFFFF", cursor="hand2")
+        lbl_sub_f.pack(anchor=tk.W)
+
+        for w in (card_faixa, lbl_icon_f, box_f, f_line1, lbl_txt_f, badge_rec, lbl_sub_f):
+            w.bind("<Button-1>", lambda e: _select_tariff("faixa"))
+
+        # Card 2: Custo Médio Efetivo
+        card_media = tk.Frame(frame_cards, bg="#FFFFFF", highlightbackground="#D5E2CF", highlightthickness=1, padx=8, pady=5, cursor="hand2")
+        card_media.pack(fill=tk.X)
+
+        lbl_icon_m = tk.Label(card_media, text="○", font=("Segoe UI", 11, "bold"), fg="#888888", bg="#FFFFFF", cursor="hand2")
+        lbl_icon_m.pack(side=tk.LEFT, padx=(0, 8))
+
+        box_m = tk.Frame(card_media, bg="#FFFFFF", cursor="hand2")
+        box_m.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        lbl_txt_m = tk.Label(box_m, text=f"Custo Médio Efetivo da Fatura: R$ {d.get('tarifa_media'):.2f} / m³", font=("Segoe UI", 9, "bold"), fg=COLOR_TEXT_MAIN, bg="#FFFFFF", cursor="hand2")
+        lbl_txt_m.pack(anchor=tk.W)
+
+        lbl_sub_m = tk.Label(box_m, text="Média global ponderada (Total da Fatura ÷ Total m³ Sabesp)", font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg="#FFFFFF", cursor="hand2")
+        lbl_sub_m.pack(anchor=tk.W)
+
+        for w in (card_media, lbl_icon_m, box_m, lbl_txt_m, lbl_sub_m):
+            w.bind("<Button-1>", lambda e: _select_tariff("media"))
+
+        _update_card_styles()
 
         # 6. Informações de Vencimento e Origem
         venc_str = f"Vencimento: {d.get('vencimento') or 'N/I'}  |  Próxima Leitura: {d.get('proxima_leitura') or 'N/I'}"

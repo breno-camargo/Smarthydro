@@ -62,11 +62,17 @@ class SchedulerDialog(tk.Toplevel):
         self.ent_time.insert(0, "08:00")
         self.ent_time.grid(row=1, column=1, sticky=tk.W, pady=5, padx=8)
 
+        self.frame_status_badge = tk.Frame(pad, bg="#EBF3E6", highlightbackground="#C5DCBA", highlightthickness=1, padx=10, pady=6)
+        self.frame_status_badge.pack(fill=tk.X, pady=(0, 15))
+
+        self.lbl_status_icon = tk.Label(self.frame_status_badge, text="🔄", font=("Segoe UI", 10), bg="#EBF3E6")
+        self.lbl_status_icon.pack(side=tk.LEFT, padx=(0, 6))
+
         self.lbl_task_status = tk.Label(
-            pad, text="Status da Tarefa no Windows: Verificando...",
-            font=("Segoe UI", 9, "italic"), fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT
+            self.frame_status_badge, text="Status da Tarefa no Windows: Verificando...",
+            font=("Segoe UI", 9, "bold"), fg=COLOR_TEXT_MAIN, bg="#EBF3E6"
         )
-        self.lbl_task_status.pack(anchor=tk.W, pady=(0, 15))
+        self.lbl_task_status.pack(side=tk.LEFT)
 
         frame_btns = tk.Frame(pad, bg=COLOR_BG_LIGHT)
         frame_btns.pack(fill=tk.X, side=tk.BOTTOM)
@@ -102,13 +108,19 @@ class SchedulerDialog(tk.Toplevel):
                 capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW
             )
             if res.returncode == 0:
-                self.lbl_task_status.config(text=f"Status: ATIVA no Windows ({TASK_NAME})", foreground="green")
+                self.frame_status_badge.config(bg="#EAF5E5", highlightbackground="#A9D39E")
+                self.lbl_status_icon.config(text="✅", bg="#EAF5E5")
+                self.lbl_task_status.config(text=f"ATIVA no Agendador do Windows ({TASK_NAME})", fg=COLOR_PRIMARY, bg="#EAF5E5")
                 self.btn_create.config(text="Atualizar Agendamento")
             else:
-                self.lbl_task_status.config(text="Status: Não configurada no Windows", foreground="#666666")
+                self.frame_status_badge.config(bg="#F6F7F5", highlightbackground="#D3D5D0")
+                self.lbl_status_icon.config(text="⚪", bg="#F6F7F5")
+                self.lbl_task_status.config(text="Não configurada no Agendador do Windows", fg=COLOR_TEXT_MUTED, bg="#F6F7F5")
                 self.btn_create.config(text="Ativar Agendamento Automático")
         except Exception as e:
-            self.lbl_task_status.config(text=f"Status: Não foi possível consultar ({e})", foreground="red")
+            self.frame_status_badge.config(bg="#FDF2F2", highlightbackground="#F5C6CB")
+            self.lbl_status_icon.config(text="⚠️", bg="#FDF2F2")
+            self.lbl_task_status.config(text=f"Não foi possível consultar status ({e})", fg="#C9302C", bg="#FDF2F2")
 
     def _create_task(self):
         day = self.cmb_day.get().strip()

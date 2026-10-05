@@ -75,6 +75,9 @@ class OperatorsDialog(tk.Toplevel):
         self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         sb.pack(side=tk.RIGHT, fill=tk.Y)
 
+        self.tree.tag_configure("default_op", background="#EBF5E7")
+        self.tree.tag_configure("active_op", background="#F2F8ED")
+
         self.tree.bind("<<TreeviewSelect>>", self._on_select_operator)
 
         # Botões de ação da tabela
@@ -172,11 +175,12 @@ class OperatorsDialog(tk.Toplevel):
             op_id = op.get("id")
             is_def = op.get("is_default", False)
             status_txt = "★ Padrão" if is_def else ("● Ativo" if op_id == active_id else "")
+            row_tag = "default_op" if is_def else ("active_op" if op_id == active_id else "normal_op")
             phone_disp = op.get("whatsapp_phone") or op.get("phone", "")
             iid = self.tree.insert(
                 "", tk.END,
                 values=(status_txt, op.get("name", ""), op.get("role", ""), op.get("email", ""), phone_disp),
-                tags=(op_id,)
+                tags=(op_id, row_tag)
             )
             if select_id and op_id == select_id:
                 target_iid = iid

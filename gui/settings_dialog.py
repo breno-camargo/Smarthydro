@@ -172,7 +172,7 @@ class SettingsDialog(tk.Toplevel):
         self.ent_pass = ttk.Entry(self.frame_auth, width=15, show="*")
         self.ent_pass.grid(row=0, column=3, sticky=tk.W, padx=4, pady=1)
 
-        btn_test_db = ttk.Button(parent, text="🔌 Testar Conexão SQL", command=self._test_connection)
+        btn_test_db = create_btn_secondary(parent, "🔌 Testar Conexão SQL", self._test_connection, pady=3, padx=10)
         btn_test_db.grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=(2, 4))
 
         # Separador 1
@@ -191,11 +191,12 @@ class SettingsDialog(tk.Toplevel):
         frame_dir.grid(row=9, column=1, sticky=tk.EW, pady=2)
         self.ent_dir = ttk.Entry(frame_dir, width=24)
         self.ent_dir.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        ttk.Button(frame_dir, text="Alterar...", command=self._browse_dir, width=9).pack(side=tk.LEFT, padx=(4, 0))
+        btn_browse_dir = create_btn_secondary(frame_dir, "Alterar...", self._browse_dir, pady=2, padx=8)
+        btn_browse_dir.pack(side=tk.LEFT, padx=(4, 0))
 
-        btn_edit_model = ttk.Button(
-            parent, text="✏ Abrir Modelo no Excel para Edição (modelo_relatorio.xlsx)",
-            command=self._edit_template_action
+        btn_edit_model = create_btn_secondary(
+            parent, "✏ Abrir Modelo no Excel para Edição (modelo_relatorio.xlsx)",
+            self._edit_template_action, pady=3, padx=10
         )
         btn_edit_model.grid(row=10, column=0, columnspan=2, sticky=tk.W, pady=(2, 4))
 
@@ -224,10 +225,10 @@ class SettingsDialog(tk.Toplevel):
         )
         self.chk_sort_consumption.grid(row=14, column=0, columnspan=2, sticky=tk.W, pady=1)
 
-        btn_scheduler = ttk.Button(
+        btn_scheduler = create_btn_secondary(
             parent,
-            text="⏰ Configurar Agendamento Automático no Windows (Executar dia 29 silencioso)",
-            command=self._open_scheduler
+            "⏰ Configurar Agendamento Automático no Windows (Executar dia 29 silencioso)",
+            self._open_scheduler, pady=3, padx=10
         )
         btn_scheduler.grid(row=15, column=0, columnspan=2, sticky=tk.W, pady=(3, 0))
 
@@ -252,8 +253,8 @@ class SettingsDialog(tk.Toplevel):
         self.ent_cc = ttk.Entry(frame_cc, width=28)
         self.ent_cc.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        btn_view_cc = ttk.Button(
-            frame_cc, text="🔍 Ver Todos", width=10, command=self._show_all_cc
+        btn_view_cc = create_btn_secondary(
+            frame_cc, "🔍 Ver Todos", self._show_all_cc, pady=2, padx=8
         )
         btn_view_cc.pack(side=tk.LEFT, padx=(4, 0))
 
@@ -319,7 +320,7 @@ class SettingsDialog(tk.Toplevel):
         self.ent_smtp_pass = ttk.Entry(parent, width=36, show="*")
         self.ent_smtp_pass.grid(row=10, column=1, sticky=tk.EW, pady=3)
 
-        btn_test_smtp = ttk.Button(parent, text="🔌 Testar Conexão com seu E-mail", command=self._test_smtp)
+        btn_test_smtp = create_btn_secondary(parent, "🔌 Testar Conexão com seu E-mail", self._test_smtp, pady=3, padx=10)
         btn_test_smtp.grid(row=11, column=0, columnspan=2, sticky=tk.W, pady=(4, 6))
 
         # Separador 2
@@ -336,21 +337,21 @@ class SettingsDialog(tk.Toplevel):
         frame_tmpl_btns = ttk.Frame(parent)
         frame_tmpl_btns.grid(row=14, column=0, columnspan=2, sticky=tk.W, pady=(2, 0))
 
-        btn_edit_email_tmpl = ttk.Button(
-            frame_tmpl_btns, text="✏ Personalizar Modelo",
-            command=self._open_email_template_editor
+        btn_edit_email_tmpl = create_btn_secondary(
+            frame_tmpl_btns, "✏ Personalizar Modelo",
+            self._open_email_template_editor, pady=3, padx=10
         )
         btn_edit_email_tmpl.pack(side=tk.LEFT, padx=(0, 6))
 
-        btn_preview_tmpl = ttk.Button(
-            frame_tmpl_btns, text="👁 Ver Prévia no Navegador",
-            command=self._preview_email_action
+        btn_preview_tmpl = create_btn_secondary(
+            frame_tmpl_btns, "👁 Ver Prévia no Navegador",
+            self._preview_email_action, pady=3, padx=10
         )
         btn_preview_tmpl.pack(side=tk.LEFT, padx=(0, 6))
 
-        btn_open_tmpl_file = ttk.Button(
-            frame_tmpl_btns, text="📂 Bloco de Notas",
-            command=self._open_template_in_notepad
+        btn_open_tmpl_file = create_btn_secondary(
+            frame_tmpl_btns, "📂 Bloco de Notas",
+            self._open_template_in_notepad, pady=3, padx=10
         )
         btn_open_tmpl_file.pack(side=tk.LEFT)
 
@@ -531,8 +532,8 @@ class SettingsDialog(tk.Toplevel):
         frame_test_wh = tk.Frame(parent, bg=COLOR_BG_LIGHT)
         frame_test_wh.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=(4, 0))
 
-        self.btn_test_webhook = ttk.Button(
-            frame_test_wh, text="🔔 Enviar Mensagem de Teste", command=self._test_webhook_action
+        self.btn_test_webhook = create_btn_secondary(
+            frame_test_wh, "🔔 Enviar Mensagem de Teste", self._test_webhook_action, pady=3, padx=10
         )
         self.btn_test_webhook.pack(side=tk.LEFT, padx=(0, 10))
 

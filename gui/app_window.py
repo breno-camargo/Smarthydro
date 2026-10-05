@@ -19,7 +19,10 @@ from gui.email_dialog import SendEmailDialog
 from gui.anomaly_dialog import AnomalyDialog
 from gui.operators_dialog import OperatorsDialog
 from gui.history_dialog import AnnualHistoryDialog
-from gui.ui_helpers import apply_window_icon, create_tooltip
+from gui.ui_helpers import (
+    apply_window_icon, create_tooltip, bind_button_hover,
+    ModernProgressBar, create_card_frame, create_modern_badge
+)
 
 # Cores institucionais CompaSSS
 COLOR_PRIMARY = "#3D6B24"       # Verde escuro institucional
@@ -112,6 +115,7 @@ class AppHidrometrosWindow:
             width=3, pady=3, cursor="hand2"
         )
         btn_settings.pack(side=tk.RIGHT, padx=3)
+        bind_button_hover(btn_settings, "#EBF3E6", "#D3E4CB")
         create_tooltip(btn_settings, "Configurações do Sistema")
 
         btn_history = tk.Button(
@@ -122,6 +126,7 @@ class AppHidrometrosWindow:
             width=3, pady=3, cursor="hand2"
         )
         btn_history.pack(side=tk.RIGHT, padx=3)
+        bind_button_hover(btn_history, "#EBF3E6", "#D3E4CB")
         create_tooltip(btn_history, "Histórico Anual de Telemetria (12 Meses)")
 
         title_box = tk.Frame(frame_top, bg=COLOR_BG_LIGHT)
@@ -145,6 +150,7 @@ class AppHidrometrosWindow:
             padx=10, pady=2, cursor="hand2"
         )
         self.btn_test_db.pack(side=tk.RIGHT)
+        bind_button_hover(self.btn_test_db, "#EBF3E6", "#D3E4CB")
         create_tooltip(self.btn_test_db, "Testar Conexão com o Banco StruxureWare EBO")
 
         # Lado esquerdo: Seletor do operador ativo
@@ -163,6 +169,7 @@ class AppHidrometrosWindow:
             padx=6, pady=2, cursor="hand2"
         )
         btn_manage_ops.pack(side=tk.LEFT)
+        bind_button_hover(btn_manage_ops, "#EBF3E6", "#D3E4CB")
         create_tooltip(btn_manage_ops, "Gerenciar perfis de operadores e assinaturas de e-mail")
 
         # Linha divisória verde suave
@@ -346,6 +353,7 @@ class AppHidrometrosWindow:
             padx=14, pady=7, cursor="hand2"
         )
         btn_open_folder.pack(side=tk.LEFT)
+        bind_button_hover(btn_open_folder, "#EBF3E6", "#D3E4CB")
 
         # BOTÃO PRINCIPAL MODO E-MAIL
         self.btn_sabesp_gerar = tk.Button(
@@ -366,6 +374,7 @@ class AppHidrometrosWindow:
             cursor="hand2"
         )
         self.btn_sabesp_gerar.pack(side=tk.RIGHT)
+        bind_button_hover(self.btn_sabesp_gerar, COLOR_PRIMARY, COLOR_PRIMARY_HOVER)
 
         # BOTÃO PRINCIPAL MODO MANUAL
         self.btn_gerar = tk.Button(
@@ -386,9 +395,10 @@ class AppHidrometrosWindow:
             cursor="hand2"
         )
         self.btn_gerar.pack(side=tk.RIGHT)
+        bind_button_hover(self.btn_gerar, COLOR_PRIMARY, COLOR_PRIMARY_HOVER)
 
-        # ─── BARRA DE PROGRESSO E STATUS (DOCK NO BOTTOM) ───
-        self.prog_bar = ttk.Progressbar(main_container, mode="determinate", maximum=100)
+        # ─── BARRA DE PROGRESSO MODERNA E STATUS (DOCK NO BOTTOM) ───
+        self.prog_bar = ModernProgressBar(main_container, height=12)
         self.prog_bar.pack(fill=tk.X, side=tk.BOTTOM, pady=(0, 8))
         self.prog_bar["value"] = 0
 
@@ -955,76 +965,118 @@ class AppHidrometrosWindow:
 
             # Padronizar nome: retirar .xlsx e permitir exibição do nome completo sem cortes
             clean_name = f_name[:-5] if f_name.lower().endswith(".xlsx") else f_name
-            max_len = 38
+            max_len = 34
             disp_name = clean_name[:max_len] + "..." if len(clean_name) > max_len else clean_name
 
-            row_frame = tk.Frame(self.frame_history_list, bg=COLOR_BG_LIGHT)
-            row_frame.pack(fill=tk.X, pady=3, padx=2)
+            # Card Container com fundo branco e borda suave
+            card = tk.Frame(
+                self.frame_history_list,
+                bg="#FFFFFF",
+                highlightbackground="#D8E8D0",
+                highlightthickness=1,
+                bd=0,
+                padx=8,
+                pady=4
+            )
+            card.pack(fill=tk.X, pady=2, padx=1)
 
             pdf_p = item.get("pdf_path", "")
             has_pdf = item.get("has_pdf") and os.path.exists(pdf_p)
 
-            # Botão discreto de exclusão (✕) na ponta direita
+            # Botão moderno de exclusão (🗑️) com hover suave avermelhado
             btn_del = tk.Button(
-                row_frame, text="✕", font=("Segoe UI", 8), fg="#888888", bg=COLOR_BG_LIGHT,
-                activeforeground="#CC0000", activebackground="#FDEAEA", relief="flat",
+                card, text="🗑️", font=("Segoe UI Emoji", 8), fg="#999999", bg="#FFFFFF",
+                activeforeground="#C9302C", activebackground="#FDEAEA", relief="flat",
                 bd=0, padx=4, pady=1, cursor="hand2",
                 command=lambda x=f_path, p=pdf_p: self._delete_specific_file(x, p)
             )
             btn_del.pack(side=tk.RIGHT, padx=(4, 0))
+            bind_button_hover(btn_del, "#FFFFFF", "#FDEAEA", normal_fg="#999999", hover_fg="#C9302C")
+            create_tooltip(btn_del, "Excluir este relatório do histórico")
 
-            # Disparo de e-mail
-            btn_email = ttk.Button(
-                row_frame, text="✉ E-mail",
-                command=lambda x=f_path, p=pdf_p: self._send_email_action(x, p),
-                style="History.TButton"
+            # Disparo de e-mail com botão pill moderno
+            btn_email = tk.Button(
+                card, text="✉ E-mail", font=("Segoe UI", 8, "bold"),
+                fg=COLOR_PRIMARY, bg="#EBF3E6", activebackground="#D3E4CB", activeforeground=COLOR_PRIMARY,
+                relief="flat", bd=1, highlightbackground="#C5DCBA", highlightthickness=1,
+                padx=7, pady=1, cursor="hand2",
+                command=lambda x=f_path, p=pdf_p: self._send_email_action(x, p)
             )
             btn_email.pack(side=tk.RIGHT, padx=(4, 2))
+            bind_button_hover(btn_email, "#EBF3E6", "#D3E4CB")
+            create_tooltip(btn_email, "Enviar relatório e anexos por e-mail")
 
             # Visualização do PDF (se gerado)
             if has_pdf:
-                btn_pdf = ttk.Button(
-                    row_frame, text="PDF",
-                    command=lambda p=pdf_p: self._open_specific_file(p),
-                    style="History.TButton"
+                btn_pdf = tk.Button(
+                    card, text="📕 PDF", font=("Segoe UI", 8, "bold"),
+                    fg="#9C3127", bg="#FDF2F2", activebackground="#FCE4E4", activeforeground="#9C3127",
+                    relief="flat", bd=1, highlightbackground="#F5C6CB", highlightthickness=1,
+                    padx=7, pady=1, cursor="hand2",
+                    command=lambda p=pdf_p: self._open_specific_file(p)
                 )
                 btn_pdf.pack(side=tk.RIGHT, padx=(4, 0))
+                bind_button_hover(btn_pdf, "#FDF2F2", "#FCE4E4")
+                create_tooltip(btn_pdf, "Abrir Relatório Oficial em PDF")
 
             # Abertura da planilha Excel
-            btn_open = ttk.Button(
-                row_frame, text="📊 Excel",
-                command=lambda p=f_path: self._open_specific_file(p),
-                style="History.TButton"
+            btn_open = tk.Button(
+                card, text="📊 Excel", font=("Segoe UI", 8, "bold"),
+                fg=COLOR_PRIMARY, bg="#EBF3E6", activebackground="#D3E4CB", activeforeground=COLOR_PRIMARY,
+                relief="flat", bd=1, highlightbackground="#C5DCBA", highlightthickness=1,
+                padx=7, pady=1, cursor="hand2",
+                command=lambda p=f_path: self._open_specific_file(p)
             )
             btn_open.pack(side=tk.RIGHT, padx=(4, 0))
+            bind_button_hover(btn_open, "#EBF3E6", "#D3E4CB")
+            create_tooltip(btn_open, "Abrir Planilha de Medição no Excel")
 
-            # Lado esquerdo: Nome em negrito com clique direto para abrir planilha
-            lbl_left = tk.Frame(row_frame, bg=COLOR_BG_LIGHT)
+            # Lado esquerdo: Ícone de documento + Título clicável + Data + Status de envio
+            lbl_left = tk.Frame(card, bg="#FFFFFF")
             lbl_left.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
+            lbl_doc_icon = tk.Label(lbl_left, text="📄", font=("Segoe UI Emoji", 9), bg="#FFFFFF", fg=COLOR_PRIMARY)
+            lbl_doc_icon.pack(side=tk.LEFT, padx=(0, 5))
+
             lbl_f = tk.Label(
-                lbl_left, text=f"•  {disp_name}", font=("Segoe UI", 9, "bold"),
-                fg=COLOR_TEXT_MAIN, bg=COLOR_BG_LIGHT,
-                width=28, anchor="w", cursor="hand2"
+                lbl_left, text=disp_name, font=("Segoe UI", 9, "bold"),
+                fg=COLOR_TEXT_MAIN, bg="#FFFFFF", anchor="w", cursor="hand2"
             )
             lbl_f.pack(side=tk.LEFT)
             lbl_f.bind("<Button-1>", lambda e, p=f_path: self._open_specific_file(p))
+            create_tooltip(lbl_f, f"Clique para abrir:\n{f_path}")
 
-            # Data de geração perfeitamente alinhada em coluna
+            # Data de geração
             if dt_ger:
                 lbl_d = tk.Label(
-                    lbl_left, text=f"({dt_ger})", font=("Segoe UI", 8),
-                    fg=COLOR_TEXT_MUTED, bg=COLOR_BG_LIGHT
+                    lbl_left, text=f"• {dt_ger}", font=("Segoe UI", 8),
+                    fg=COLOR_TEXT_MUTED, bg="#FFFFFF"
                 )
-                lbl_d.pack(side=tk.LEFT, padx=(8, 0))
+                lbl_d.pack(side=tk.LEFT, padx=(6, 0))
 
             sent_time = send_log.get(f_name)
             if sent_time:
+                f_sent = tk.Frame(lbl_left, bg="#E8F4E5", highlightbackground="#B8DCB2", highlightthickness=1, bd=0)
+                f_sent.pack(side=tk.LEFT, padx=(8, 0))
                 lbl_sent = tk.Label(
-                    lbl_left, text=f"• ✉ Enviado em {sent_time}", font=("Segoe UI", 8, "italic"),
-                    fg="#2D6B22", bg=COLOR_BG_LIGHT
+                    f_sent, text=f"✉ Enviado às {sent_time}", font=("Segoe UI", 7, "bold"),
+                    fg="#2A6320", bg="#E8F4E5", padx=6, pady=0
                 )
-                lbl_sent.pack(side=tk.LEFT, padx=(8, 0))
+                lbl_sent.pack()
+
+            # Hover sutil no card
+            def _on_enter_card(e, c=card):
+                try:
+                    c.config(highlightbackground="#97C586")
+                except Exception:
+                    pass
+            def _on_leave_card(e, c=card):
+                try:
+                    c.config(highlightbackground="#D8E8D0")
+                except Exception:
+                    pass
+            card.bind("<Enter>", _on_enter_card, add="+")
+            card.bind("<Leave>", _on_leave_card, add="+")
 
         # Agenda próxima checagem periódica em 30 segundos
         self._history_timer_id = self.root.after(30000, lambda: self._refresh_history(force=False))

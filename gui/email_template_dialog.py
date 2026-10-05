@@ -12,7 +12,7 @@ from core.email_sender import (
 )
 from gui.ui_helpers import (
     apply_window_icon, center_modal, setup_common_styles,
-    create_btn_primary, create_btn_secondary,
+    create_btn_primary, create_btn_secondary, create_tooltip, bind_button_hover,
     COLOR_PRIMARY, COLOR_PRIMARY_HOVER, COLOR_BG_LIGHT, COLOR_TEXT_MUTED
 )
 
@@ -78,11 +78,17 @@ class EmailTemplateDialog(tk.Toplevel):
         ]
 
         for i, (tag, hint) in enumerate(tags):
-            btn = ttk.Button(
+            btn = tk.Button(
                 frame_tags, text=tag,
                 command=lambda t=tag: self._insert_tag(t),
+                font=("Consolas", 8, "bold"),
+                bg="#EBF3E6", fg=COLOR_PRIMARY,
+                relief="flat", bd=1, highlightbackground="#C5DCBA", highlightthickness=1,
+                padx=4, pady=2, cursor="hand2"
             )
             btn.grid(row=i // 4, column=i % 4, padx=3, pady=2, sticky=tk.EW)
+            bind_button_hover(btn, "#EBF3E6", "#D3E4CB")
+            create_tooltip(btn, f"Inserir: {hint}")
 
         for col in range(4):
             frame_tags.columnconfigure(col, weight=1)

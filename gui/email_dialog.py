@@ -14,7 +14,7 @@ from core.email_sender import (
 from gui.email_template_dialog import EmailTemplateDialog
 from gui.ui_helpers import (
     apply_window_icon, center_modal, setup_common_styles,
-    create_btn_primary, create_btn_secondary,
+    create_btn_primary, create_btn_secondary, ModernProgressBar,
     COLOR_PRIMARY, COLOR_PRIMARY_HOVER, COLOR_BG_LIGHT, COLOR_TEXT_MUTED
 )
 
@@ -136,15 +136,15 @@ class SendEmailDialog(tk.Toplevel):
         self.var_att_xlsx = tk.BooleanVar(value=True)
         chk_xlsx = ttk.Checkbutton(
             frame_att,
-            text=f"Planilha Excel (.xlsx)  —  {os.path.basename(self.xlsx_path)}",
+            text=f"📊 Planilha Excel (.xlsx)  •  {os.path.basename(self.xlsx_path)}",
             variable=self.var_att_xlsx
         )
         chk_xlsx.pack(anchor=tk.W, pady=2)
 
         self.var_att_pdf = tk.BooleanVar(value=bool(self.pdf_path))
         pdf_label = (
-            f"Relatório Oficial em PDF (.pdf)  —  {os.path.basename(self.pdf_path)}"
-            if self.pdf_path else "Relatório Oficial em PDF (não encontrado)"
+            f"📕 Relatório Oficial em PDF (.pdf)  •  {os.path.basename(self.pdf_path)}"
+            if self.pdf_path else "📕 Relatório Oficial em PDF (não encontrado)"
         )
         chk_pdf = ttk.Checkbutton(
             frame_att,
@@ -154,8 +154,6 @@ class SendEmailDialog(tk.Toplevel):
         )
         chk_pdf.pack(anchor=tk.W, pady=2)
 
-
-
         # ─── BARRA DE STATUS / PROGRESSO ───
         self.lbl_status = tk.Label(
             container, text="", font=("Segoe UI", 9, "bold"),
@@ -163,7 +161,7 @@ class SendEmailDialog(tk.Toplevel):
         )
         self.lbl_status.pack(anchor=tk.W, pady=(0, 4))
 
-        self.prog_bar = ttk.Progressbar(container, mode="indeterminate")
+        self.prog_bar = ModernProgressBar(container, height=10)
         self.prog_bar.pack(fill=tk.X, pady=(0, 10))
 
         # ─── BOTÕES DE AÇÃO ───
