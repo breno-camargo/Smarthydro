@@ -389,4 +389,16 @@ def export_annual_history_excel(history_data, output_path):
 
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
     wb.save(output_path)
+
+    try:
+        from core.report_generator import _inject_cached_formula_values
+        tot_c = round(sum(float(m.get("consumo_m3") or 0) for m in months), 1)
+        tot_v = round(sum(float(m.get("valor_rs") or 0) for m in months), 2)
+        _inject_cached_formula_values(output_path, {
+            f"C{current_row}": tot_c,
+            f"F{current_row}": tot_v,
+        })
+    except Exception as e:
+        logging.warning(f"Não foi possível injetar cache no histórico anual: {e}")
+
     return output_path

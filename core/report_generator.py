@@ -3,6 +3,8 @@ import sys
 import math
 import shutil
 import logging
+import zipfile
+import re
 from datetime import datetime
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -148,6 +150,49 @@ def format_date_display(d_str):
         except ValueError:
             pass
     return str(d_str)
+
+
+def _inject_cached_formula_values(xlsx_path, values_map):
+    """
+    Injeta valores pré-calculados nas tags <v> das fórmulas do OpenXML (.xlsx).
+    Isso é crucial porque o openpyxl cria células de fórmula com '<f>SUM(...)</f><v />' (sem valor em cache).
+    O Microsoft Excel desktop calcula automaticamente ao abrir, mas visualizadores web/mobile
+    (como Google Planilhas, Google Drive, preview do Gmail e Apple Numbers) dependem exclusivamente
+    do valor em cache da tag <v>. Sem esta injeção, essas ferramentas mostram 0 ou vazio nos totais.
+    """
+    if not os.path.exists(xlsx_path) or not values_map:
+        return
+    tmp_path = xlsx_path + ".tmp_inj"
+    try:
+        with zipfile.ZipFile(xlsx_path, 'r') as zin, zipfile.ZipFile(tmp_path, 'w', compression=zipfile.ZIP_DEFLATED) as zout:
+            for item in zin.infolist():
+                data = zin.read(item.filename)
+                if item.filename.startswith('xl/worksheets/sheet') and item.filename.endswith('.xml'):
+                    xml = data.decode('utf-8')
+                    for cell_ref, val in values_map.items():
+                        if val == 0:
+                            val_str = "0"
+                        elif isinstance(val, float):
+                            val_str = f"{val:.6f}".rstrip('0').rstrip('.')
+                        elif isinstance(val, int):
+                            val_str = str(val)
+                        else:
+                            val_str = str(val).strip()
+
+                        # Expressão regular flexível para encontrar a célula com fórmula e atualizar ou adicionar <v>
+                        pattern = rf'(<c\b[^>]*\br="{re.escape(cell_ref)}"[^>]*><f\b[^>]*>[^<]*</f>)(?:<v[^>]*>.*?</v>|<v\s*/>)?'
+                        repl = rf'\g<1><v>{val_str}</v>'
+                        xml = re.sub(pattern, repl, xml)
+                    data = xml.encode('utf-8')
+                zout.writestr(item, data)
+        os.replace(tmp_path, xlsx_path)
+    except Exception as e:
+        logging.warning(f"Erro ao injetar valores de fórmulas em cache no Excel: {e}")
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
 
 
 def _build_graphics_sheet(wb, df, dt_inicio_str, dt_fim_str, valor_m3):
@@ -627,10 +672,12 @@ def generate_excel_from_template(template_path, df, dt_inicio_str, dt_fim_str, v
         _apply_cell(cell, font=font_total, fill=fill_total, alignment=al, border=border_total)
 
     # Atualizar Fórmulas dos KPIs abaixo do total geral com visual limpo
+    kpi_val_row = None
     for r in range(total_row + 1, ws.max_row + 1):
         cell_a = ws.cell(row=r, column=1)
         if cell_a.value and str(cell_a.value).startswith("=B"):
             cell_a.value = f"=B{total_row}"
+            kpi_val_row = r
         cell_c = ws.cell(row=r, column=3)
         if cell_c.value and str(cell_c.value).startswith("=C"):
             cell_c.value = f"=C{total_row}"
@@ -666,6 +713,32 @@ def generate_excel_from_template(template_path, df, dt_inicio_str, dt_fim_str, v
             f"O arquivo '{os.path.basename(output_path)}' está aberto no Excel ou por outro programa.\n"
             f"Feche o arquivo e tente novamente."
         )
+
+    # Injetar valores calculados em cache para compatibilidade total com Google Planilhas / preview do Gmail / Apple Numbers
+    try:
+        tot_consumo = round(float(df["Consumo_m3"].apply(_safe_float).sum()), 2) if "Consumo_m3" in df.columns else 0.0
+        tot_valor   = round(float(df["Valor_RS"].apply(_safe_float).sum()), 2) if "Valor_RS" in df.columns else 0.0
+        tot_ct11    = round(float(df["Consumo_Total_11m"].apply(_safe_float).sum()), 2) if "Consumo_Total_11m" in df.columns else 0.0
+        tot_vt11    = round(float(df["Valor_Total_11m"].apply(_safe_float).sum()), 2) if "Valor_Total_11m" in df.columns else 0.0
+        tot_cm11    = round(float(df["Consumo_Medio_11m"].apply(_safe_float).sum()), 2) if "Consumo_Medio_11m" in df.columns else 0.0
+        tot_vm11    = round(float(df["Valor_Medio_11m"].apply(_safe_float).sum()), 2) if "Valor_Medio_11m" in df.columns else 0.0
+
+        cached_values = {
+            f"B{total_row}": tot_consumo,
+            f"C{total_row}": tot_valor,
+            f"D{total_row}": tot_ct11,
+            f"E{total_row}": tot_vt11,
+            f"F{total_row}": tot_cm11,
+            f"G{total_row}": tot_vm11,
+        }
+        if kpi_val_row:
+            cached_values[f"A{kpi_val_row}"] = tot_consumo
+            cached_values[f"C{kpi_val_row}"] = tot_valor
+            cached_values[f"E{kpi_val_row}"] = round(tot_consumo / max(n_records, 1), 6)
+
+        _inject_cached_formula_values(output_path, cached_values)
+    except Exception as e:
+        logging.warning(f"Não foi possível injetar valores de cache na planilha: {e}")
 
     # Registrar no histórico de relatórios recentes
     try:
@@ -705,6 +778,10 @@ def export_to_pdf(excel_path, pdf_path=None):
         excel.DisplayAlerts = False
         try:
             wb = excel.Workbooks.Open(abs_excel)
+            try:
+                excel.CalculateFull()
+            except Exception:
+                pass
 
             # Localizar a planilha principal de medição (ignora qualquer aba com gráfico)
             target_sheet = None
@@ -1109,6 +1186,31 @@ def _generate_excel_full_code(df, dt_inicio_str, dt_fim_str, valor_m3, output_pa
             f"O arquivo '{os.path.basename(output_path)}' está aberto no Excel ou por outro programa.\n"
             f"Feche o arquivo e tente novamente."
         )
+
+    # Injetar valores calculados em cache para compatibilidade total com Google Planilhas / preview do Gmail / Apple Numbers
+    try:
+        tot_consumo = round(float(df["Consumo_m3"].apply(_safe_float).sum()), 2) if "Consumo_m3" in df.columns else 0.0
+        tot_valor   = round(float(df["Valor_RS"].apply(_safe_float).sum()), 2) if "Valor_RS" in df.columns else 0.0
+        tot_ct11    = round(float(df["Consumo_Total_11m"].apply(_safe_float).sum()), 2) if "Consumo_Total_11m" in df.columns else 0.0
+        tot_vt11    = round(float(df["Valor_Total_11m"].apply(_safe_float).sum()), 2) if "Valor_Total_11m" in df.columns else 0.0
+        tot_cm11    = round(float(df["Consumo_Medio_11m"].apply(_safe_float).sum()), 2) if "Consumo_Medio_11m" in df.columns else 0.0
+        tot_vm11    = round(float(df["Valor_Medio_11m"].apply(_safe_float).sum()), 2) if "Valor_Medio_11m" in df.columns else 0.0
+
+        cached_values = {
+            f"B{total_row}": tot_consumo,
+            f"C{total_row}": tot_valor,
+            f"D{total_row}": tot_ct11,
+            f"E{total_row}": tot_vt11,
+            f"F{total_row}": tot_cm11,
+            f"G{total_row}": tot_vm11,
+            f"A{next_row}": tot_consumo,
+            f"C{next_row}": tot_valor,
+            f"E{next_row}": round(tot_consumo / max(num_salas, 1), 6),
+        }
+
+        _inject_cached_formula_values(output_path, cached_values)
+    except Exception as e:
+        logging.warning(f"Não foi possível injetar valores de cache na planilha: {e}")
 
     # Registrar no histórico de relatórios recentes
     try:
