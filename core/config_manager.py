@@ -427,6 +427,37 @@ def delete_operator(operator_id, config=None):
     return True, "Operador removido com sucesso."
 
 
+def _extract_excel_totals(f_path):
+    """
+    Lê rapidamente os totais de m³ e R$ da linha TOTAL GERAL do relatório Excel,
+    garantindo que os cartões de KPIs da tela principal sempre tenham dados reais.
+    """
+    if not f_path or not os.path.exists(f_path):
+        return None, None
+    try:
+        import openpyxl
+        wb = openpyxl.load_workbook(f_path, data_only=True, read_only=True)
+        ws = wb.active
+        tot_m3, tot_rs = None, None
+        for row in ws.iter_rows(values_only=True):
+            if row and len(row) > 0 and row[0] == "TOTAL GERAL":
+                if len(row) > 1 and row[1] is not None:
+                    try:
+                        tot_m3 = round(float(row[1]), 2)
+                    except (ValueError, TypeError):
+                        pass
+                if len(row) > 2 and row[2] is not None:
+                    try:
+                        tot_rs = round(float(row[2]), 2)
+                    except (ValueError, TypeError):
+                        pass
+                break
+        wb.close()
+        return tot_m3, tot_rs
+    except Exception:
+        return None, None
+
+
 def get_recent_reports():
     """
     Retorna a lista dos relatórios presentes na pasta de saída (inclusive em subpastas Ano/Mês),
@@ -441,13 +472,36 @@ def get_recent_reports():
     if out_dir and os.path.exists(out_dir):
         organize_loose_reports(out_dir)
 
-    # Índice do histórico por caminho absoluto para consulta rápida de metadados
+    # Índice do histórico por caminho absoluto e por nome de arquivo para consulta rápida de metadados
     hist_by_path = {}
+    hist_by_fn = {}
     for item in history:
         if isinstance(item, dict):
             p = item.get("path", "")
             if p:
                 hist_by_path[os.path.normcase(os.path.abspath(p))] = item
+            fn = item.get("filename", "")
+            if fn:
+                hist_by_fn[fn.lower()] = item
+
+    MESES_ORDEM = {
+        "janeiro": 1, "fevereiro": 2, "marco": 3, "março": 3, "abril": 4, "maio": 5, "junho": 6,
+        "julho": 7, "agosto": 8, "setembro": 9, "outubro": 10, "novembro": 11, "dezembro": 12
+    }
+
+    def _get_sort_key(full_p, mtime):
+        # 1. Tenta extrair ano e mês da pasta (ex: 2026\09.26 ou 2026\08.26)
+        m = re.search(r'(\d{4})[\\/](\d{2})\.(\d{2})', full_p)
+        if m:
+            return (int(m.group(1)), int(m.group(2)), mtime)
+        # 2. Tenta extrair mês pelo nome do arquivo (ex: Setembro, Agosto)
+        low = os.path.basename(full_p).lower()
+        for mes_nome, mes_num in MESES_ORDEM.items():
+            if mes_nome in low:
+                m_ano = re.search(r'20\d{2}', full_p)
+                ano = int(m_ano.group(0)) if m_ano else 2026
+                return (ano, mes_num, mtime)
+        return (0, 0, mtime)
 
     result = []
 
@@ -465,8 +519,8 @@ def get_recent_reports():
                         except OSError:
                             pass
 
-            # Ordenar pelos mais recentes de uma só vez (sem re-chamar stat)
-            files_with_mtime.sort(key=lambda x: x[0], reverse=True)
+            # Ordenar pelos ciclos mais recentes (ano/mês) garantindo ordem cronológica correta
+            files_with_mtime.sort(key=lambda x: _get_sort_key(x[1], x[0]), reverse=True)
 
             for mtime, f_path in files_with_mtime[:5]:
                 abs_path = os.path.abspath(f_path)
@@ -478,12 +532,11 @@ def get_recent_reports():
                 has_pdf = os.path.exists(pdf_candidate)
 
                 # Se tiver metadados do histórico, usa; senão cria entrada básica
+                fn_lower = os.path.basename(f_path).lower()
                 if key in hist_by_path:
                     entry = hist_by_path[key].copy()
-                    entry["filename"] = os.path.basename(f_path)
-                    entry["path"] = abs_path
-                    entry["has_pdf"] = has_pdf
-                    entry["pdf_path"] = pdf_candidate if has_pdf else ""
+                elif fn_lower in hist_by_fn:
+                    entry = hist_by_fn[fn_lower].copy()
                 else:
                     entry = {
                         "filename": os.path.basename(f_path),
@@ -492,9 +545,20 @@ def get_recent_reports():
                         "gerado_em": dt_str,
                         "total_m3": None,
                         "total_rs": None,
-                        "has_pdf": has_pdf,
-                        "pdf_path": pdf_candidate if has_pdf else ""
                     }
+
+                # Se ainda não tiver os totais em m³ e R$, lê diretamente do arquivo Excel
+                if entry.get("total_m3") is None or entry.get("total_rs") is None:
+                    calc_m3, calc_rs = _extract_excel_totals(f_path)
+                    if calc_m3 is not None:
+                        entry["total_m3"] = calc_m3
+                    if calc_rs is not None:
+                        entry["total_rs"] = calc_rs
+
+                entry["filename"] = os.path.basename(f_path)
+                entry["path"] = abs_path
+                entry["has_pdf"] = has_pdf
+                entry["pdf_path"] = pdf_candidate if has_pdf else ""
                 result.append(entry)
         except Exception:
             pass
