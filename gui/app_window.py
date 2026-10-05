@@ -652,9 +652,9 @@ class AppHidrometrosWindow:
         if hasattr(self, "lbl_hero_sub2"):
             ini_str = data.get("periodo_rateio_ini", "")
             fim_str = data.get("periodo_rateio_fim", "")
-            cycle_txt = f"   •   Ciclo: {ini_str} a {fim_str}" if (ini_str and fim_str) else ""
+            cycle_txt = f" • Ciclo: {ini_str} a {fim_str}" if (ini_str and fim_str) else ""
             self.lbl_hero_sub2.config(
-                text=f"Consumo: {m3_str} m³   •   Fatura: R$ {tot_str}   •   Tarifa: R$ {rate:.2f}/m³{cycle_txt}",
+                text=f"Consumo: {m3_str} m³ • Fatura: R$ {tot_str} • Tarifa: R$ {rate:.2f}/m³{cycle_txt}",
                 fg=COLOR_TEXT_MUTED
             )
         self._update_kpi_bar_values()
