@@ -335,16 +335,36 @@ class SettingsDialog(tk.Toplevel):
         self.chk_smtp_ssl = ttk.Checkbutton(self.frame_custom_port, text="SSL Direto", variable=self.var_smtp_ssl)
         self.chk_smtp_ssl.pack(side=tk.LEFT)
 
-        tk.Label(card_smtp, text="Seu E-mail (Remetente):", font=("Segoe UI", 9), bg="#FFFFFF").grid(row=4, column=0, sticky=tk.W, pady=2)
-        self.ent_smtp_user = ttk.Entry(card_smtp, width=36)
-        self.ent_smtp_user.grid(row=4, column=1, sticky=tk.EW, pady=2)
+        # Bloco de Autenticação Integrado ao Operador Ativo (sem duplicidade!)
+        frame_op_auth = tk.Frame(card_smtp, bg="#F0F7EE", highlightbackground="#D5E5C9", highlightthickness=1, padx=10, pady=7)
+        frame_op_auth.grid(row=4, column=0, columnspan=2, sticky=tk.EW, pady=(6, 4))
 
-        tk.Label(card_smtp, text="Senha do seu E-mail:", font=("Segoe UI", 9), bg="#FFFFFF").grid(row=5, column=0, sticky=tk.W, pady=2)
-        self.ent_smtp_pass = ttk.Entry(card_smtp, width=36, show="*")
-        self.ent_smtp_pass.grid(row=5, column=1, sticky=tk.EW, pady=2)
+        self.lbl_smtp_op_auth = tk.Label(
+            frame_op_auth,
+            text="👤 Remetente Ativo: Carregando...",
+            font=("Segoe UI", 8, "bold"), fg=COLOR_PRIMARY, bg="#F0F7EE", anchor="w"
+        )
+        self.lbl_smtp_op_auth.pack(fill=tk.X)
 
-        btn_test_smtp = create_btn_secondary(card_smtp, "🔌 Testar Conexão com seu E-mail", self._test_smtp, pady=2, padx=10)
-        btn_test_smtp.grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=(4, 0))
+        self.lbl_smtp_op_sub = tk.Label(
+            frame_op_auth,
+            text="O e-mail e a senha de envio são obtidos automaticamente do perfil do operador ativo.",
+            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg="#F0F7EE", anchor="w"
+        )
+        self.lbl_smtp_op_sub.pack(fill=tk.X, pady=(1, 5))
+
+        frame_smtp_btns = tk.Frame(frame_op_auth, bg="#F0F7EE")
+        frame_smtp_btns.pack(fill=tk.X)
+
+        btn_test_smtp = create_btn_secondary(
+            frame_smtp_btns, "🔌 Testar Conexão com Servidor", self._test_smtp, pady=2, padx=10
+        )
+        btn_test_smtp.pack(side=tk.LEFT, padx=(0, 6))
+
+        btn_go_ops = create_btn_secondary(
+            frame_smtp_btns, "👤 Gerenciar Operadores & Senhas", self._open_operators_manager, pady=2, padx=10
+        )
+        btn_go_ops.pack(side=tk.LEFT)
 
         # Card 3: Modelo de E-mail
         card_tmpl = create_card_frame(parent, padx=12, pady=8)
@@ -500,6 +520,8 @@ class SettingsDialog(tk.Toplevel):
             self.lbl_op_email.config(text=f"✉ {active.get('email', 'Sem e-mail')}")
             self.lbl_op_wpp.config(text=f"📲 WhatsApp: {wpp} ({has_k})")
 
+        self._update_operator_context_labels()
+
     def _on_tab_operator_change(self, event=None):
         val = self.cmb_tab_operator.get()
         if val in self.ops_map:
@@ -508,6 +530,38 @@ class SettingsDialog(tk.Toplevel):
 
     def _open_operators_manager(self):
         OperatorsDialog(self, on_change_callback=self._refresh_tab_operators)
+
+    def _update_operator_context_labels(self):
+        """Atualiza os cards dinâmicos do operador ativo na Aba E-mail e Aba Webhooks."""
+        cfg = load_config()
+        active = get_active_operator(cfg)
+        if not active:
+            return
+
+        # 1. Atualizar card na Aba E-mail
+        if hasattr(self, "lbl_smtp_op_auth"):
+            op_name = active.get("name", "Operador")
+            op_email = active.get("email") or active.get("smtp_user") or "E-mail não cadastrado"
+            has_pwd = bool(active.get("smtp_password"))
+            pwd_txt = "●●●●●● (Senha salva)" if has_pwd else "⚠ Senha SMTP pendente"
+            self.lbl_smtp_op_auth.config(
+                text=f"👤 Remetente Ativo: {op_name} <{op_email}>",
+                fg=COLOR_PRIMARY
+            )
+            if hasattr(self, "lbl_smtp_op_sub"):
+                self.lbl_smtp_op_sub.config(
+                    text=f"Autenticação SMTP: {pwd_txt} • Assinatura automática do operador inclusa nos e-mails.",
+                    fg=COLOR_TEXT_MAIN if has_pwd else "#C0392B"
+                )
+
+        # 2. Atualizar card na Aba Webhooks
+        if hasattr(self, "lbl_wh_wpp_contact"):
+            op_name = active.get("name", "Operador")
+            wpp = active.get("whatsapp_phone") or active.get("phone") or "Não cadastrado"
+            has_k = "Chave API Ativa" if active.get("whatsapp_apikey") else "⚠ Sem chave CallMeBot"
+            self.lbl_wh_wpp_contact.config(
+                text=f"Operador: {op_name}  •  WhatsApp: {wpp}  •  {has_k}"
+            )
 
     def _build_tab_webhooks(self, parent):
         """Constrói a aba de configuração de Webhooks para Teams, Discord, Slack e Telegram com design moderno de cards."""
@@ -567,30 +621,49 @@ class SettingsDialog(tk.Toplevel):
         self.cmb_wh_platform.grid(row=1, column=1, sticky=tk.EW, pady=3)
         self.cmb_wh_platform.bind("<<ComboboxSelected>>", self._on_wh_platform_change)
 
-        # Campos WhatsApp
-        self.lbl_wh_phone = tk.Label(self.card_wh_config, text="Seu WhatsApp (com DDD):", font=("Segoe UI", 9), bg="#FFFFFF")
-        self.ent_wh_phone = ttk.Entry(self.card_wh_config, width=36)
+        # Container dinâmico do WhatsApp integrado ao Operador Ativo (sem duplicidade!)
+        self.frame_wh_whatsapp = tk.Frame(self.card_wh_config, bg="#F0F7EE", highlightbackground="#D5E5C9", highlightthickness=1, padx=10, pady=8)
 
-        self.lbl_wh_apikey = tk.Label(self.card_wh_config, text="Chave API (ApiKey):", font=("Segoe UI", 9), bg="#FFFFFF")
-        self.ent_wh_apikey = ttk.Entry(self.card_wh_config, width=36)
+        lbl_wpp_head = tk.Label(
+            self.frame_wh_whatsapp,
+            text="📲 Destinatário dos Alertas: Operador Ativo",
+            font=("Segoe UI", 8, "bold"), fg=COLOR_PRIMARY, bg="#F0F7EE", anchor="w"
+        )
+        lbl_wpp_head.pack(fill=tk.X)
+
+        self.lbl_wh_wpp_info = tk.Label(
+            self.frame_wh_whatsapp,
+            text="As mensagens de fechamento e alertas de vazamento são enviadas diretamente para o WhatsApp cadastrado no perfil do operador.",
+            font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg="#F0F7EE", anchor="w", wraplength=490, justify=tk.LEFT
+        )
+        self.lbl_wh_wpp_info.pack(fill=tk.X, pady=(1, 4))
+
+        self.lbl_wh_wpp_contact = tk.Label(
+            self.frame_wh_whatsapp,
+            text="Operador: Carregando...",
+            font=("Segoe UI", 8, "bold"), fg=COLOR_TEXT_MAIN, bg="#F0F7EE", anchor="w"
+        )
+        self.lbl_wh_wpp_contact.pack(fill=tk.X, pady=(0, 6))
+
+        frame_wpp_btns = tk.Frame(self.frame_wh_whatsapp, bg="#F0F7EE")
+        frame_wpp_btns.pack(fill=tk.X)
+
+        btn_manage_wpp = create_btn_secondary(
+            frame_wpp_btns, "👤 Alterar no Cadastro do Operador", self._open_operators_manager, pady=2, padx=10
+        )
+        btn_manage_wpp.pack(side=tk.LEFT, padx=(0, 6))
 
         self.btn_whatsapp_help = tk.Button(
-            self.card_wh_config,
-            text="📲 Como ativar e receber a chave grátis no WhatsApp (30 seg)",
+            frame_wpp_btns,
+            text="📲 Como Ativar a Chave Grátis (30 seg)",
             command=self._open_callmebot_help,
-            bg="#EBF3E6", fg=COLOR_PRIMARY, activebackground=COLOR_ACCENT,
-            font=("Segoe UI", 8, "bold"), relief="flat", padx=8, pady=3,
-            cursor="hand2", takefocus=False
+            bg="#FFFFFF", fg=COLOR_PRIMARY, activebackground=COLOR_ACCENT,
+            font=("Segoe UI", 8, "bold"), relief="flat", bd=1,
+            highlightbackground="#C5DCBA", highlightthickness=1,
+            padx=8, pady=2, cursor="hand2", takefocus=False
         )
-        bind_button_hover(self.btn_whatsapp_help, "#EBF3E6", "#D3E4CB")
-
-        self.lbl_wh_operator_note = tk.Label(
-            self.card_wh_config,
-            text="💡 Roteamento Inteligente: O WhatsApp segue automaticamente o Operador Ativo selecionado no topo da tela inicial. O número e chave abaixo servem como padrão global do sistema.",
-            font=("Segoe UI", 8, "italic"), fg=COLOR_PRIMARY, bg="#F7FAF5",
-            highlightbackground="#D5E5C9", highlightthickness=1, padx=8, pady=4,
-            wraplength=480, justify=tk.LEFT
-        )
+        self.btn_whatsapp_help.pack(side=tk.LEFT)
+        bind_button_hover(self.btn_whatsapp_help, "#FFFFFF", "#EBF3E6")
 
         # URL Webhook (Teams, Discord, Slack, Genérico)
         self.lbl_wh_url = tk.Label(self.card_wh_config, text="URL do Webhook:", font=("Segoe UI", 9), bg="#FFFFFF")
@@ -652,7 +725,7 @@ class SettingsDialog(tk.Toplevel):
             "1. Uma janela do WhatsApp foi aberta com o bot oficial CallMeBot (+34 694 242 562).\n"
             "2. Envie a mensagem pré-digitada: 'I allow callmebot to send me messages'.\n"
             "3. O bot responderá em segundos com sua Chave API (ApiKey: XXXXXX).\n"
-            "4. Digite seu número com DDD (ex: 11990127316) e a Chave recebida nesta tela.\n"
+            "4. Cadastre a Chave recebida no perfil do Operador (aba 'Operadores').\n"
             "5. Clique em '🔔 Enviar Mensagem de Teste' e pronto!\n\n"
             "100% gratuito e sem necessidade de cadastro.",
             parent=self
@@ -669,20 +742,12 @@ class SettingsDialog(tk.Toplevel):
         self.ent_wh_tele_token.grid_remove()
         self.lbl_wh_tele_chat.grid_remove()
         self.ent_wh_tele_chat.grid_remove()
-        self.lbl_wh_phone.grid_remove()
-        self.ent_wh_phone.grid_remove()
-        self.lbl_wh_apikey.grid_remove()
-        self.ent_wh_apikey.grid_remove()
-        self.btn_whatsapp_help.grid_remove()
-        self.lbl_wh_operator_note.grid_remove()
+        if hasattr(self, "frame_wh_whatsapp"):
+            self.frame_wh_whatsapp.grid_remove()
 
         if key == "whatsapp":
-            self.lbl_wh_phone.grid(row=2, column=0, sticky=tk.W, pady=3)
-            self.ent_wh_phone.grid(row=2, column=1, sticky=tk.EW, pady=3)
-            self.lbl_wh_apikey.grid(row=3, column=0, sticky=tk.W, pady=3)
-            self.ent_wh_apikey.grid(row=3, column=1, sticky=tk.EW, pady=3)
-            self.btn_whatsapp_help.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=(2, 4))
-            self.lbl_wh_operator_note.grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(2, 4))
+            if hasattr(self, "frame_wh_whatsapp"):
+                self.frame_wh_whatsapp.grid(row=2, column=0, columnspan=2, sticky=tk.EW, pady=(6, 4))
         elif key == "telegram":
             self.lbl_wh_tele_token.grid(row=2, column=0, sticky=tk.W, pady=3)
             self.ent_wh_tele_token.grid(row=2, column=1, sticky=tk.EW, pady=3)
@@ -695,18 +760,33 @@ class SettingsDialog(tk.Toplevel):
     def _test_webhook_action(self):
         idx = self.cmb_wh_platform.current()
         platform = self.wh_platform_keys[idx] if idx >= 0 else "whatsapp"
-        url = self.ent_wh_url.get().strip()
-        token = self.ent_wh_tele_token.get().strip()
-        chat_id = self.ent_wh_tele_chat.get().strip()
-        wh_phone = self.ent_wh_phone.get().strip()
-        wh_apikey = self.ent_wh_apikey.get().strip()
+        url = self.ent_wh_url.get().strip() if hasattr(self, "ent_wh_url") else ""
+        token = self.ent_wh_tele_token.get().strip() if hasattr(self, "ent_wh_tele_token") else ""
+        chat_id = self.ent_wh_tele_chat.get().strip() if hasattr(self, "ent_wh_tele_chat") else ""
+
+        active_op = get_active_operator(self.config)
+        op_name = active_op.get("name", "Operador") if active_op else "Operador"
+        if platform == "whatsapp":
+            wh_phone = (active_op.get("whatsapp_phone") or active_op.get("phone", "") if active_op else "").strip()
+            wh_apikey = (active_op.get("whatsapp_apikey", "") if active_op else "").strip()
+            if not wh_phone or not wh_apikey:
+                messagebox.showwarning(
+                    "WhatsApp do Operador Não Configurado",
+                    f"O operador ativo '{op_name}' não possui telefone ou chave CallMeBot cadastrada.\n\n"
+                    f"Clique em 'Alterar no Cadastro do Operador' para configurar o WhatsApp antes de testar.",
+                    parent=self
+                )
+                return
+        else:
+            wh_phone = ""
+            wh_apikey = ""
 
         self.btn_test_webhook.config(state=tk.DISABLED)
         self.lbl_wh_test_status.config(text="Enviando mensagem de teste...")
 
         def _worker():
             from core.webhook_notifier import send_test_webhook
-            ok, msg = send_test_webhook(platform, url, token, chat_id, wh_phone, wh_apikey)
+            ok, msg = send_test_webhook(platform, url, token, chat_id, wh_phone, wh_apikey, operator_name=op_name)
             def _ui():
                 self.btn_test_webhook.config(state=tk.NORMAL)
                 self.lbl_wh_test_status.config(text=msg)
@@ -1177,20 +1257,13 @@ class SettingsDialog(tk.Toplevel):
             self.cmb_smtp_preset.current(2)
             self.frame_custom_port.grid()
 
-        self.ent_smtp_user.insert(0, self.config.get("smtp_user", ""))
-        self.ent_smtp_pass.insert(0, self.config.get("smtp_password", ""))
-
         # Webhook
         self.var_webhook_enabled.set(self.config.get("webhook_enabled", False))
-        curr_plat = self.config.get("webhook_platform", "teams").lower()
+        curr_plat = self.config.get("webhook_platform", "whatsapp").lower()
         if curr_plat in self.wh_platform_keys:
             self.cmb_wh_platform.current(self.wh_platform_keys.index(curr_plat))
         else:
             self.cmb_wh_platform.current(0)
-        self.ent_wh_phone.delete(0, tk.END)
-        self.ent_wh_phone.insert(0, self.config.get("webhook_whatsapp_phone", ""))
-        self.ent_wh_apikey.delete(0, tk.END)
-        self.ent_wh_apikey.insert(0, self.config.get("webhook_whatsapp_apikey", ""))
         self.ent_wh_url.delete(0, tk.END)
         self.ent_wh_url.insert(0, self.config.get("webhook_url", ""))
         self.ent_wh_tele_token.delete(0, tk.END)
@@ -1201,6 +1274,7 @@ class SettingsDialog(tk.Toplevel):
         self.var_wh_anomalies.set(self.config.get("webhook_notify_anomalies", True))
         self._on_wh_platform_change()
         self._update_wh_status_badge()
+        self._update_operator_context_labels()
 
     def _browse_dir(self):
         selected = filedialog.askdirectory(initialdir=self.ent_dir.get() or os.path.expanduser("~"))
@@ -1236,16 +1310,16 @@ class SettingsDialog(tk.Toplevel):
             "smtp_port": port_val,
             "smtp_use_tls": self.var_smtp_tls.get(),
             "smtp_use_ssl": self.var_smtp_ssl.get(),
-            "smtp_user": self.ent_smtp_user.get().strip(),
-            "smtp_password": self.ent_smtp_pass.get().strip(),
+            "smtp_user": self.config.get("smtp_user", ""),
+            "smtp_password": self.config.get("smtp_password", ""),
             # Webhook & WhatsApp
             "webhook_enabled": self.var_webhook_enabled.get(),
             "webhook_platform": wh_plat,
-            "webhook_whatsapp_phone": self.ent_wh_phone.get().strip(),
-            "webhook_whatsapp_apikey": self.ent_wh_apikey.get().strip(),
-            "webhook_url": self.ent_wh_url.get().strip(),
-            "webhook_telegram_token": self.ent_wh_tele_token.get().strip(),
-            "webhook_telegram_chat_id": self.ent_wh_tele_chat.get().strip(),
+            "webhook_whatsapp_phone": self.config.get("webhook_whatsapp_phone", ""),
+            "webhook_whatsapp_apikey": self.config.get("webhook_whatsapp_apikey", ""),
+            "webhook_url": self.ent_wh_url.get().strip() if hasattr(self, "ent_wh_url") else "",
+            "webhook_telegram_token": self.ent_wh_tele_token.get().strip() if hasattr(self, "ent_wh_tele_token") else "",
+            "webhook_telegram_chat_id": self.ent_wh_tele_chat.get().strip() if hasattr(self, "ent_wh_tele_chat") else "",
             "webhook_notify_scheduled": self.var_wh_scheduled.get(),
             "webhook_notify_anomalies": self.var_wh_anomalies.get(),
         })
@@ -1267,14 +1341,29 @@ class SettingsDialog(tk.Toplevel):
 
     def _test_smtp(self):
         temp_cfg = self._get_current_inputs_config()
+        active_op = get_active_operator(self.config)
+        if active_op:
+            temp_cfg["smtp_user"] = (active_op.get("smtp_user") or active_op.get("email") or "").strip()
+            temp_cfg["smtp_password"] = active_op.get("smtp_password", "").strip()
+
+        op_name = active_op.get("name", "Operador") if active_op else "Operador"
+        user_email = temp_cfg.get("smtp_user", "")
+        if not user_email:
+            messagebox.showwarning(
+                "Aviso de Autenticação",
+                f"O operador ativo '{op_name}' não possui e-mail cadastrado.\n\n"
+                f"Clique em 'Gerenciar Operadores & Senhas' para configurar o e-mail de envio.",
+                parent=self
+            )
+            return
 
         def _worker():
             ok, msg = test_smtp_connection(temp_cfg)
             def _ui():
                 if ok:
-                    messagebox.showinfo("Sucesso no SMTP", msg, parent=self)
+                    messagebox.showinfo("Sucesso no SMTP", f"Conexão e autenticação SMTP bem-sucedidas para {op_name} ({user_email})!\n\n{msg}", parent=self)
                 else:
-                    messagebox.showerror("Erro no SMTP", msg, parent=self)
+                    messagebox.showerror("Erro no SMTP", f"Falha na conexão SMTP para {op_name} ({user_email}):\n\n{msg}", parent=self)
             self.after(0, _ui)
 
         threading.Thread(target=_worker, daemon=True).start()
