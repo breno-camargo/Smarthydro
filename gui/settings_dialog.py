@@ -556,12 +556,21 @@ class SettingsDialog(tk.Toplevel):
 
         # 2. Atualizar card na Aba Webhooks
         if hasattr(self, "lbl_wh_wpp_contact"):
-            op_name = active.get("name", "Operador")
-            wpp = active.get("whatsapp_phone") or active.get("phone") or "Não cadastrado"
-            has_k = "Chave API Ativa" if active.get("whatsapp_apikey") else "⚠ Sem chave CallMeBot"
-            self.lbl_wh_wpp_contact.config(
-                text=f"Operador: {op_name}  •  WhatsApp: {wpp}  •  {has_k}"
-            )
+            from core.webhook_notifier import get_whatsapp_recipients
+            recipients = get_whatsapp_recipients(self.config)
+            if recipients:
+                names_txt = ", ".join(f"{r['name']} ({r['phone'][-9:]})" for r in recipients)
+                total_ops = len(recipients)
+                plural = "operadores cadastrados" if total_ops > 1 else "operador cadastrado"
+                self.lbl_wh_wpp_contact.config(
+                    text=f"✔ Envio ativo para {total_ops} {plural}:\n{names_txt}",
+                    fg="#2A6320"
+                )
+            else:
+                self.lbl_wh_wpp_contact.config(
+                    text="⚠ Nenhum operador com telefone e Chave API CallMeBot configurados.",
+                    fg="#C0392B"
+                )
 
     def _build_tab_webhooks(self, parent):
         """Constrói a aba de configuração de Webhooks para Teams, Discord, Slack e Telegram com design moderno de cards."""
@@ -764,29 +773,29 @@ class SettingsDialog(tk.Toplevel):
         token = self.ent_wh_tele_token.get().strip() if hasattr(self, "ent_wh_tele_token") else ""
         chat_id = self.ent_wh_tele_chat.get().strip() if hasattr(self, "ent_wh_tele_chat") else ""
 
-        active_op = get_active_operator(self.config)
-        op_name = active_op.get("name", "Operador") if active_op else "Operador"
         if platform == "whatsapp":
-            wh_phone = (active_op.get("whatsapp_phone") or active_op.get("phone", "") if active_op else "").strip()
-            wh_apikey = (active_op.get("whatsapp_apikey", "") if active_op else "").strip()
-            if not wh_phone or not wh_apikey:
+            from core.webhook_notifier import get_whatsapp_recipients
+            recipients = get_whatsapp_recipients(self.config)
+            if not recipients:
                 messagebox.showwarning(
-                    "WhatsApp do Operador Não Configurado",
-                    f"O operador ativo '{op_name}' não possui telefone ou chave CallMeBot cadastrada.\n\n"
-                    f"Clique em 'Alterar no Cadastro do Operador' para configurar o WhatsApp antes de testar.",
+                    "WhatsApp Não Configurado",
+                    "Nenhum operador possui telefone e Chave API CallMeBot cadastrada.\n\n"
+                    "Clique em 'Alterar no Cadastro do Operador' para configurar o WhatsApp antes de testar.",
                     parent=self
                 )
                 return
+            recip_names = ", ".join(r["name"] for r in recipients)
+            self.lbl_wh_test_status.config(text=f"Enviando teste para {recip_names}...")
         else:
-            wh_phone = ""
-            wh_apikey = ""
+            self.lbl_wh_test_status.config(text="Enviando mensagem de teste...")
 
         self.btn_test_webhook.config(state=tk.DISABLED)
-        self.lbl_wh_test_status.config(text="Enviando mensagem de teste...")
 
         def _worker():
             from core.webhook_notifier import send_test_webhook
-            ok, msg = send_test_webhook(platform, url, token, chat_id, wh_phone, wh_apikey, operator_name=op_name)
+            active_op = get_active_operator(self.config)
+            op_name = active_op.get("name", "CompaSSS") if active_op else "CompaSSS"
+            ok, msg = send_test_webhook(platform, url, token, chat_id, operator_name=op_name, config=self.config)
             def _ui():
                 self.btn_test_webhook.config(state=tk.NORMAL)
                 self.lbl_wh_test_status.config(text=msg)

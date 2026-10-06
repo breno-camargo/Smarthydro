@@ -7,6 +7,7 @@ Utiliza apenas a biblioteca padrão (urllib) para total portabilidade sem depend
 import json
 import logging
 import re
+import time
 import urllib.request
 import urllib.error
 import urllib.parse
@@ -305,10 +306,61 @@ def _format_generic_json(summary: dict) -> dict:
     }
 
 
+def get_whatsapp_recipients(config: dict = None) -> list[dict]:
+    """
+    Retorna a lista de todos os destinatários configurados para receber notificações no WhatsApp.
+    Varre todos os operadores cadastrados que possuam telefone e Chave API CallMeBot,
+    além de chaves globais se informadas, eliminando telefones duplicados.
+    Cada item retornado contém: {'name': str, 'phone': str, 'apikey': str}
+    """
+    if config is None:
+        config = load_config()
+
+    from core.config_manager import get_operators
+    ops = get_operators(config)
+    recipients = []
+    seen_phones = set()
+
+    for op in ops:
+        if not isinstance(op, dict):
+            continue
+        op_phone = (op.get("whatsapp_phone") or op.get("phone") or "").strip()
+        op_apikey = (op.get("whatsapp_apikey") or "").strip()
+        op_name = op.get("name", "Operador").strip()
+
+        phone_clean = re.sub(r"[^\d]", "", op_phone)
+        if phone_clean and op_apikey:
+            if len(phone_clean) in (10, 11) and not phone_clean.startswith("55"):
+                phone_clean = "55" + phone_clean
+            if phone_clean not in seen_phones:
+                seen_phones.add(phone_clean)
+                recipients.append({
+                    "name": op_name,
+                    "phone": phone_clean,
+                    "apikey": op_apikey
+                })
+
+    # Verifica também as configurações globais de webhook (se não coincidir com nenhum operador)
+    global_phone = re.sub(r"[^\d]", "", str(config.get("webhook_whatsapp_phone", "")))
+    global_key = str(config.get("webhook_whatsapp_apikey", "")).strip()
+    if global_phone and global_key:
+        if len(global_phone) in (10, 11) and not global_phone.startswith("55"):
+            global_phone = "55" + global_phone
+        if global_phone not in seen_phones:
+            seen_phones.add(global_phone)
+            recipients.append({
+                "name": "Configuração Geral",
+                "phone": global_phone,
+                "apikey": global_key
+            })
+
+    return recipients
+
+
 def send_report_webhook(summary: dict, config: dict = None) -> tuple[bool, str]:
     """
     Envia notificação via Webhook para a plataforma configurada.
-    Roteia automaticamente para o WhatsApp e credenciais do operador ativo atual.
+    No WhatsApp, envia para TODOS os operadores que possuam Chave CallMeBot cadastrada.
     """
     if config is None:
         config = load_config()
@@ -323,28 +375,34 @@ def send_report_webhook(summary: dict, config: dict = None) -> tuple[bool, str]:
     url = config.get("webhook_url", "").strip()
 
     if platform == "whatsapp":
-        # Roteamento automático: busca no perfil do operador ativo primeiro
-        op_phone = ""
-        op_apikey = ""
-        if active_op:
-            op_phone = (active_op.get("whatsapp_phone") or active_op.get("phone") or "").strip()
-            op_apikey = (active_op.get("whatsapp_apikey") or "").strip()
-
-        phone_raw = op_phone if op_phone else config.get("webhook_whatsapp_phone", "")
-        phone = re.sub(r"[^\d]", "", phone_raw)
-        apikey = op_apikey if op_apikey else config.get("webhook_whatsapp_apikey", "").strip()
-
-        if not phone or not apikey:
+        recipients = get_whatsapp_recipients(config)
+        if not recipients:
             op_name = active_op.get("name", "Operador") if active_op else "Geral"
-            return False, f"WhatsApp ou Chave API CallMeBot não configurados para '{op_name}' (ou nas configurações gerais)."
-
-        if len(phone) in (10, 11) and not phone.startswith("55"):
-            phone = "55" + phone
+            return False, f"WhatsApp ou Chave API CallMeBot não configurados para nenhum operador (nem nas configurações gerais)."
 
         text = _format_whatsapp_message(summary)
         encoded_text = urllib.parse.quote_plus(text)
-        callme_url = f"https://api.callmebot.com/whatsapp.php?phone={phone}&text={encoded_text}&apikey={apikey}"
-        return _make_http_get(callme_url)
+
+        success_names = []
+        failure_details = []
+
+        for idx, rec in enumerate(recipients):
+            if idx > 0:
+                time.sleep(1.2)
+            callme_url = f"https://api.callmebot.com/whatsapp.php?phone={rec['phone']}&text={encoded_text}&apikey={rec['apikey']}"
+            ok, msg = _make_http_get(callme_url)
+            if ok:
+                success_names.append(rec["name"])
+            else:
+                failure_details.append(f"{rec['name']} ({msg})")
+
+        if success_names:
+            msg_ok = f"WhatsApp enviado com sucesso para: {', '.join(success_names)}"
+            if failure_details:
+                msg_ok += f" (Aviso em: {'; '.join(failure_details)})"
+            return True, msg_ok
+        else:
+            return False, f"Falha ao enviar WhatsApp para todos os operadores: {'; '.join(failure_details)}"
 
     if platform == "telegram":
         token = config.get("webhook_telegram_token", "").strip()
@@ -376,8 +434,11 @@ def send_report_webhook(summary: dict, config: dict = None) -> tuple[bool, str]:
     return _make_http_post(url, payload)
 
 
-def send_test_webhook(platform: str, url: str, token: str = "", chat_id: str = "", whatsapp_phone: str = "", whatsapp_apikey: str = "", operator_name: str = "") -> tuple[bool, str]:
+def send_test_webhook(platform: str, url: str, token: str = "", chat_id: str = "", whatsapp_phone: str = "", whatsapp_apikey: str = "", operator_name: str = "", config: dict = None) -> tuple[bool, str]:
     """Envia uma mensagem de teste para validar a conexão com o webhook ou WhatsApp."""
+    if config is None:
+        config = load_config()
+
     platform = platform.lower()
     now_str = datetime.now().strftime("%d/%m/%Y às %H:%M:%S")
 
@@ -392,22 +453,54 @@ def send_test_webhook(platform: str, url: str, token: str = "", chat_id: str = "
     }
 
     if platform == "whatsapp":
-        phone = re.sub(r"[^\d]", "", whatsapp_phone)
-        apikey = whatsapp_apikey.strip()
-        if not phone or not apikey:
-            return False, "Informe o número de telefone (com DDD) e a Apikey do CallMeBot."
+        clean_phone = re.sub(r"[^\d]", "", whatsapp_phone) if whatsapp_phone else ""
+        clean_key = whatsapp_apikey.strip() if whatsapp_apikey else ""
 
-        if len(phone) in (10, 11) and not phone.startswith("55"):
-            phone = "55" + phone
+        if clean_phone and clean_key:
+            # Teste individual direcionado (ex: diálogo de operadores)
+            if len(clean_phone) in (10, 11) and not clean_phone.startswith("55"):
+                clean_phone = "55" + clean_phone
+            recipients = [{
+                "name": operator_name or "Operador",
+                "phone": clean_phone,
+                "apikey": clean_key
+            }]
+        else:
+            # Teste geral (dispara para todos os operadores configurados)
+            recipients = get_whatsapp_recipients(config)
 
-        op_info = f" para *{operator_name}*" if operator_name else ""
-        test_msg = (
-            f"🔔 *SmartHydro Praça Pamplona*\n\n"
-            f"Teste de notificação no WhatsApp realizado com sucesso{op_info} em {now_str}!\n\n"
-            f"💧 Sistema conectado e pronto para enviar os fechamentos mensais."
-        )
-        callme_url = f"https://api.callmebot.com/whatsapp.php?phone={phone}&text={urllib.parse.quote_plus(test_msg)}&apikey={apikey}"
-        return _make_http_get(callme_url)
+        if not recipients:
+            return False, "Nenhum operador com WhatsApp e chave CallMeBot cadastrado."
+
+        success_names = []
+        failure_details = []
+
+        for idx, rec in enumerate(recipients):
+            if idx > 0:
+                time.sleep(1.2)
+            phone = rec["phone"]
+            apikey = rec["apikey"]
+            name = rec["name"]
+            op_info = f" para *{name}*"
+            test_msg = (
+                f"🔔 *SmartHydro Praça Pamplona*\n\n"
+                f"Teste de notificação no WhatsApp realizado com sucesso{op_info} em {now_str}!\n\n"
+                f"💧 Sistema conectado e pronto para enviar os fechamentos mensais para a equipe."
+            )
+            callme_url = f"https://api.callmebot.com/whatsapp.php?phone={phone}&text={urllib.parse.quote_plus(test_msg)}&apikey={apikey}"
+            ok, msg = _make_http_get(callme_url)
+            if ok:
+                success_names.append(name)
+            else:
+                failure_details.append(f"{name} ({msg})")
+
+        if success_names:
+            msg_ok = f"Mensagem de teste enviada com sucesso para: {', '.join(success_names)}"
+            if failure_details:
+                msg_ok += f" (Aviso em: {'; '.join(failure_details)})"
+            return True, msg_ok
+        else:
+            return False, f"Falha no envio do teste de WhatsApp: {'; '.join(failure_details)}"
 
     if platform == "telegram":
         if not token or not chat_id:
