@@ -717,13 +717,13 @@ class SettingsDialog(tk.Toplevel):
                 self.lbl_wh_badge.config(text="○ INATIVO", fg=COLOR_TEXT_MUTED, bg="#F0F0F0")
 
     def _open_callmebot_help(self):
-        url = "https://api.whatsapp.com/send?phone=34694242562&text=I%20allow%20callmebot%20to%20send%20me%20messages"
+        url = "https://api.whatsapp.com/send?phone=34623758418&text=I%20allow%20callmebot%20to%20call%20me"
         webbrowser.open(url)
         messagebox.showinfo(
             "Como Ativar no WhatsApp (Grátis)",
             "Passo a passo rápido para receber no seu WhatsApp:\n\n"
-            "1. Uma janela do WhatsApp foi aberta com o bot oficial CallMeBot (+34 694 242 562).\n"
-            "2. Envie a mensagem pré-digitada: 'I allow callmebot to send me messages'.\n"
+            "1. Uma janela do WhatsApp foi aberta com o bot oficial CallMeBot (+34 623 75 84 18).\n"
+            "2. Envie a mensagem pré-digitada: 'I allow callmebot to call me'.\n"
             "3. O bot responderá em segundos com sua Chave API (ApiKey: XXXXXX).\n"
             "4. Cadastre a Chave recebida no perfil do Operador (aba 'Operadores').\n"
             "5. Clique em '🔔 Enviar Mensagem de Teste' e pronto!\n\n"

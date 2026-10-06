@@ -278,7 +278,7 @@ class OperatorsDialog(tk.Toplevel):
             messagebox.showwarning(
                 "WhatsApp",
                 "Nenhuma Chave API CallMeBot informada para este operador nem nas configurações globais.\n\n"
-                "Para ativar gratuitamente no WhatsApp, envie 'I allow callmebot to send me messages' para o número oficial +34 694 242 562.",
+                "Para ativar gratuitamente no WhatsApp, envie 'I allow callmebot to call me' para o número oficial +34 623 75 84 18.",
                 parent=self
             )
             self.ent_wpp_apikey.focus_set()

@@ -814,17 +814,20 @@ class AppHidrometrosWindow:
                 text=f"✔ Fatura {data.get('arquivo_origem', 'Sabesp')} sincronizada com sucesso!",
                 fg=COLOR_PRIMARY
             )
-            messagebox.showinfo(
-                "Fatura Sabesp Sincronizada",
+            resp = messagebox.askyesno(
+                "Fatura Sabesp Sincronizada — Enviar Agora?",
                 f"✔ Fatura da Sabesp sincronizada com sucesso do e-mail!\n\n"
                 f"• Arquivo: {data.get('arquivo_origem')}\n"
                 f"• Período do Rateio: {ini_str} a {fim_str}\n"
                 f"• Tarifa Marginal: R$ {rate:.2f} / m³\n"
                 f"• Volume Sabesp: {data.get('consumo_sabesp_m3', 0.0):,.1f} m³\n"
                 f"• Total da Fatura: R$ {data.get('valor_total_fatura', 0.0):,.2f}\n\n"
-                f"Pronto para gerar o relatório com 1 clique!",
-                parent=self.root
+                f"Deseja gerar o relatório de rateio e fazer o envio por e-mail agora?",
+                parent=self.root,
+                default=messagebox.YES
             )
+            if resp:
+                self._start_processing(auto_open_email=True)
 
     def _apply_sabesp_data(self, data: dict, selected_rate: float, silent: bool = False):
         """Aplica as datas e a tarifa da fatura Sabesp diretamente nos campos da interface."""
@@ -1247,7 +1250,8 @@ class AppHidrometrosWindow:
         except Exception as e:
             messagebox.showerror("Erro ao Abrir Pasta", f"Não foi possível abrir a pasta:\n{e}", parent=self.root)
 
-    def _start_processing(self):
+    def _start_processing(self, auto_open_email: bool = False):
+        self._pending_auto_email = auto_open_email
         # Validação das datas pelo DateEntry
         try:
             d_ini_date = self.cal_inicio.get_date()
@@ -1411,36 +1415,43 @@ class AppHidrometrosWindow:
 
         # Oferecer envio imediato por e-mail para fluxo contínuo
         pdf_line = f"\n• PDF: {os.path.basename(pdf_file)}" if has_pdf else ""
-        resp_email = messagebox.askyesno(
-            "Relatório Concluído — Enviar por E-mail",
-            f"Relatório gerado com sucesso!\n\n"
-            f"• Planilha: {os.path.basename(final_file)}{pdf_line}\n\n"
-            f"Deseja abrir a tela de e-mail para conferir os destinatários e enviar agora?",
-            parent=self.root,
-            default=messagebox.YES
-        )
-        if resp_email:
-            # Foco 100% no e-mail: o Excel não é aberto para não disputar a tela nem roubar foco
+        auto_send = getattr(self, "_pending_auto_email", False)
+        self._pending_auto_email = False
+
+        if auto_send:
+            # Usuário já solicitou envio automático ao sincronizar a fatura
             self._send_email_action(final_file, pdf_file if has_pdf else None)
         else:
-            # Usuário optou por não enviar e-mail agora: abre o Excel se a opção estiver marcada
-            if self.var_open_excel.get():
-                try:
-                    os.startfile(final_file)
-                except Exception as e:
-                    messagebox.showwarning("Aviso", f"Relatório gerado em:\n{final_file}\n\nNão foi possível abrir o Excel automaticamente: {e}", parent=self.root)
+            resp_email = messagebox.askyesno(
+                "Relatório Concluído — Enviar por E-mail",
+                f"Relatório gerado com sucesso!\n\n"
+                f"• Planilha: {os.path.basename(final_file)}{pdf_line}\n\n"
+                f"Deseja abrir a tela de e-mail para conferir os destinatários e enviar agora?",
+                parent=self.root,
+                default=messagebox.YES
+            )
+            if resp_email:
+                # Foco 100% no e-mail: o Excel não é aberto para não disputar a tela nem roubar foco
+                self._send_email_action(final_file, pdf_file if has_pdf else None)
             else:
-                folder_dir = os.path.dirname(final_file)
-                resp_folder = messagebox.askyesno(
-                    "Abrir Pasta",
-                    f"Relatório salvo em:\n{folder_dir}\n\nDeseja abrir a pasta agora?",
-                    parent=self.root
-                )
-                if resp_folder:
+                # Usuário optou por não enviar e-mail agora: abre o Excel se a opção estiver marcada
+                if self.var_open_excel.get():
                     try:
-                        os.startfile(folder_dir)
-                    except Exception:
-                        pass
+                        os.startfile(final_file)
+                    except Exception as e:
+                        messagebox.showwarning("Aviso", f"Relatório gerado em:\n{final_file}\n\nNão foi possível abrir o Excel automaticamente: {e}", parent=self.root)
+                else:
+                    folder_dir = os.path.dirname(final_file)
+                    resp_folder = messagebox.askyesno(
+                        "Abrir Pasta",
+                        f"Relatório salvo em:\n{folder_dir}\n\nDeseja abrir a pasta agora?",
+                        parent=self.root
+                    )
+                    if resp_folder:
+                        try:
+                            os.startfile(folder_dir)
+                        except Exception:
+                            pass
 
     def _on_error(self, err_msg):
         self.prog_bar["value"] = 0
