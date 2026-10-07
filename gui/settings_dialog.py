@@ -557,7 +557,7 @@ class SettingsDialog(tk.Toplevel):
         # 2. Atualizar card na Aba Webhooks
         if hasattr(self, "lbl_wh_wpp_contact"):
             from core.webhook_notifier import get_whatsapp_recipients
-            recipients = get_whatsapp_recipients(self.config)
+            recipients = get_whatsapp_recipients(cfg)
             if recipients:
                 names_txt = ", ".join(f"{r['name']} ({r['phone'][-9:]})" for r in recipients)
                 total_ops = len(recipients)
@@ -635,14 +635,14 @@ class SettingsDialog(tk.Toplevel):
 
         lbl_wpp_head = tk.Label(
             self.frame_wh_whatsapp,
-            text="📲 Destinatário dos Alertas: Operador Ativo",
+            text="📲 Destinatários dos Alertas: Equipe de Operadores",
             font=("Segoe UI", 8, "bold"), fg=COLOR_PRIMARY, bg="#F0F7EE", anchor="w"
         )
         lbl_wpp_head.pack(fill=tk.X)
 
         self.lbl_wh_wpp_info = tk.Label(
             self.frame_wh_whatsapp,
-            text="As mensagens de fechamento e alertas de vazamento são enviadas diretamente para o WhatsApp cadastrado no perfil do operador.",
+            text="As notificações de fechamento e alertas de vazamento são enviadas automaticamente para todos os operadores cadastrados com WhatsApp e chave CallMeBot.",
             font=("Segoe UI", 8), fg=COLOR_TEXT_MUTED, bg="#F0F7EE", anchor="w", wraplength=490, justify=tk.LEFT
         )
         self.lbl_wh_wpp_info.pack(fill=tk.X, pady=(1, 4))

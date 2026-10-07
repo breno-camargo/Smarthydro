@@ -175,6 +175,7 @@ class OperatorsDialog(tk.Toplevel):
             op_id = op.get("id")
             is_def = op.get("is_default", False)
             status_txt = "★ Padrão" if is_def else ("● Ativo" if op_id == active_id else "")
+            row_tag = "default_op" if is_def else ("active_op" if op_id == active_id else "normal_op")
             phone_raw = op.get("whatsapp_phone") or op.get("phone", "")
             wpp_tag = "  📲" if op.get("whatsapp_apikey") else ""
             phone_disp = f"{phone_raw}{wpp_tag}" if phone_raw else ""
