@@ -999,7 +999,7 @@ class SettingsDialog(tk.Toplevel):
 
         info_items = [
             ("Desenvolvido por:", "Breno Camargo", True),
-            ("E-mail / Contato:", "breno.hsc75@gmail.com", False),
+            ("E-mail / Contato:", "contato@example.com", False),
             ("Empresa:", "CompaSSS Tecnologia e Automação", False),
             ("Empreendimento:", "Condomínio Praça Pamplona", False),
             ("Integração BMS:", "Schneider Electric StruxureWare EBO (SQL Server)", False),
@@ -1064,10 +1064,10 @@ class SettingsDialog(tk.Toplevel):
 
     def _copy_dev_email(self):
         self.clipboard_clear()
-        self.clipboard_append("breno.hsc75@gmail.com")
+        self.clipboard_append("contato@example.com")
         messagebox.showinfo(
             "Copiado!",
-            "E-mail de contato copiado para a área de transferência:\n\nbreno.hsc75@gmail.com",
+            "E-mail de contato copiado para a área de transferência:\n\ncontato@example.com",
             parent=self
         )
 

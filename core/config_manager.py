@@ -12,23 +12,23 @@ DEFAULT_OPERATORS = [
         "id": "breno",
         "name": "Breno Camargo",
         "role": "Técnico de Sistemas Prediais",
-        "email": "breno.camargo@compasss.com.br",
-        "phone": "+55 11 99012 7316",
-        "whatsapp_phone": "+55 11 99012 7316",
-        "whatsapp_apikey": "1275019",
-        "smtp_user": "breno.camargo@compasss.com.br",
+        "email": "operador@example.com",
+        "phone": "[telefone do operador]",
+        "whatsapp_phone": "[telefone do operador]",
+        "whatsapp_apikey": "",
+        "smtp_user": "operador@example.com",
         "smtp_password": "",
         "is_default": True
     }
 ]
 
-DEFAULT_CONDOMINIO_EMAIL_TO = "gerente.pamplona@zangari.com.br"
+DEFAULT_CONDOMINIO_EMAIL_TO = "gerencia@example.com"
 DEFAULT_CONDOMINIO_EMAIL_CC = (
-    "assistente.pamplona2@zangari.com.br; "
-    "almir@zangari.com.br; "
-    "gabriel.domingos@compasss.com.br; "
-    "victor.carvalho@compasss.com.br; "
-    "breno.camargo@compasss.com.br"
+    "assistente@example.com; "
+    "contato1@example.com; "
+    "contato2@example.com; "
+    "contato3@example.com; "
+    "operador@example.com"
 )
 
 
@@ -277,15 +277,15 @@ def load_config():
                 op["smtp_password"] = _decode_password(op.get("smtp_password", ""))
     else:
         # Migração automática a partir do usuário atual do SMTP
-        smtp_u = config.get("smtp_user", "breno.camargo@compasss.com.br")
+        smtp_u = config.get("smtp_user", "operador@example.com")
         config["operators"] = [
             {
-                "id": "breno",
-                "name": "Breno Camargo",
+                "id": "operador-exemplo",
+                "name": "Operador de exemplo",
                 "role": "Técnico de Sistemas Prediais",
-                "email": smtp_u or "breno.camargo@compasss.com.br",
-                "phone": "+55 11 99012 7316",
-                "smtp_user": smtp_u or "breno.camargo@compasss.com.br",
+                "email": smtp_u or "operador@example.com",
+                "phone": "[telefone do operador]",
+                "smtp_user": smtp_u or "operador@example.com",
                 "smtp_password": "",
                 "is_default": True
             }

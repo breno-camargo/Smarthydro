@@ -61,7 +61,7 @@ class SendEmailDialog(tk.Toplevel):
 
         cc_cfg = self.config.get("email_cc", "")
         self.saved_official_cc = cc_cfg if cc_cfg else DEFAULT_CONDOMINIO_EMAIL_CC
-        self.test_email = self.config.get("test_email", "breno.hsc75@gmail.com")
+        self.test_email = self.config.get("test_email", "contato@example.com")
 
         self._build_ui()
         center_modal(self, parent, 660, 660)

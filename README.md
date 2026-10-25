@@ -205,7 +205,7 @@ O executável final com ícone embutido e arquivos auxiliares será gerado na pa
 ## 👨‍💻 Desenvolvedor & Contato
 
 **Breno Camargo**  
-- **E-mail:** [breno.hsc75@gmail.com](mailto:breno.hsc75@gmail.com)  
+- **E-mail:** [contato@example.com](mailto:contato@example.com)
 - **GitHub:** [@breno-camargo](https://github.com/breno-camargo)  
 - **Organização Parceira:** CompaSSS Tecnologia e Automação  
 - **Empreendimento Atendido:** Condomínio Praça Pamplona  

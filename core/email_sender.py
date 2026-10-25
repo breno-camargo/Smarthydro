@@ -515,8 +515,8 @@ def render_email(subject_template, body_template, context, operator=None):
 
     op_nome = operator.get("name", "Breno Camargo") if operator else "Breno Camargo"
     op_cargo = operator.get("role", "Técnico de Sistemas Prediais") if operator else "Técnico de Sistemas Prediais"
-    op_email = operator.get("email", "breno.camargo@compasss.com.br") if operator else "breno.camargo@compasss.com.br"
-    op_tel = operator.get("phone", "+55 11 99012 7316") if operator else "+55 11 99012 7316"
+    op_email = operator.get("email", "operador@example.com") if operator else "operador@example.com"
+    op_tel = operator.get("phone", "[telefone do operador]") if operator else "[telefone do operador]"
 
     qtd_val = str(context.get("qtd_medidores") or context.get("qtd_salas") or "289")
     saudacao_val = get_greeting()
@@ -560,10 +560,10 @@ def render_email(subject_template, body_template, context, operator=None):
     # Retrocompatibilidade: se o modelo ainda possuir a assinatura antiga com dados estáticos de Breno
     if operator and op_nome and op_nome != "Breno Camargo":
         rendered_body = rendered_body.replace("Breno Camargo", op_nome)
-        if op_email and op_email != "breno.camargo@compasss.com.br":
-            rendered_body = rendered_body.replace("breno.camargo@compasss.com.br", op_email)
-        if op_tel and op_tel != "+55 11 99012 7316":
-            rendered_body = rendered_body.replace("+55 11 99012 7316", op_tel)
+        if op_email and op_email != "operador@example.com":
+            rendered_body = rendered_body.replace("operador@example.com", op_email)
+        if op_tel and op_tel != "[telefone do operador]":
+            rendered_body = rendered_body.replace("[telefone do operador]", op_tel)
 
     return rendered_subject, rendered_body
 
